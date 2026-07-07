@@ -22,23 +22,23 @@ class User_model extends CI_Model {
      */
 
     /**
-     * Login berdasarkan username
+     * Login berdasarkan username (nim_nip)
      */
     public function login($username)
     {
         return $this->db
-                    ->where('username', $username)
+                    ->where('nim_nip', $username) // DIPERBAIKI: username -> nim_nip
                     ->get($this->table)
                     ->row();
     }
 
     /**
-     * Ambil user berdasarkan username
+     * Ambil user berdasarkan username (nim_nip)
      */
     public function get_user_by_username($username)
     {
         return $this->db
-                    ->where('username', $username)
+                    ->where('nim_nip', $username) // DIPERBAIKI: username -> nim_nip
                     ->get($this->table)
                     ->row();
     }
@@ -78,7 +78,7 @@ class User_model extends CI_Model {
     public function get_all_users()
     {
         return $this->db
-                    ->order_by('nama', 'ASC')
+                    ->order_by('nama_lengkap', 'ASC') // DIPERBAIKI: nama -> nama_lengkap
                     ->get($this->table)
                     ->result();
     }
@@ -90,7 +90,7 @@ class User_model extends CI_Model {
     {
         return $this->db
                     ->where('role', $role)
-                    ->order_by('nama', 'ASC')
+                    ->order_by('nama_lengkap', 'ASC') // DIPERBAIKI: nama -> nama_lengkap
                     ->get($this->table)
                     ->result();
     }
@@ -101,12 +101,12 @@ class User_model extends CI_Model {
     public function search_user($keyword)
     {
         $this->db->group_start();
-        $this->db->like('nama', $keyword);
-        $this->db->or_like('username', $keyword);
+        $this->db->like('nama_lengkap', $keyword); // DIPERBAIKI: nama -> nama_lengkap
+        $this->db->or_like('nim_nip', $keyword);   // DIPERBAIKI: username -> nim_nip
         $this->db->group_end();
 
         return $this->db
-                    ->order_by('nama', 'ASC')
+                    ->order_by('nama_lengkap', 'ASC') // DIPERBAIKI: nama -> nama_lengkap
                     ->get($this->table)
                     ->result();
     }
@@ -156,11 +156,11 @@ class User_model extends CI_Model {
      */
 
     /**
-     * Cek username sudah digunakan atau belum
+     * Cek username (nim_nip) sudah digunakan atau belum
      */
     public function is_username_exists($username, $exclude_id = null)
     {
-        $this->db->where('username', $username);
+        $this->db->where('nim_nip', $username); // DIPERBAIKI: username -> nim_nip
 
         if ($exclude_id != null)
         {

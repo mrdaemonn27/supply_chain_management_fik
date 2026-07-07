@@ -290,22 +290,22 @@ class Peminjaman_model extends CI_Model {
         return $this->db->get()->result();
     }
 
-public function get_detail_by_group_id($group_id) {
-    $this->db->select('
-        p.id_peminjaman,
-        p.id_aset,
-        p.jumlah_pinjam,
-        p.kondisi_saat_pinjam,
-        a.nama_aset,
-        a.kode_aset,
-        r.nama_ruangan
-    ');
-    $this->db->from('peminjaman p');
-    $this->db->join('aset a', 'a.id_aset = p.id_aset', 'left');
-    $this->db->join('ruangan r', 'r.id_ruangan = a.id_ruangan', 'left');
-    $this->db->where('p.group_id', $group_id);
-    return $this->db->get()->result();
-}
+    public function get_detail_by_group_id($group_id) {
+        $this->db->select('
+            p.id_peminjaman,
+            p.id_aset,
+            p.jumlah_pinjam,
+            p.kondisi_saat_pinjam,
+            a.nama_aset,
+            a.kode_aset,
+            r.nama_ruangan
+        ');
+        $this->db->from('peminjaman p');
+        $this->db->join('aset a', 'a.id_aset = p.id_aset', 'left');
+        $this->db->join('ruangan r', 'r.id_ruangan = a.id_ruangan', 'left');
+        $this->db->where('p.group_id', $group_id);
+        return $this->db->get()->result();
+    }
     
     public function get_peminjaman_by_aset($id_aset, $limit = 10) {
         $this->db->select('
@@ -845,4 +845,43 @@ public function get_detail_by_group_id($group_id) {
         
         return $results;
     }
+
+    // =======================================================
+    // FUNGSI UNTUK FITUR KATALOG BARANG (DASHBOARD USER)
+    // =======================================================
+    public function get_katalog_barang() {
+        $this->db->select('aset.*, ruangan.nama_ruangan');
+        $this->db->from('aset');
+        $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
+        $this->db->where('jumlah_tersedia >', 0);
+        $this->db->order_by('nama_aset', 'ASC');
+        
+        return $this->db->get()->result();
+    }
+
+    // =======================================================
+    // FUNGSI TAMBAHAN UNTUK FORM PENGAJUAN PEMINJAMAN
+    // =======================================================
+    public function get_aset_by_id($id_aset) {
+        $this->db->select('aset.*, ruangan.nama_ruangan');
+        $this->db->from('aset');
+        $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
+        $this->db->where('id_aset', $id_aset);
+        return $this->db->get()->row();
+    }
+
+    public function get_or_create_peminjam($nim_nip, $nama_lengkap) {
+        $peminjam = $this->db->get_where($this->table_peminjam, ['nim_nip' => $nim_nip])->row();
+        
+        if (!$peminjam) {
+            $this->db->insert($this->table_peminjam, [
+                'nama_peminjam' => $nama_lengkap,
+                'nim_nip'       => $nim_nip,
+                'jenis'         => 'Mahasiswa'
+            ]);
+            return $this->db->insert_id();
+        }
+        return $peminjam->id_peminjam;
+    }
+
 }
