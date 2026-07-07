@@ -170,4 +170,19 @@ class User_model extends CI_Model {
         return $this->db->count_all_results($this->table) > 0;
     }
 
+    /**
+     * Cek email sudah digunakan atau belum
+     */
+    public function is_email_exists($email, $exclude_id = null)
+    {
+        $this->db->where('email', $email);
+
+        if ($exclude_id != null)
+        {
+            $this->db->where($this->primaryKey . ' !=', $exclude_id);
+        }
+
+        return $this->db->count_all_results($this->table) > 0;
+    }
+
 }
