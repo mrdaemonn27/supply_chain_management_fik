@@ -50,9 +50,6 @@
                 </form>
             </div>
         </div>
-        <div class="text-center mt-3 text-muted">
-            <small>Demo Akses:<br>User: <b>logistic</b> | Pass: <b>admin123</b></small>
-        </div>
     </div>
 </body>
 </html>
