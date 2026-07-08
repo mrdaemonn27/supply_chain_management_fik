@@ -162,11 +162,11 @@
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top shadow-sm">
         <div class="container-fluid px-4 px-lg-5">
             <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <i class="bi bi-palette-fill fs-2 me-2 text-fik-orange"></i>
-                <div>
+                <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="300"  class="me-2">
+                <!-- <div>
                     <div style="font-size: 1.1rem; line-height: 1.2; letter-spacing: 1px;">SCM FIK</div>
                     <div style="font-size: 0.6rem; color: #aaa; letter-spacing: 2px;">INDUSTRI KREATIF</div>
-                </div>
+                </div> -->
             </a>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -434,12 +434,8 @@
                 <div class="col-lg-4 col-md-12 mb-5 mb-lg-0" data-aos="fade-up" data-aos-delay="100">
                     <div class="logo-wrap">
                         <div class="logo-icon">
-                            <!-- Icon tameng -->
-                            <i class="bi bi-shield-fill"></i>
-                        </div>
-                        <div>
-                            <div class="logo-text">Fakultas Industri Kreatif</div>
-                            <div class="logo-subtext">School of Creative Industries<br>Telkom University</div>
+                            <!-- Icon fik -->
+                            <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="350"  class="me-2">
                         </div>
                     </div>
                     
