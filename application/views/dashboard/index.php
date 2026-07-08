@@ -29,12 +29,14 @@
 
         /* Navbar Dinamis */
         .navbar-custom {
-            background-color: #1a1a1a;
+            background-color: #ffffff;
             padding: 12px 0;
             transition: all 0.3s ease-in-out;
+            border-bottom: 2px solid #ea5b1a;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
         .navbar-dark .navbar-nav .nav-link {
-            color: #e0e0e0;
+            color: #333333;
             font-weight: 500;
             font-size: 0.95rem;
             margin: 0 12px;
@@ -165,7 +167,7 @@
                 <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="300"  class="me-2">
                 <!-- <div>
                     <div style="font-size: 1.1rem; line-height: 1.2; letter-spacing: 1px;">SCM FIK</div>
-                    <div style="font-size: 0.6rem; color: #aaa; letter-spacing: 2px;">INDUSTRI KREATIF</div>
+                    <div style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">INDUSTRI KREATIF</div>
                 </div> -->
             </a>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">

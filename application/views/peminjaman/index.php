@@ -31,8 +31,8 @@
         .text-fik-brown { color: #5d3315 !important; }
         
         /* Navbar Dinamis (Sama persis dengan Dashboard) */
-        .navbar-custom { background-color: #1a1a1a; padding: 12px 0; }
-        .navbar-dark .navbar-nav .nav-link { color: #e0e0e0; font-weight: 500; font-size: 0.95rem; margin: 0 12px; transition: 0.3s; position: relative; }
+        .navbar-custom { background-color: #ffffff; padding: 12px 0; border-bottom: 2px solid #ea5b1a; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
+        .navbar-dark .navbar-nav .nav-link { color: #333333; font-weight: 500; font-size: 0.95rem; margin: 0 12px; transition: 0.3s; position: relative; }
         .navbar-dark .navbar-nav .nav-link:hover, .navbar-dark .navbar-nav .nav-link.active { color: #ea5b1a; }
         .navbar-dark .navbar-nav .nav-link::after { content: ''; position: absolute; width: 0; height: 2px; display: block; margin-top: 5px; right: 0; background: #ea5b1a; transition: width 0.3s ease; }
         .navbar-dark .navbar-nav .nav-link:hover::after { width: 100%; left: 0; background: #ea5b1a; }
@@ -101,11 +101,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top shadow-sm">
         <div class="container-fluid px-4 px-lg-5">
             <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <i class="bi bi-palette-fill fs-2 me-2 text-fik-orange"></i>
-                <div>
-                    <div style="font-size: 1.1rem; line-height: 1.2; letter-spacing: 1px;">SCM FIK</div>
-                    <div style="font-size: 0.6rem; color: #aaa; letter-spacing: 2px;">INDUSTRI KREATIF</div>
-                </div>
+                <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="300" class="me-2">
             </a>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
