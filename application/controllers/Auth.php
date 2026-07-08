@@ -11,7 +11,6 @@ class Auth extends CI_Controller {
 
     public function __construct() {
         parent::__construct();
-        // Memanggil model User_model
         $this->load->model('User_model');
     }
 
@@ -20,7 +19,16 @@ class Auth extends CI_Controller {
         if($this->session->userdata('logged_in')) {
             redirect('dashboard');
         }
+
         $this->load->view('auth/login');
+    }
+
+    public function signup() {
+        if ($this->session->userdata('logged_in')) {
+            redirect('dashboard');
+        }
+
+        $this->load->view('auth/signup');
     }
 
     public function process_login() {
@@ -31,29 +39,66 @@ class Auth extends CI_Controller {
         // Cari user berdasarkan nim_nip (karena di DB pakai nim_nip)
         $user = $this->User_model->get_user_by_username($username);
 
-        if($user) {
-            // Cek password hash
-            if(password_verify($password, $user->password)) {
-                
-                // Jika password benar, buat session data Sesuai Database
-                $session_data = array(
-                    'id_user'   => $user->id_user,
-                    'username'  => $user->nim_nip,
-                    'nama'      => $user->nama_lengkap,
-                    'role'      => $user->role,
-                    'logged_in' => TRUE
-                );
-                $this->session->set_userdata($session_data);
-                
-                redirect('dashboard');
-            } else {
-                $this->session->set_flashdata('error', 'Password yang Anda masukkan salah!');
-                redirect('auth');
-            }
-        } else {
-            $this->session->set_flashdata('error', 'Username / NIM / NIP tidak ditemukan!');
+        if ($user && password_verify($password, $user->password)) {
+            $session_data = array(
+                'id_user'   => $user->id_user,
+                'username'  => $user->nim_nip,
+                'nama'      => $user->nama_lengkap,
+                'role'      => $user->role,
+                'logged_in' => TRUE
+            );
+            $this->session->set_userdata($session_data);
+
+            redirect('dashboard');
+        }
+
+        $this->session->set_flashdata('error', 'NIM/NIP atau password tidak cocok.');
+        redirect('auth');
+    }
+
+    public function process_signup() {
+        $nim_nip = trim($this->input->post('nim_nip', TRUE));
+        $nama_lengkap = trim($this->input->post('nama_lengkap', TRUE));
+        $email = trim($this->input->post('email', TRUE));
+        $password = $this->input->post('password', TRUE);
+        $password_confirm = $this->input->post('password_confirm', TRUE);
+
+        if ($nim_nip === '' || $nama_lengkap === '' || $email === '' || $password === '' || $password_confirm === '') {
+            $this->session->set_flashdata('error', 'Semua field wajib diisi.');
+            redirect('auth/signup');
+        }
+
+        if ($password !== $password_confirm) {
+            $this->session->set_flashdata('error', 'Konfirmasi password tidak sesuai.');
+            redirect('auth/signup');
+        }
+
+        if ($this->User_model->is_username_exists($nim_nip)) {
+            $this->session->set_flashdata('error', 'NIM/NIP sudah terdaftar.');
+            redirect('auth/signup');
+        }
+
+        if ($this->User_model->is_email_exists($email)) {
+            $this->session->set_flashdata('error', 'Email sudah terdaftar.');
+            redirect('auth/signup');
+        }
+
+        $data = array(
+            'nim_nip' => $nim_nip,
+            'nama_lengkap' => $nama_lengkap,
+            'email' => $email,
+            'password' => password_hash($password, PASSWORD_BCRYPT),
+            'role' => 'user',
+            'created_at' => date('Y-m-d H:i:s')
+        );
+
+        if ($this->User_model->insert_user($data)) {
+            $this->session->set_flashdata('success', 'Akun berhasil dibuat. Silakan login.');
             redirect('auth');
         }
+
+        $this->session->set_flashdata('error', 'Gagal membuat akun. Silakan coba lagi.');
+        redirect('auth/signup');
     }
 
     public function logout() {

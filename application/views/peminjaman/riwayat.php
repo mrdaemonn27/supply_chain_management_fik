@@ -140,38 +140,42 @@
                                 </button>
                             </td>
                         </tr>
-
-                        <!-- MODAL TIKET QR CODE (Muncul saat tombol diklik) -->
-                        <div class="modal fade" id="qrModal<?= $r->id_peminjaman ?>" tabindex="-1">
-                            <div class="modal-dialog modal-sm modal-dialog-centered">
-                                <div class="modal-content text-center p-4 border-0 shadow-lg" style="border-radius: 20px;">
-                                    <h5 class="fw-bold text-fik-orange mb-1">E-Ticket Laboratorium</h5>
-                                    <p class="small text-muted mb-4">Tunjukkan kode ini kepada Laboran saat serah terima barang.</p>
-                                    
-                                    <!-- Men-generate QR Code menggunakan API publik berdasakan ID Unik Transaksi -->
-                                    <div class="bg-white p-3 rounded-4 mb-3 mx-auto shadow-sm border" style="display: inline-block;">
-                                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=<?= $r->group_id ?>" alt="QR Code" class="img-fluid">
-                                    </div>
-                                    
-                                    <div class="font-monospace fs-6 fw-bold bg-light border px-3 py-2 rounded-3 text-secondary mb-3">
-                                        <?= $r->group_id ?>
-                                    </div>
-
-                                    <div class="alert alert-info py-2 small mb-4 text-start">
-                                        <strong>Barang:</strong> <?= $r->nama_aset ?><br>
-                                        <strong>Status:</strong> <?= $r->status ?>
-                                    </div>
-                                    
-                                    <button type="button" class="btn btn-secondary w-100 rounded-pill" data-bs-dismiss="modal">Tutup</button>
-                                </div>
-                            </div>
-                        </div>
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
+
+    <!-- MODAL TIKET QR CODE (DIPINDAHKAN KELUAR DARI TABLE AGAR TIDAK BUG/KEPOTONG) -->
+    <?php if(!empty($riwayat)): ?>
+        <?php foreach($riwayat as $r): ?>
+        <div class="modal fade" id="qrModal<?= $r->id_peminjaman ?>" tabindex="-1" aria-labelledby="qrModalLabel<?= $r->id_peminjaman ?>" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content text-center p-4 border-0 shadow-lg" style="border-radius: 20px;">
+                    <h5 class="fw-bold text-fik-orange mb-1" id="qrModalLabel<?= $r->id_peminjaman ?>">E-Ticket Laboratorium</h5>
+                    <p class="small text-muted mb-4">Tunjukkan kode ini kepada Laboran saat serah terima barang.</p>
+                    
+                    <!-- Men-generate QR Code menggunakan API publik berdasakan ID Unik Transaksi -->
+                    <div class="bg-white p-3 rounded-4 mb-3 mx-auto shadow-sm border" style="display: inline-block;">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=<?= $r->group_id ?>" alt="QR Code" class="img-fluid">
+                    </div>
+                    
+                    <div class="font-monospace fs-6 fw-bold bg-light border px-3 py-2 rounded-3 text-secondary mb-3">
+                        <?= $r->group_id ?>
+                    </div>
+
+                    <div class="alert alert-info py-2 small mb-4 text-start">
+                        <strong>Barang:</strong> <?= $r->nama_aset ?><br>
+                        <strong>Status:</strong> <?= $r->status ?>
+                    </div>
+                    
+                    <button type="button" class="btn btn-secondary w-100 rounded-pill" data-bs-dismiss="modal">Tutup</button>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
     <!-- Footer -->
     <footer class="bg-dark text-center py-4 mt-5">

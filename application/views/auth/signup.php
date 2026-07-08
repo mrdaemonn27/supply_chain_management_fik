@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - SCM FIK</title>
+    <title>Sign Up - SCM FIK</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
@@ -82,30 +82,30 @@
                             <div class="small text-white-50">INDUSTRI KREATIF</div>
                         </div>
                     </div>
-                    <h2 class="fw-bold mb-3">Selamat datang di sistem peminjaman aset.</h2>
-                    <p class="text-white-50 mb-4">Masuk untuk melihat katalog alat, mengajukan peminjaman, dan memantau status pengembalian.</p>
+                    <h2 class="fw-bold mb-3">Buat akun untuk akses sistem.</h2>
+                    <p class="text-white-50 mb-4">Daftar sebagai pengguna untuk mengajukan peminjaman alat studio dan melihat statusnya.</p>
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-box-seam me-2 text-fik-orange"></i>
-                        <span>Kelola aset dengan lebih terstruktur</span>
+                        <i class="bi bi-camera me-2 text-fik-orange"></i>
+                        <span>Kelola peminjaman alat studio</span>
                     </div>
                     <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-clock-history me-2 text-fik-orange"></i>
-                        <span>Pantau riwayat peminjaman secara real-time</span>
+                        <i class="bi bi-clipboard-check me-2 text-fik-orange"></i>
+                        <span>Lacak status pengajuan</span>
                     </div>
                     <div class="d-flex align-items-center">
-                        <i class="bi bi-shield-check me-2 text-fik-orange"></i>
-                        <span>Akses sesuai role Anda</span>
+                        <i class="bi bi-person-lines-fill me-2 text-fik-orange"></i>
+                        <span>Data akun tersimpan sesuai tabel users</span>
                     </div>
                 </div>
                 <div class="mt-5">
-                    <a href="<?= site_url('auth/signup'); ?>" class="btn btn-outline-light rounded-pill px-4">Buat akun baru</a>
+                    <a href="<?= site_url('auth'); ?>" class="btn btn-outline-light rounded-pill px-4">Sudah punya akun?</a>
                 </div>
             </div>
 
             <div class="auth-form col-lg-7">
                 <div class="text-center mb-4">
-                    <h3 class="fw-bold text-fik-brown">Masuk ke Akun</h3>
-                    <p class="text-muted mb-0">Silakan masukkan NIM/NIP dan password Anda.</p>
+                    <h3 class="fw-bold text-fik-brown">Daftar Akun</h3>
+                    <p class="text-muted mb-0">Isi data di bawah untuk membuat akun baru.</p>
                 </div>
 
                 <?php if ($this->session->flashdata('error')): ?>
@@ -114,28 +114,34 @@
                     </div>
                 <?php endif; ?>
 
-                <?php if ($this->session->flashdata('success')): ?>
-                    <div class="alert alert-success rounded-3 border-0 text-center">
-                        <?= $this->session->flashdata('success'); ?>
-                    </div>
-                <?php endif; ?>
-
-                <form action="<?= site_url('auth/process_login'); ?>" method="post">
+                <form action="<?= site_url('auth/process_signup'); ?>" method="post">
                     <div class="mb-3">
-                        <label for="username" class="form-label fw-semibold">NIM / NIP</label>
-                        <input type="text" name="username" id="username" class="form-control py-2" placeholder="Masukkan NIM/NIP Anda" required autofocus>
+                        <label for="nim_nip" class="form-label fw-semibold">NIM / NIP</label>
+                        <input type="text" name="nim_nip" id="nim_nip" class="form-control py-2" placeholder="Contoh: 2023001" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="nama_lengkap" class="form-label fw-semibold">Nama Lengkap</label>
+                        <input type="text" name="nama_lengkap" id="nama_lengkap" class="form-control py-2" placeholder="Nama lengkap Anda" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label fw-semibold">Email</label>
+                        <input type="email" name="email" id="email" class="form-control py-2" placeholder="email@domain.com" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label fw-semibold">Password</label>
+                        <input type="password" name="password" id="password" class="form-control py-2" placeholder="Buat password" required>
                     </div>
                     <div class="mb-4">
-                        <label for="password" class="form-label fw-semibold">Password</label>
-                        <input type="password" name="password" id="password" class="form-control py-2" placeholder="Masukkan password" required>
+                        <label for="password_confirm" class="form-label fw-semibold">Konfirmasi Password</label>
+                        <input type="password" name="password_confirm" id="password_confirm" class="form-control py-2" placeholder="Ulangi password" required>
                     </div>
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-fik py-2">Masuk</button>
+                        <button type="submit" class="btn btn-fik py-2">Daftar</button>
                     </div>
                 </form>
 
                 <div class="text-center mt-4 text-muted small">
-                    Belum punya akun? <a href="<?= site_url('auth/signup'); ?>" class="text-fik-orange fw-semibold text-decoration-none">Daftar sekarang</a>
+                    Sudah punya akun? <a href="<?= site_url('auth'); ?>" class="text-fik-orange fw-semibold text-decoration-none">Masuk di sini</a>
                 </div>
             </div>
         </div>
