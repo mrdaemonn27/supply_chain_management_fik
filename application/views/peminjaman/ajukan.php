@@ -132,7 +132,7 @@
                         </div>
 
                         <div class="mb-4 bg-fik-orange-light p-3 rounded-3 border border-warning border-opacity-25">
-                            <label class="form-label fw-bold text-fik-brown"><i class="bi bi-camera-fill me-1"></i> Foto Kondisi Awal Alat (Wajib SKPL) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-bold text-fik-brown"><i class="bi bi-camera-fill me-1"></i> Foto Kondisi Awal Alat <span class="text-danger">*</span></label>
                             <input type="file" name="foto_kondisi" class="form-control bg-white" accept=".jpg,.jpeg,.png" required>
                             <small class="text-muted mt-1 d-block" style="font-size: 0.75rem;">Format: JPG/PNG. Maksimal ukuran file: 2MB. Pastikan foto memperlihatkan kelengkapan alat.</small>
                             
