@@ -26,32 +26,6 @@
         .text-fik-brown { color: #5d3315 !important; }
         .bg-fik-orange-light { background-color: rgba(234, 91, 26, 0.1) !important; }
         .bg-fik-brown-light { background-color: rgba(93, 51, 21, 0.1) !important; }
-        
-        .btn-outline-fik-orange {
-            color: #ea5b1a;
-            border: 1px solid #ea5b1a;
-            background: transparent;
-        }
-        .btn-outline-fik-orange:hover {
-            background-color: #ea5b1a;
-            color: white;
-        }
-
-        .btn-outline-fik-brown {
-            color: #5d3315;
-            border: 1px solid #5d3315;
-            background: transparent;
-        }
-        .btn-outline-fik-brown:hover {
-            background-color: #5d3315;
-            color: white;
-        }
-
-        .badge-fik-outline {
-            background-color: rgba(234, 91, 26, 0.15);
-            color: #ea5b1a;
-            border: 1px solid #ea5b1a;
-        }
 
         /* Navbar Dinamis */
         .navbar-custom {
@@ -67,7 +41,6 @@
             transition: 0.3s;
             position: relative;
         }
-        /* Hover Warna Oranye FIK */
         .navbar-dark .navbar-nav .nav-link:hover, 
         .navbar-dark .navbar-nav .nav-link.active {
             color: #ea5b1a;
@@ -94,35 +67,23 @@
             border-radius: 8px;
             padding: 8px 20px;
             box-shadow: 0 4px 15px rgba(234, 91, 26, 0.3);
+            transition: 0.3s;
         }
-        
-        /* Hero Section */
-        .hero-section {
-            background: linear-gradient(rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.9)), 
-                        url('https://images.unsplash.com/photo-1542744094-24638ea0b3b5?auto=format&fit=crop&q=80') center/cover fixed;
-            min-height: 85vh;
+        .btn-user:hover {
             color: white;
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-        
-        /* Floating Banner (Oranye) */
-        .floating-banner-wrapper {
-            margin-top: -50px; 
-            position: relative;
-            z-index: 10;
-        }
-        .floating-banner {
-            background: linear-gradient(135deg, #ea5b1a 0%, #b34311 100%);
-            color: white;
-            padding: 35px 40px;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(234, 91, 26, 0.2);
-            backdrop-filter: blur(10px);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(234, 91, 26, 0.4);
         }
 
-        /* Styling Kartu Responsif */
+        /* Header Tampilan Awal (Slimmer) */
+        .catalog-header {
+            background: linear-gradient(rgba(26, 26, 26, 0.85), rgba(26, 26, 26, 0.9)), url('https://images.unsplash.com/photo-1542744094-24638ea0b3b5?auto=format&fit=crop&q=80') center/cover;
+            padding: 60px 0 40px 0;
+            color: white;
+            border-bottom: 5px solid #ea5b1a;
+        }
+        
+        /* Styling Kartu Lab */
         .service-card {
             border: none;
             border-radius: 16px;
@@ -133,11 +94,12 @@
             height: 100%;
         }
         .service-card:hover {
-            transform: translateY(-15px);
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            transform: translateY(-10px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            border-bottom: 4px solid #ea5b1a;
         }
         .service-card img {
-            height: 220px;
+            height: 180px;
             object-fit: cover;
             transition: 0.5s;
         }
@@ -145,11 +107,11 @@
             transform: scale(1.05);
         }
 
-        /* SOP / Aturan Section (Cokelat Tua FIK) */
+        /* SOP / Aturan Section */
         .sop-section {
-            background-color: #5d3315; /* Sesuai referensi gambar */
+            background-color: #5d3315; 
             background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.03"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
-            padding: 100px 0;
+            padding: 80px 0;
             color: white;
         }
         .rule-card {
@@ -161,7 +123,7 @@
         }
         .rule-card:hover {
             background: rgba(255, 255, 255, 0.1);
-            border-color: #ea5b1a; /* Hover border oranye */
+            border-color: #ea5b1a; 
         }
 
         /* ========================================= */
@@ -174,91 +136,24 @@
             font-size: 0.95rem;
             position: relative;
         }
-        .footer-fik .logo-wrap {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 25px;
-        }
-        .footer-fik .logo-icon {
-            font-size: 2.8rem;
-            line-height: 1;
-            color: #888;
-            margin-right: 15px;
-        }
-        .footer-fik .logo-text {
-            color: #ea5b1a;
-            font-weight: 700;
-            font-size: 1.25rem;
-            line-height: 1.2;
-        }
-        .footer-fik .logo-subtext {
-            color: #a0a0a0;
-            font-size: 0.85rem;
-            line-height: 1.3;
-            font-weight: 500;
-        }
-        .footer-fik .info-text {
-            color: #dcdcdc;
-            line-height: 1.6;
-            margin-bottom: 5px;
-        }
+        .footer-fik .logo-wrap { display: flex; align-items: flex-start; margin-bottom: 25px; }
+        .footer-fik .logo-icon { font-size: 2.8rem; line-height: 1; color: #888; margin-right: 15px; }
+        .footer-fik .logo-text { color: #ea5b1a; font-weight: 700; font-size: 1.25rem; line-height: 1.2; }
+        .footer-fik .logo-subtext { color: #a0a0a0; font-size: 0.85rem; line-height: 1.3; font-weight: 500; }
+        .footer-fik .info-text { color: #dcdcdc; line-height: 1.6; margin-bottom: 5px; }
         .social-circle {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 38px;
-            height: 38px;
-            background-color: #ffffff;
-            color: #ba4713;
-            border-radius: 50%;
-            margin-right: 12px;
-            font-size: 1.2rem;
-            text-decoration: none;
-            transition: all 0.3s ease;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; background-color: #ffffff; color: #ba4713;
+            border-radius: 50%; margin-right: 12px; font-size: 1.2rem; text-decoration: none; transition: all 0.3s ease;
         }
-        .social-circle:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-            color: #ffffff;
-            background-color: #ea5b1a;
-        }
-        .footer-fik h5 {
-            font-weight: 700;
-            margin-bottom: 1.8rem;
-            font-size: 1.15rem;
-            color: #ffffff;
-        }
-        .footer-fik ul {
-            list-style: none;
-            padding-left: 0;
-        }
-        .footer-fik ul li {
-            margin-bottom: 0.8rem;
-            position: relative;
-            padding-left: 18px;
-        }
-        .footer-fik ul li::before {
-            content: '•';
-            position: absolute;
-            left: 0;
-            top: -2px;
-            color: #ffffff;
-            font-size: 1.2rem;
-        }
-        .footer-fik ul li a {
-            color: #dcdcdc;
-            text-decoration: none;
-            transition: 0.3s;
-        }
-        .footer-fik ul li a:hover {
-            color: #ffffff;
-            text-decoration: underline;
-        }
-        .map-container iframe {
-            width: 100%;
-            height: 350px;
-            border-radius: 15px;
-        }
+        .social-circle:hover { transform: translateY(-4px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); color: #ffffff; background-color: #ea5b1a; }
+        .footer-fik h5 { font-weight: 700; margin-bottom: 1.8rem; font-size: 1.15rem; color: #ffffff; }
+        .footer-fik ul { list-style: none; padding-left: 0; }
+        .footer-fik ul li { margin-bottom: 0.8rem; position: relative; padding-left: 18px; }
+        .footer-fik ul li::before { content: '•'; position: absolute; left: 0; top: -2px; color: #ffffff; font-size: 1.2rem; }
+        .footer-fik ul li a { color: #dcdcdc; text-decoration: none; transition: 0.3s; }
+        .footer-fik ul li a:hover { color: #ffffff; text-decoration: underline; }
+        .map-container iframe { width: 100%; height: 350px; border-radius: 15px; }
     </style>
 </head>
 <body>
@@ -286,7 +181,7 @@
                         <a class="nav-link" href="<?= base_url('index.php/peminjaman') ?>">Total Barang</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= base_url('index.php/peminjaman') ?>">Ajukan Peminjaman</a>
+                        <a class="nav-link" href="#" onclick="alert('Silakan pilih alat studio yang ingin dipinjam terlebih dahulu di menu Total Barang.'); return false;">Ajukan Peminjaman</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="<?= base_url('index.php/peminjaman/riwayat') ?>">Riwayat</a>
@@ -316,117 +211,143 @@
         </div>
     </nav>
 
-    <!-- HERO SECTION -->
-    <section class="hero-section">
-        <div class="container">
-            <div class="row align-items-center">
-                <div class="col-lg-8" data-aos="fade-up" data-aos-duration="1000">
-                    <span class="badge badge-fik-outline mb-3 p-2 px-3 rounded-pill" style="letter-spacing: 2px; font-weight: 600;">
-                        <i class="bi bi-stars me-1"></i> SISTEM INVENTARIS STUDIO
-                    </span>
-                    <h1 class="display-4 fw-bolder mb-3" style="line-height: 1.2;">
-                        FAKULTAS INDUSTRI KREATIF <br>
-                        <span class="text-fik-orange">TELKOM UNIVERSITY</span>
-                    </h1>
-                    <p class="lead mb-4 text-light opacity-75" style="max-width: 600px; font-weight: 300;">
-                        Platform cerdas untuk mengelola, melacak, dan meminjam aset pendukung perkuliahan seperti Kamera DSLR, Pen Tablet, Lighting Studio, hingga Alat Kriya.
-                    </p>
-                    <a href="<?= base_url('index.php/peminjaman') ?>" class="btn btn-user px-4 py-3 fw-bold rounded-pill">
-                        <i class="bi bi-arrow-right-circle me-2"></i> Jelajahi Alat Studio
-                    </a>
-                </div>
-                
-                <div class="col-lg-4 d-none d-lg-block text-end" data-aos="fade-left" data-aos-duration="1200" data-aos-delay="300">
-                    <div class="p-4 rounded-4" style="background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);">
-                        <div class="mb-4">
-                            <h6 class="fw-bold text-white mb-1"><i class="bi bi-clock text-fik-orange me-2"></i>JAM OPERASIONAL</h6>
-                            <p class="text-light opacity-75 small mb-0 ms-4">Senin - Jumat | 08:30 - 16:30 WIB</p>
-                        </div>
-                        <div>
-                            <h6 class="fw-bold text-white mb-1"><i class="bi bi-geo-alt text-fik-orange me-2"></i>LOKASI STUDIO</h6>
-                            <p class="text-light opacity-75 small mb-0 ms-4">Gedung FIK (Sebatik)<br>Lantai 2, 3, dan 4</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- FLOATING BANNER -->
-    <div class="container floating-banner-wrapper" data-aos="zoom-in" data-aos-duration="800" data-aos-offset="-50">
-        <div class="floating-banner d-flex justify-content-between align-items-center flex-wrap">
-            <div class="d-flex align-items-center mb-3 mb-md-0">
-                <i class="bi bi-cpu fs-1 me-3 opacity-75"></i>
-                <div>
-                    <h4 class="fw-bold mb-1">SUPPLY CHAIN MANAGEMENT FIK</h4>
-                    <p class="mb-0 small opacity-75 text-white">Transparansi penuh dalam sirkulasi peminjaman aset industri kreatif.</p>
-                </div>
-            </div>
-            <div class="text-end">
-                <div class="fw-bold fs-5"><?= date('d F Y') ?></div>
-                <div class="small opacity-75">Status Sistem: <span class="badge bg-light text-dark rounded-pill px-3">Online</span></div>
-            </div>
+    <!-- HEADER SLIM: Fokus langsung ke Lab -->
+    <div class="catalog-header">
+        <div class="container text-center" data-aos="fade-down" data-aos-duration="800">
+            <h2 class="fw-bolder mb-2" style="letter-spacing: 1px;">DAFTAR <span class="text-fik-orange">STUDIO & LABORATORIUM</span></h2>
+            <p class="text-light opacity-75 mb-0">Pilih ruangan laboratorium untuk melihat ketersediaan aset dan mulai peminjaman.</p>
         </div>
     </div>
 
-    <!-- LAYANAN KAMI -->
-    <section class="container py-5 mt-5">
-        <div class="text-center mb-5" data-aos="fade-up">
-            <h2 class="fw-bold text-dark" style="letter-spacing: 1px;">FITUR <span class="text-fik-orange">UTAMA</span></h2>
-            <div style="width: 60px; height: 4px; background: #ea5b1a; margin: 10px auto; border-radius: 2px;"></div>
-            <p class="text-muted">Proses yang terstruktur untuk mendukung produktivitas karya mahasiswa.</p>
-        </div>
-        
+    <!-- DAFTAR LABORATORIUM / RUANGAN -->
+    <section class="container py-5 mt-2">
         <div class="row g-4 justify-content-center">
-            <!-- Card 1 -->
+            
+            <!-- Ruangan 1: IKI.03.02 -->
             <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
                 <div class="card service-card">
-                    <img src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80" class="card-img-top" alt="Kamera DSLR">
-                    <div class="card-body p-4 text-center">
-                        <div class="bg-fik-orange-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="bi bi-camera fs-3 text-fik-orange"></i>
+                    <img src="https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&q=80" class="card-img-top" alt="Ruangan IKI.03.02">
+                    <div class="card-body p-4 text-center d-flex flex-column">
+                        <div class="bg-fik-orange-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
+                            <i class="bi bi-display fs-3 text-fik-orange"></i>
                         </div>
-                        <h5 class="fw-bold">Total Barang (Katalog)</h5>
-                        <p class="text-muted small">Cek ketersediaan kamera, lensa, drawing tablet, tripod, dan fasilitas studio lainnya secara real-time sebelum Anda datang ke kampus.</p>
-                        <a href="<?= base_url('index.php/peminjaman') ?>" class="btn btn-outline-fik-orange btn-sm rounded-pill px-4 mt-2">Lihat Alat</a>
+                        <h5 class="fw-bold">IKI.03.02</h5>
+                        <p class="text-muted small">Tersedia aset penunjang presentasi seperti kabel HDMI, Proyektor, dan kelengkapan ruang kelas lainnya.</p>
+                        
+                        <div class="mt-auto">
+                            <hr class="border-secondary opacity-25">
+                            <div class="d-flex justify-content-between align-items-center mb-3 small">
+                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
+                            </div>
+                            <!-- DIBENARKAN: Menggunakan id_ruangan=27 sesuai database -->
+                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=27') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Card 2 -->
+            <!-- Ruangan 2: Lab Woodworking -->
             <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="200">
                 <div class="card service-card">
-                    <img src="https://images.unsplash.com/photo-1626785776986-140608bd7c8b?auto=format&fit=crop&q=80" class="card-img-top" alt="Studio Setup">
-                    <div class="card-body p-4 text-center">
-                        <div class="bg-fik-brown-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="bi bi-cart-plus fs-3 text-fik-brown"></i>
+                    <img src="https://images.unsplash.com/photo-1540608552656-787ed961e687?auto=format&fit=crop&q=80" class="card-img-top" alt="Lab Woodworking">
+                    <div class="card-body p-4 text-center d-flex flex-column">
+                        <div class="bg-fik-brown-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
+                            <i class="bi bi-hammer fs-3 text-fik-brown"></i>
                         </div>
-                        <h5 class="fw-bold">Ajukan Peminjaman</h5>
-                        <p class="text-muted small">Isi form pengajuan secara digital, upload foto kondisi awal aset untuk bukti otentik, dan generate tiket permohonan ke pihak laboran.</p>
-                        <a href="<?= base_url('index.php/peminjaman') ?>" class="btn btn-outline-fik-brown btn-sm rounded-pill px-4 mt-2">Ajukan Sekarang</a>
+                        <h5 class="fw-bold">Lab Woodworking</h5>
+                        <p class="text-muted small">Tersedia peralatan potong kayu, mesin amplas, bor, dan berbagai perlengkapan kriya kayu.</p>
+                        
+                        <div class="mt-auto">
+                            <hr class="border-secondary opacity-25">
+                            <div class="d-flex justify-content-between align-items-center mb-3 small">
+                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
+                            </div>
+                            <!-- DIBENARKAN: Menggunakan id_ruangan=26 sesuai database -->
+                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=26') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Card 3 -->
+            <!-- Ruangan 3: Lab Metal Working -->
             <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="300">
                 <div class="card service-card">
-                    <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80" class="card-img-top" alt="Data Analytics">
-                    <div class="card-body p-4 text-center">
-                        <div class="bg-fik-orange-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
-                            <i class="bi bi-clock-history fs-3 text-fik-orange"></i>
+                    <img src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&q=80" class="card-img-top" alt="Lab Metal Working">
+                    <div class="card-body p-4 text-center d-flex flex-column">
+                        <div class="bg-secondary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
+                            <i class="bi bi-nut fs-3 text-secondary"></i>
                         </div>
-                        <h5 class="fw-bold">Riwayat & Pengembalian</h5>
-                        <p class="text-muted small">Pantau status approval dari Laboran/Kaur, tampilkan QR Code ke petugas, dan lakukan proses pengembalian dengan scan kamera secara mandiri.</p>
-                        <a href="<?= base_url('index.php/peminjaman/riwayat') ?>" class="btn btn-outline-fik-orange btn-sm rounded-pill px-4 mt-2">Cek Riwayat</a>
+                        <h5 class="fw-bold">Lab Metal Working</h5>
+                        <p class="text-muted small">Tersedia peralatan las, pemotong logam, gerinda, dan perlengkapan kriya logam lainnya.</p>
+                        
+                        <div class="mt-auto">
+                            <hr class="border-secondary opacity-25">
+                            <div class="d-flex justify-content-between align-items-center mb-3 small">
+                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
+                            </div>
+                            <!-- DIBENARKAN: Menggunakan id_ruangan=25 sesuai database -->
+                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=25') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
+                        </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Ruangan 4: Lab Fotografi -->
+            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="400">
+                <div class="card service-card">
+                    <img src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80" class="card-img-top" alt="Studio Fotografi">
+                    <div class="card-body p-4 text-center d-flex flex-column">
+                        <div class="bg-fik-orange-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
+                            <i class="bi bi-camera fs-3 text-fik-orange"></i>
+                        </div>
+                        <h5 class="fw-bold">Lab Fotografi</h5>
+                        <p class="text-muted small">Tersedia Kamera DSLR, Mirrorless, Lensa, Tripod, Lighting Studio, dan Reflektor.</p>
+                        
+                        <div class="mt-auto">
+                            <hr class="border-secondary opacity-25">
+                            <div class="d-flex justify-content-between align-items-center mb-3 small">
+                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
+                            </div>
+                            <!-- DIBENARKAN: Menggunakan id_ruangan=24 sesuai database -->
+                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=24') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ruangan 5: Lab Multimedia -->
+            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="500">
+                <div class="card service-card">
+                    <img src="https://images.unsplash.com/photo-1626785776986-140608bd7c8b?auto=format&fit=crop&q=80" class="card-img-top" alt="Lab Multimedia">
+                    <div class="card-body p-4 text-center d-flex flex-column">
+                        <div class="bg-fik-brown-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
+                            <i class="bi bi-collection-play fs-3 text-fik-brown"></i>
+                        </div>
+                        <h5 class="fw-bold">Lab Multimedia</h5>
+                        <p class="text-muted small">Tersedia perangkat iMac, PC, Pen Tablet Wacom, Stylus, dan perlengkapan digital lainnya.</p>
+                        
+                        <div class="mt-auto">
+                            <hr class="border-secondary opacity-25">
+                            <div class="d-flex justify-content-between align-items-center mb-3 small">
+                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
+                            </div>
+                            <!-- DIBENARKAN: Menggunakan id_ruangan=23 sesuai database -->
+                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=23') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </section>
 
     <!-- SOP & ATURAN -->
-    <section class="sop-section mt-5">
+    <section class="sop-section">
         <div class="container">
             <div class="text-center mb-5" data-aos="zoom-in">
                 <h2 class="fw-bold text-white mb-2" style="letter-spacing: 1px;">SOP & TATA TERTIB STUDIO</h2>

@@ -8,6 +8,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @property CI_Input $input
  * @property CI_Upload $upload
  * @property Peminjaman_model $Peminjaman_model
+ * @property Aset_model $Aset_model 
  */
 #[\AllowDynamicProperties]
 class Peminjaman extends CI_Controller {
@@ -23,6 +24,8 @@ class Peminjaman extends CI_Controller {
         
         // 2. Load Model yang menangani query ke tabel aset & peminjaman
         $this->load->model('Peminjaman_model');
+        // DITAMBAHKAN: Load Aset_model untuk mengambil fungsi get_aset_by_ruangan
+        $this->load->model('Aset_model'); 
     }
 
     /**
@@ -30,8 +33,21 @@ class Peminjaman extends CI_Controller {
      * URL: http://localhost/supply_chain_management_fik/index.php/peminjaman
      */
     public function index() {
-        // Ambil data katalog secara dinamis dari database (Tabel Aset)
-        $data['barang'] = $this->Peminjaman_model->get_katalog_barang();
+        // DITAMBAHKAN: Tangkap parameter id_ruangan dari URL
+        $id_ruangan = $this->input->get('id_ruangan');
+        
+        if ($id_ruangan) {
+            // Jika user mengklik "Masuk Ruangan" (terdapat id_ruangan), filter datanya
+            $data['barang'] = $this->Aset_model->get_aset_by_ruangan($id_ruangan);
+            
+            // Opsional: Ambil detail data ruangan untuk judul di halaman view nanti
+            $data['ruangan_aktif'] = $this->db->get_where('ruangan', ['id_ruangan' => $id_ruangan])->row();
+        } else {
+            // Jika diakses dari navbar "Total Barang" (tanpa parameter), tampilkan semua barang 
+            // Tetap menggunakan fungsi asli agar tidak merusak fungsi yang sudah ada
+            $data['barang'] = $this->Peminjaman_model->get_katalog_barang();
+            $data['ruangan_aktif'] = null;
+        }
         
         // Memanggil file view utama yang sudah Anda ubah namanya menjadi index.php
         $this->load->view('peminjaman/index', $data);
