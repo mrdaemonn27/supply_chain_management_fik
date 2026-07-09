@@ -15,9 +15,13 @@ class Auth extends CI_Controller {
     }
 
     public function index() {
-        // Jika user sudah login sebelumnya, langsung arahkan ke dashboard
+        // Jika user sudah login sebelumnya, langsung arahkan ke dashboard yang sesuai rolenya
         if($this->session->userdata('logged_in')) {
-            redirect('dashboard');
+            if ($this->session->userdata('role') == 'admin' || $this->session->userdata('role') == 'laboran' || $this->session->userdata('role') == 'kaur') {
+                redirect('admin/dashboard');
+            } else {
+                redirect('dashboard');
+            }
         }
 
         $this->load->view('auth/login');
@@ -25,7 +29,11 @@ class Auth extends CI_Controller {
 
     public function signup() {
         if ($this->session->userdata('logged_in')) {
-            redirect('dashboard');
+            if ($this->session->userdata('role') == 'admin' || $this->session->userdata('role') == 'laboran' || $this->session->userdata('role') == 'kaur') {
+                redirect('admin/dashboard');
+            } else {
+                redirect('dashboard');
+            }
         }
 
         $this->load->view('auth/signup');
@@ -49,7 +57,14 @@ class Auth extends CI_Controller {
             );
             $this->session->set_userdata($session_data);
 
-            redirect('dashboard');
+            // CEK ROLE DI SINI AGAR TIDAK SALAH REDIRECT
+            if ($user->role == 'admin') {
+                redirect('admin/dashboard'); // Arahkan ke folder admin
+            } else if ($user->role == 'laboran' || $user->role == 'kaur') {
+                redirect('admin/dashboard'); // Arahkan ke folder admin
+            } else {
+                redirect('dashboard'); // Arahkan user biasa ke halaman peminjaman
+            }
         }
 
         $this->session->set_flashdata('error', 'NIM/NIP atau password tidak cocok.');
@@ -103,6 +118,6 @@ class Auth extends CI_Controller {
 
     public function logout() {
         $this->session->sess_destroy();
-        redirect('auth');
+        redirect('dashboard'); // UBAH: Diarahkan ke dashboard saat logout
     }
 }

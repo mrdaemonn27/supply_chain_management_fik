@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard SCM - Fakultas Industri Kreatif</title>
     
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     
-    <!-- AOS Animation CSS -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     
     <style>
@@ -100,7 +98,7 @@
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
             border-bottom: 4px solid #ea5b1a;
         }
-        .service-card img {
+        .service-card img, .service-card .card-img-top {
             height: 180px;
             object-fit: cover;
             transition: 0.5s;
@@ -110,12 +108,15 @@
         }
 
         /* SOP / Aturan Section */
-        .sop-section {
-            background-color: #343434; 
-            background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%23ffffff" fill-opacity="0.03"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
+          .sop-section {
+            /* Menambahkan efek gradasi oranye FIK di atas gambar background Gedung.webp */
+            background: linear-gradient(rgba(107, 49, 22, 0.85), rgba(115, 43, 12, 0.95)), url('<?= base_url('assets/logo/Gedung.webp'); ?>') center/ cover no-repeat;
+            /* DITAMBAHKAN: Memberikan efek parallax agar gambar tidak ikut terscroll */
+            background-attachment: fixed;
             padding: 80px 0;
             color: white;
         }
+
         .rule-card {
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255,255,255,0.1);
@@ -160,15 +161,10 @@
 </head>
 <body>
 
-    <!-- NAVBAR DINAMIS -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top shadow-sm">
         <div class="container-fluid px-4 px-lg-5">
             <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="300"  class="me-2">
-                <!-- <div>
-                    <div style="font-size: 1.1rem; line-height: 1.2; letter-spacing: 1px;">SCM FIK</div>
-                    <div style="font-size: 0.6rem; color: #666; letter-spacing: 2px;">INDUSTRI KREATIF</div>
-                </div> -->
+                <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="300" class="me-2">
             </a>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -188,16 +184,23 @@
                     <li class="nav-item">
                         <a class="nav-link" href="<?= base_url('index.php/peminjaman/riwayat') ?>">Riwayat</a>
                     </li>
+                    
+                    <?php if (strtolower($this->session->userdata('role')) == 'admin'): ?>
+                    <li class="nav-item ms-lg-3">
+                        <a class="nav-link text-fik-orange fw-bold" href="<?= base_url('index.php/admin/dashboard') ?>">
+                            <i class="bi bi-speedometer2 me-1"></i> Dashboard Admin
+                        </a>
+                    </li>
+                    <?php endif; ?>
                 </ul>
             </div>
             
-            <!-- Tombol User (Kanan) -->
             <div class="d-none d-lg-block">
                 <div class="dropdown">
                     <button class="btn btn-user dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle me-1"></i> <?= $this->session->userdata('nama'); ?>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; mt-2">
+                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; mt: 2px;">
                         <li>
                             <div class="px-3 py-2">
                                 <span class="d-block text-muted small">ID/NIM:</span>
@@ -213,7 +216,6 @@
         </div>
     </nav>
 
-    <!-- HEADER SLIM: Fokus langsung ke Lab -->
     <div class="catalog-header">
         <div class="container text-center" data-aos="fade-down" data-aos-duration="800">
             <h2 class="fw-bolder mb-2" style="letter-spacing: 1px;">DAFTAR <span class="text-fik-orange">STUDIO & LABORATORIUM</span></h2>
@@ -221,134 +223,56 @@
         </div>
     </div>
 
-    <!-- DAFTAR LABORATORIUM / RUANGAN -->
     <section class="container py-5 mt-2">
         <div class="row g-4 justify-content-center">
             
-            <!-- Ruangan 1: IKI.03.02 -->
-            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="100">
-                <div class="card service-card">
-                    <img src="https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&q=80" class="card-img-top" alt="Ruangan IKI.03.02">
-                    <div class="card-body p-4 text-center d-flex flex-column">
-                        <div class="bg-fik-orange-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
-                            <i class="bi bi-display fs-3 text-fik-orange"></i>
-                        </div>
-                        <h5 class="fw-bold">IKI.03.02</h5>
-                        <p class="text-muted small">Tersedia aset penunjang presentasi seperti kabel HDMI, Proyektor, dan kelengkapan ruang kelas lainnya.</p>
+            <?php if(empty($ruangan_list)): ?>
+                <div class="col-12 text-center py-5">
+                    <i class="bi bi-door-closed fs-1 text-muted mb-3 d-block"></i>
+                    <h5 class="text-muted">Belum ada data ruangan yang tersedia.</h5>
+                </div>
+            <?php else: ?>
+                <?php $delay = 100; foreach($ruangan_list as $r): ?>
+                <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="<?= $delay; ?>">
+                    <div class="card service-card">
                         
-                        <div class="mt-auto">
-                            <hr class="border-secondary opacity-25">
-                            <div class="d-flex justify-content-between align-items-center mb-3 small">
-                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
+                        <?php if(!empty($r['foto'])): ?>
+                            <img src="<?= base_url('assets/uploads/ruangan/'.$r['foto']) ?>" class="card-img-top" alt="<?= $r['nama_ruangan'] ?>">
+                        <?php else: ?>
+                            <div class="bg-light d-flex align-items-center justify-content-center card-img-top">
+                                <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
                             </div>
-                            <!-- DIBENARKAN: Menggunakan id_ruangan=27 sesuai database -->
-                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=27') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
+                        <?php endif; ?>
+                        
+                        <div class="card-body p-4 text-center d-flex flex-column">
+                            <h5 class="fw-bold mt-3"><?= $r['nama_ruangan'] ?></h5>
+                            <p class="text-muted small">
+                                <?= !empty($r['deskripsi']) ? $r['deskripsi'] : 'Tersedia perlengkapan dan peralatan penunjang praktikum mahasiswa.' ?>
+                            </p>
+                            
+                            <div class="mt-auto">
+                                <hr class="border-secondary opacity-25">
+                                <div class="d-flex justify-content-between align-items-center mb-3 small">
+                                    <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
+                                </div>
+                                <a href="<?= base_url('index.php/peminjaman?id_ruangan='.$r['id_ruangan']) ?>" class="btn btn-user w-100 rounded-pill mt-1">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-
-            <!-- Ruangan 2: Lab Woodworking -->
-            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="200">
-                <div class="card service-card">
-                    <img src="https://images.unsplash.com/photo-1540608552656-787ed961e687?auto=format&fit=crop&q=80" class="card-img-top" alt="Lab Woodworking">
-                    <div class="card-body p-4 text-center d-flex flex-column">
-                        <div class="bg-fik-brown-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
-                            <i class="bi bi-hammer fs-3 text-fik-brown"></i>
-                        </div>
-                        <h5 class="fw-bold">Lab Woodworking</h5>
-                        <p class="text-muted small">Tersedia peralatan potong kayu, mesin amplas, bor, dan berbagai perlengkapan kriya kayu.</p>
-                        
-                        <div class="mt-auto">
-                            <hr class="border-secondary opacity-25">
-                            <div class="d-flex justify-content-between align-items-center mb-3 small">
-                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
-                            </div>
-                            <!-- DIBENARKAN: Menggunakan id_ruangan=26 sesuai database -->
-                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=26') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Ruangan 3: Lab Metal Working -->
-            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="300">
-                <div class="card service-card">
-                    <img src="https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&q=80" class="card-img-top" alt="Lab Metal Working">
-                    <div class="card-body p-4 text-center d-flex flex-column">
-                        <div class="bg-secondary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
-                            <i class="bi bi-nut fs-3 text-secondary"></i>
-                        </div>
-                        <h5 class="fw-bold">Lab Metal Working</h5>
-                        <p class="text-muted small">Tersedia peralatan las, pemotong logam, gerinda, dan perlengkapan kriya logam lainnya.</p>
-                        
-                        <div class="mt-auto">
-                            <hr class="border-secondary opacity-25">
-                            <div class="d-flex justify-content-between align-items-center mb-3 small">
-                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
-                            </div>
-                            <!-- DIBENARKAN: Menggunakan id_ruangan=25 sesuai database -->
-                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=25') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Ruangan 4: Lab Fotografi -->
-            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="400">
-                <div class="card service-card">
-                    <img src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80" class="card-img-top" alt="Studio Fotografi">
-                    <div class="card-body p-4 text-center d-flex flex-column">
-                        <div class="bg-fik-orange-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
-                            <i class="bi bi-camera fs-3 text-fik-orange"></i>
-                        </div>
-                        <h5 class="fw-bold">Lab Fotografi</h5>
-                        <p class="text-muted small">Tersedia Kamera DSLR, Mirrorless, Lensa, Tripod, Lighting Studio, dan Reflektor.</p>
-                        
-                        <div class="mt-auto">
-                            <hr class="border-secondary opacity-25">
-                            <div class="d-flex justify-content-between align-items-center mb-3 small">
-                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
-                            </div>
-                            <!-- DIBENARKAN: Menggunakan id_ruangan=24 sesuai database -->
-                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=24') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Ruangan 5: Lab Multimedia -->
-            <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="500">
-                <div class="card service-card">
-                    <img src="https://images.unsplash.com/photo-1626785776986-140608bd7c8b?auto=format&fit=crop&q=80" class="card-img-top" alt="Lab Multimedia">
-                    <div class="card-body p-4 text-center d-flex flex-column">
-                        <div class="bg-fik-brown-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 mx-auto" style="width: 60px; height: 60px;">
-                            <i class="bi bi-collection-play fs-3 text-fik-brown"></i>
-                        </div>
-                        <h5 class="fw-bold">Lab Multimedia</h5>
-                        <p class="text-muted small">Tersedia perangkat iMac, PC, Pen Tablet Wacom, Stylus, dan perlengkapan digital lainnya.</p>
-                        
-                        <div class="mt-auto">
-                            <hr class="border-secondary opacity-25">
-                            <div class="d-flex justify-content-between align-items-center mb-3 small">
-                                <span class="text-muted"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i> Gd. Sebatik</span>
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success">Buka</span>
-                            </div>
-                            <!-- DIBENARKAN: Menggunakan id_ruangan=23 sesuai database -->
-                            <a href="<?= base_url('index.php/peminjaman?id_ruangan=23') ?>" class="btn btn-user w-100 rounded-pill mt-1"><i class="bi bi-box-arrow-in-right me-1"></i> Masuk Ruangan</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                <?php 
+                    // Menambah delay agar animasi AOS muncul bergiliran
+                    $delay += 100; 
+                    endforeach; 
+                ?>
+            <?php endif; ?>
 
         </div>
     </section>
 
-    <!-- SOP & ATURAN -->
     <section class="sop-section">
         <div class="container">
             <div class="text-center mb-5" data-aos="zoom-in">
@@ -383,11 +307,9 @@
         </div>
     </section>
 
-    <!-- FOOTER INFO & MAP -->
     <section class="bg-white py-5">
         <div class="container py-4">
             <div class="row align-items-center">
-                <!-- Kontak Kiri -->
                 <div class="col-lg-5 mb-5 mb-lg-0" data-aos="fade-right">
                     <h4 class="fw-bolder mb-4" style="color: #1a1a1a;">LAYANAN <span class="text-fik-orange">STUDIO FIK</span></h4>
                     
@@ -416,7 +338,6 @@
                     </div>
                 </div>
                 
-                <!-- Map Kanan -->
                 <div class="col-lg-7" data-aos="fade-left">
                     <div class="map-container shadow-sm p-2 bg-white rounded-4 border">
                         <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3960.3074558509425!2d107.62834241477341!3d-6.973007094961817!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e68e9adf177bf8d%3A0x437398556f9fa03!2sTelkom%20University!5e0!3m2!1sid!2sid!4v1689234567890!5m2!1sid!2sid" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
@@ -426,18 +347,13 @@
         </div>
     </section>
 
-    <!-- ========================================== -->
-    <!-- FOOTER FIK (SESUAI GAMBAR REFERENSI)       -->
-    <!-- ========================================== -->
     <footer class="footer-fik">
         <div class="container">
             <div class="row">
-                <!-- Kolom 1: Logo, Alamat, Kontak & Sosmed -->
                 <div class="col-lg-4 col-md-12 mb-5 mb-lg-0" data-aos="fade-up" data-aos-delay="100">
                     <div class="logo-wrap">
                         <div class="logo-icon">
-                            <!-- Icon fik -->
-                            <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="350"  class="me-2">
+                            <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="350" class="me-2">
                         </div>
                     </div>
                     
@@ -448,7 +364,6 @@
                     <p class="info-text mb-1">Telp: (022) 7566456</p>
                     <p class="info-text mb-4">email: info@telkomuniversity.ac.id</p>
                     
-                    <!-- Icon Sosmed -->
                     <div class="d-flex mt-2">
                         <a href="#" class="social-circle"><i class="bi bi-facebook"></i></a>
                         <a href="#" class="social-circle"><i class="bi bi-twitter-x"></i></a>
@@ -458,7 +373,6 @@
                     </div>
                 </div>
 
-                <!-- Kolom 2: Department -->
                 <div class="col-lg-4 col-md-6 mb-5 mb-md-0" data-aos="fade-up" data-aos-delay="200">
                     <h5>Department:</h5>
                     <ul>
@@ -472,7 +386,6 @@
                     </ul>
                 </div>
 
-                <!-- Kolom 3: Related Link -->
                 <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
                     <h5>Related Link:</h5>
                     <ul>
@@ -489,7 +402,6 @@
         </div>
     </footer>
 
-    <!-- Bootstrap & AOS Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>

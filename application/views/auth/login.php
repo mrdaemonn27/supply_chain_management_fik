@@ -9,10 +9,10 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
-        :root {
-            --fik-orange: #ea5b1a;
-            --fik-brown: #5d3315;
-            --fik-dark: #1a1a1a;
+       :root {
+            --fik-orange: #e04700;
+            --fik-brown: #b6471e;
+            --fik-dark: #6c6868;
         }
 
         body {
@@ -76,10 +76,10 @@
             <div class="auth-sidebar col-lg-5 d-flex flex-column justify-content-between">
                 <div>
                     <div class="d-flex align-items-center mb-4">
-                        <i class="bi bi-palette-fill fs-2 me-2 text-fik-orange"></i>
+                        <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="300" class="me-2">
                         <div>
-                            <div class="fw-bold" style="font-size: 1.1rem; letter-spacing: 1px;">SCM FIK</div>
-                            <div class="small text-white-50">INDUSTRI KREATIF</div>
+                            <div class="fw-bold" style="font-size: 1.1rem; letter-spacing: 1px;"></div>
+                            <div class="small text-white-50"></div>
                         </div>
                     </div>
                     <h2 class="fw-bold mb-3">Selamat datang di sistem peminjaman aset.</h2>

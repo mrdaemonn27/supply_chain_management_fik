@@ -64,7 +64,7 @@
             border-bottom: 3px solid #ea5b1a;
         }
         
-        /* Placeholder Gambar (Kalau belum ada gambar asli di DB) */
+        /* Placeholder/Wadah Gambar Dinamis */
         .item-img-placeholder {
             height: 180px;
             background: linear-gradient(135deg, #f1f2f6 0%, #dfe4ea 100%);
@@ -72,12 +72,24 @@
             align-items: center;
             justify-content: center;
             color: #a4b0be;
+            position: relative;
+            overflow: hidden;
+        }
+        .item-img-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
         }
         
+        /* Efek Zoom saat dihover */
         .item-card:hover .item-img-placeholder i {
             transform: scale(1.1);
             color: #ea5b1a;
             transition: 0.3s;
+        }
+        .item-card:hover .item-img-placeholder img {
+            transform: scale(1.05);
         }
 
         /* Tombol Pinjam */
@@ -88,10 +100,19 @@
             font-weight: 600;
             border-radius: 8px;
             transition: 0.3s;
+            display: block;
+            text-align: center;
+            text-decoration: none;
         }
         .btn-pinjam:hover {
             background-color: #ea5b1a;
             color: white;
+        }
+        .btn-pinjam.disabled {
+            background-color: #e9ecef;
+            border-color: #ced4da;
+            color: #6c757d;
+            cursor: not-allowed;
         }
     </style>
 </head>
@@ -100,8 +121,8 @@
     <!-- NAVBAR (Sama dengan Dashboard) -->
     <nav class="navbar navbar-expand-lg navbar-dark navbar-custom sticky-top shadow-sm">
         <div class="container-fluid px-4 px-lg-5">
-            <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
-                <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="300" class="me-2">
+            <a class="navbar-brand fw-bold d-flex align-items-center" href="<?= base_url('index.php/dashboard') ?>">
+                <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo FIK" height="40" class="me-2">
             </a>
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -116,7 +137,7 @@
                         <a class="nav-link active" href="<?= base_url('index.php/peminjaman') ?>">Total Barang</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="<?= base_url('index.php/peminjaman') ?>">Ajukan Peminjaman</a>
+                        <a class="nav-link" href="#" onclick="alert('Silakan pilih alat studio yang ingin dipinjam terlebih dahulu di menu Total Barang.'); return false;">Ajukan Peminjaman</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="<?= base_url('index.php/peminjaman/riwayat') ?>">Riwayat</a>
@@ -144,7 +165,7 @@
         </div>
     </nav>
 
-    <!-- HEADER KATALOG (Ramping, fokus pada judul pencarian) -->
+    <!-- HEADER KATALOG -->
     <div class="catalog-header">
         <div class="container text-center" data-aos="fade-down" data-aos-duration="800">
             <h2 class="fw-bolder mb-2" style="letter-spacing: 1px;">KATALOG <span class="text-fik-orange">ALAT STUDIO</span></h2>
@@ -178,37 +199,44 @@
             <?php foreach($barang as $index => $b): ?>
             <div class="col-sm-6 col-md-4 col-lg-3" data-aos="fade-up" data-aos-delay="<?= ($index % 4) * 100 ?>">
                 <div class="card item-card">
-                    <!-- Placeholder Gambar (Ikon Otomatis menyesuaikan) -->
+                    <!-- LOGIKA GAMBAR DINAMIS (DIPERBAIKI: Hapus file_exists) -->
                     <div class="item-img-placeholder">
-                        <?php 
-                            // Logika sederhana: ganti ikon berdasarkan nama aset (opsional)
-                            $nama_lower = strtolower($b->nama_aset);
-                            if(strpos($nama_lower, 'kamera') !== false || strpos($nama_lower, 'dslr') !== false) {
-                                echo '<i class="bi bi-camera" style="font-size: 4.5rem; transition: 0.3s;"></i>';
-                            } elseif(strpos($nama_lower, 'komputer') !== false || strpos($nama_lower, 'pc') !== false || strpos($nama_lower, 'mac') !== false) {
-                                echo '<i class="bi bi-pc-display" style="font-size: 4.5rem; transition: 0.3s;"></i>';
-                            } elseif(strpos($nama_lower, 'tablet') !== false || strpos($nama_lower, 'wacom') !== false) {
-                                echo '<i class="bi bi-tablet-landscape" style="font-size: 4.5rem; transition: 0.3s;"></i>';
-                            } else {
-                                echo '<i class="bi bi-box-seam" style="font-size: 4.5rem; transition: 0.3s;"></i>';
-                            }
-                        ?>
+                        <?php if(!empty($b->gambar)): ?>
+                            <!-- Tampilkan Foto Asli jika ada nama filenya -->
+                            <img src="<?= base_url('assets/uploads/barang/'.$b->gambar) ?>" alt="<?= $b->nama_aset ?>" onerror="this.onerror=null; this.src='https://placehold.co/400x300?text=No+Image';">
+                        <?php else: ?>
+                            <!-- Tampilkan Ikon Pintar jika belum ada foto -->
+                            <?php 
+                                $nama_lower = strtolower($b->nama_aset);
+                                if(strpos($nama_lower, 'kamera') !== false || strpos($nama_lower, 'dslr') !== false) {
+                                    echo '<i class="bi bi-camera" style="font-size: 4.5rem; transition: 0.3s;"></i>';
+                                } elseif(strpos($nama_lower, 'komputer') !== false || strpos($nama_lower, 'pc') !== false || strpos($nama_lower, 'mac') !== false) {
+                                    echo '<i class="bi bi-pc-display" style="font-size: 4.5rem; transition: 0.3s;"></i>';
+                                } elseif(strpos($nama_lower, 'tablet') !== false || strpos($nama_lower, 'wacom') !== false) {
+                                    echo '<i class="bi bi-tablet-landscape" style="font-size: 4.5rem; transition: 0.3s;"></i>';
+                                } else {
+                                    echo '<i class="bi bi-box-seam" style="font-size: 4.5rem; transition: 0.3s;"></i>';
+                                }
+                            ?>
+                        <?php endif; ?>
                     </div>
                     
                     <div class="card-body d-flex flex-column p-4">
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <span class="badge bg-light text-secondary border" style="font-family: monospace; font-size:0.75rem;"><?= $b->kode_aset ?></span>
-                            <!-- Label Kondisi (Anggap saja semua yg tampil kondisinya Baik) -->
-                            <span class="badge bg-success bg-opacity-10 text-success border border-success"><i class="bi bi-check-circle-fill me-1"></i>Baik</span>
+                            <!-- Label Kondisi Sinkron Database -->
+                            <span class="badge <?= ($b->kondisi == 'Baik') ? 'bg-success bg-opacity-10 text-success border border-success' : 'bg-warning bg-opacity-10 text-dark border border-warning' ?>">
+                                <?= $b->kondisi ?>
+                            </span>
                         </div>
                         
                         <h6 class="card-title fw-bold mb-2 text-dark" style="line-height: 1.4;"><?= $b->nama_aset ?></h6>
                         
-                        <!-- Info Lokasi Ruangan -->
+                        <!-- Info Lokasi Ruangan & Stok -->
                         <div class="mt-auto pt-3">
                             <div class="d-flex align-items-center text-muted small mb-2">
                                 <i class="bi bi-geo-alt-fill text-fik-orange me-2"></i> 
-                                <span class="text-truncate"><?= $b->nama_ruangan ?: 'Gudang Lab' ?></span>
+                                <span class="text-truncate"><?= isset($b->nama_ruangan) ? $b->nama_ruangan : 'Laboratorium Pusat' ?></span>
                             </div>
                             <div class="d-flex align-items-center text-muted small">
                                 <i class="bi bi-boxes text-fik-orange me-2"></i> 
@@ -219,10 +247,17 @@
                     
                     <!-- Tombol Aksi di bagian bawah kartu -->
                     <div class="card-footer bg-white border-top-0 p-3 pt-0 mt-auto">
-                        <!-- Nanti tombol ini akan kita arahkan ke form pengajuan -->
-                        <a href="<?= base_url('index.php/peminjaman/ajukan/'.$b->id_aset) ?>" class="btn btn-pinjam w-100 py-2">
-                            <i class="bi bi-cart-plus me-1"></i> Ajukan Pinjam
-                        </a>
+                        <?php if($b->jumlah_tersedia > 0): ?>
+                            <!-- Nanti tombol ini akan kita arahkan ke form pengajuan -->
+                            <a href="<?= base_url('index.php/peminjaman/ajukan/'.$b->id_aset) ?>" class="btn btn-pinjam w-100 py-2">
+                                <i class="bi bi-cart-plus me-1"></i> Ajukan Pinjam
+                            </a>
+                        <?php else: ?>
+                            <!-- Tombol mati jika stok 0 -->
+                            <button class="btn btn-pinjam disabled w-100 py-2" disabled>
+                                <i class="bi bi-x-circle me-1"></i> Stok Habis
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

@@ -34,6 +34,9 @@
         .form-control:focus, .form-select:focus { border-color: #ea5b1a; box-shadow: 0 0 0 0.25rem rgba(234, 91, 26, 0.25); }
         .btn-submit { background-color: #ea5b1a; color: white; font-weight: 600; padding: 12px; border-radius: 8px; border: none; transition: 0.3s; }
         .btn-submit:hover { background-color: #c24a13; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(234, 91, 26, 0.3); }
+        
+        /* Tambahan untuk menjaga ukuran gambar agar proporsional */
+        .aset-thumbnail { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
     </style>
 </head>
 <body>
@@ -78,9 +81,12 @@
                     <h5 class="fw-bold text-fik-orange mb-4"><i class="bi bi-box-seam me-2"></i>Detail Aset</h5>
                     
                     <div class="bg-white bg-opacity-10 rounded-3 p-3 mb-4 text-center">
-                        <i class="bi bi-camera" style="font-size: 4rem; color: #f8f9fa; opacity: 0.8;"></i>
+                        <?php if(!empty($aset->gambar)): ?>
+                            <img src="<?= base_url('assets/uploads/barang/'.$aset->gambar) ?>" alt="<?= $aset->nama_aset ?>" class="aset-thumbnail">
+                        <?php else: ?>
+                            <i class="bi bi-camera" style="font-size: 4rem; color: #f8f9fa; opacity: 0.8;"></i>
+                        <?php endif; ?>
                     </div>
-
                     <h5 class="fw-bold text-white mb-1"><?= $aset->nama_aset ?></h5>
                     <p class="text-white opacity-75 small mb-4 font-monospace"><?= $aset->kode_aset ?></p>
 
