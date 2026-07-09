@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Data Aset - Panel Admin FIK</title>
+    <title>Master Data Aset - Panel Laboran FIK</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
@@ -20,10 +20,10 @@
 </head>
 <body>
 
-    <!-- Navbar Khusus Admin -->
+    <!-- Navbar Khusus Laboran -->
     <nav class="navbar navbar-expand-lg navbar-dark admin-navbar shadow-sm p-3 mb-4">
         <div class="container-fluid px-4">
-            <a class="navbar-brand fw-bold" href="#"><i class="bi bi-server me-2 text-fik-orange"></i> ADMINISTRATOR MASTER DATA</a>
+            <a class="navbar-brand fw-bold" href="#"><i class="bi bi-server me-2 text-fik-orange"></i> LABORAN MASTER DATA</a>
             <div class="ms-auto d-flex align-items-center">
                 <a href="<?= base_url('admin/dashboard') ?>" class="btn btn-sm btn-outline-light me-2"><i class="bi bi-speedometer2"></i> Dashboard</a>
                 <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-danger"><i class="bi bi-power"></i> Logout</a>
@@ -66,7 +66,7 @@
                                 <th>Lokasi / Lab</th>
                                 <th>Total Fisik</th>
                                 <th>Kondisi</th>
-                                <th class="text-center">Aksi Administrator</th>
+                                <th class="text-center">Aksi Laboran</th>
                             </tr>
                         </thead>
                         <tbody>

@@ -17,7 +17,11 @@ class Auth extends CI_Controller {
     public function index() {
         // Jika user sudah login sebelumnya, langsung arahkan ke dashboard yang sesuai rolenya
         if($this->session->userdata('logged_in')) {
-            if ($this->session->userdata('role') == 'admin' || $this->session->userdata('role') == 'laboran' || $this->session->userdata('role') == 'kaur') {
+            if ($this->session->userdata('role') == 'kaprodi') {
+                redirect('kaprodi/dashboard');
+            } else if ($this->session->userdata('role') == 'kaur') {
+                redirect('kaur/dashboard');
+            } else if ($this->session->userdata('role') == 'admin' || $this->session->userdata('role') == 'laboran') {
                 redirect('admin/dashboard');
             } else {
                 redirect('dashboard');
@@ -29,7 +33,11 @@ class Auth extends CI_Controller {
 
     public function signup() {
         if ($this->session->userdata('logged_in')) {
-            if ($this->session->userdata('role') == 'admin' || $this->session->userdata('role') == 'laboran' || $this->session->userdata('role') == 'kaur') {
+            if ($this->session->userdata('role') == 'kaprodi') {
+                redirect('kaprodi/dashboard');
+            } else if ($this->session->userdata('role') == 'kaur') {
+                redirect('kaur/dashboard');
+            } else if ($this->session->userdata('role') == 'admin' || $this->session->userdata('role') == 'laboran') {
                 redirect('admin/dashboard');
             } else {
                 redirect('dashboard');
@@ -48,19 +56,25 @@ class Auth extends CI_Controller {
         $user = $this->User_model->get_user_by_username($username);
 
         if ($user && password_verify($password, $user->password)) {
+            $display_name = (strtolower($user->role) === 'admin') ? 'Laboran' : $user->nama_lengkap;
+
             $session_data = array(
                 'id_user'   => $user->id_user,
                 'username'  => $user->nim_nip,
-                'nama'      => $user->nama_lengkap,
+                'nama'      => $display_name,
                 'role'      => $user->role,
                 'logged_in' => TRUE
             );
             $this->session->set_userdata($session_data);
 
             // CEK ROLE DI SINI AGAR TIDAK SALAH REDIRECT
-            if ($user->role == 'admin') {
+            if ($user->role == 'kaprodi') {
+                redirect('kaprodi/dashboard');
+            } else if ($user->role == 'kaur') {
+                redirect('kaur/dashboard');
+            } else if ($user->role == 'admin') {
                 redirect('admin/dashboard'); // Arahkan ke folder admin
-            } else if ($user->role == 'laboran' || $user->role == 'kaur') {
+            } else if ($user->role == 'laboran') {
                 redirect('admin/dashboard'); // Arahkan ke folder admin
             } else {
                 redirect('dashboard'); // Arahkan user biasa ke halaman peminjaman

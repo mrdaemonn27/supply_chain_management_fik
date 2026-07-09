@@ -2,6 +2,8 @@
 /**
  * @var array $barang
  */
+$session_role = strtolower((string) $this->session->userdata('role'));
+$display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -37,6 +39,8 @@
         .navbar-dark .navbar-nav .nav-link::after { content: ''; position: absolute; width: 0; height: 2px; display: block; margin-top: 5px; right: 0; background: #ea5b1a; transition: width 0.3s ease; }
         .navbar-dark .navbar-nav .nav-link:hover::after { width: 100%; left: 0; background: #ea5b1a; }
         .btn-user { background: linear-gradient(45deg, #c24a13, #ea5b1a); color: white; font-weight: 600; border: none; border-radius: 8px; padding: 8px 20px; }
+        .internal-doc-frame { width: 100%; height: min(78vh, 760px); border: 0; border-radius: 0 0 8px 8px; background: #f7f8fa; }
+        .btn-doc-mini { border-radius: 999px; font-weight: 700; padding: 7px 12px; }
 
         /* Header Katalog (Slim & Elegan, bukan hero besar) */
         .catalog-header {
@@ -114,6 +118,81 @@
             color: #6c757d;
             cursor: not-allowed;
         }
+
+        .sop-modal-content {
+            border: none;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .sop-modal-header {
+            background: linear-gradient(135deg, #5d3315, #2c1607);
+            color: #ffffff;
+            border-bottom: 4px solid #ea5b1a;
+        }
+        .sop-asset-summary {
+            background: #fff7f2;
+            border: 1px solid rgba(234, 91, 26, 0.2);
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+        .sop-scroll-box {
+            height: min(42vh, 330px);
+            min-height: 220px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 18px;
+            background: #ffffff;
+            scroll-behavior: smooth;
+        }
+        .sop-scroll-box:focus {
+            outline: 3px solid rgba(234, 91, 26, 0.18);
+            border-color: #ea5b1a;
+        }
+        .sop-scroll-box li {
+            margin-bottom: 12px;
+            line-height: 1.55;
+        }
+        .sop-check-card {
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 14px 16px;
+            background: #f8f9fa;
+        }
+        .sop-check-card.is-ready {
+            border-color: rgba(25, 135, 84, 0.45);
+            background: rgba(25, 135, 84, 0.06);
+        }
+        .btn-sop-continue {
+            background-color: #ea5b1a;
+            border-color: #ea5b1a;
+            color: #ffffff;
+            font-weight: 700;
+            border-radius: 8px;
+            padding: 10px 18px;
+        }
+        .btn-sop-continue:hover,
+        .btn-sop-continue:focus {
+            background-color: #c24a13;
+            border-color: #c24a13;
+            color: #ffffff;
+        }
+        .btn-sop-continue.disabled {
+            background-color: #e9ecef;
+            border-color: #ced4da;
+            color: #6c757d;
+            pointer-events: none;
+        }
+        @media (max-width: 575.98px) {
+            .sop-modal-content {
+                border-radius: 0;
+            }
+            .sop-scroll-box {
+                height: 45vh;
+                min-height: 240px;
+                padding: 14px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -148,7 +227,7 @@
             <div class="d-none d-lg-block">
                 <div class="dropdown">
                     <button class="btn btn-user dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle me-1"></i> <?= $this->session->userdata('nama'); ?>
+                        <i class="bi bi-person-circle me-1"></i> <?= $display_nama; ?>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; mt-2">
                         <li>
@@ -177,9 +256,14 @@
     <div class="container py-5">
         
         <!-- Info & Filter Sederhana -->
-        <div class="d-flex justify-content-between align-items-center mb-4 pb-3 border-bottom">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4 pb-3 border-bottom">
             <h5 class="fw-bold text-dark m-0"><i class="bi bi-grid-fill me-2 text-fik-orange"></i>Daftar Barang Tersedia</h5>
-            <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-box-seam me-1"></i> Total: <?= count($barang) ?> Aset</span>
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <button type="button" class="btn btn-sm btn-outline-warning btn-doc-mini" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
+                    <i class="bi bi-file-earmark-pdf me-1"></i> SOP & Instruksi Kerja
+                </button>
+                <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-box-seam me-1"></i> Total: <?= count($barang) ?> Aset</span>
+            </div>
         </div>
         
         <div class="row g-4">
@@ -248,10 +332,15 @@
                     <!-- Tombol Aksi di bagian bawah kartu -->
                     <div class="card-footer bg-white border-top-0 p-3 pt-0 mt-auto">
                         <?php if($b->jumlah_tersedia > 0): ?>
-                            <!-- Nanti tombol ini akan kita arahkan ke form pengajuan -->
-                            <a href="<?= base_url('index.php/peminjaman/ajukan/'.$b->id_aset) ?>" class="btn btn-pinjam w-100 py-2">
+                            <button type="button"
+                                class="btn btn-pinjam js-open-sop w-100 py-2"
+                                data-sop-url="<?= base_url('index.php/peminjaman/ajukan/'.$b->id_aset) ?>"
+                                data-sop-name="<?= html_escape($b->nama_aset) ?>"
+                                data-sop-code="<?= html_escape($b->kode_aset) ?>"
+                                data-sop-room="<?= html_escape(isset($b->nama_ruangan) ? $b->nama_ruangan : 'Laboratorium Pusat') ?>"
+                                data-sop-stock="<?= (int) $b->jumlah_tersedia ?>">
                                 <i class="bi bi-cart-plus me-1"></i> Ajukan Pinjam
-                            </a>
+                            </button>
                         <?php else: ?>
                             <!-- Tombol mati jika stok 0 -->
                             <button class="btn btn-pinjam disabled w-100 py-2" disabled>
@@ -265,6 +354,88 @@
         </div>
     </div>
 
+
+    <div class="modal fade" id="internalDocsModal" tabindex="-1" aria-labelledby="internalDocsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-lg-down">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white border-0">
+                    <div>
+                        <p class="small text-uppercase text-warning fw-bold mb-1">Dokumen Internal</p>
+                        <h5 class="modal-title fw-bold mb-0" id="internalDocsModalLabel">SOP & Instruksi Kerja</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <iframe class="internal-doc-frame" src="<?= base_url('index.php/dokumen_internal/popup') ?>" title="Dokumen Internal SOP dan Instruksi Kerja"></iframe>
+            </div>
+        </div>
+    </div>
+    <!-- MODAL SOP PEMINJAMAN -->
+    <div class="modal fade" id="sopModal" tabindex="-1" aria-labelledby="sopModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-sm-down">
+            <div class="modal-content sop-modal-content shadow-lg">
+                <div class="modal-header sop-modal-header">
+                    <div>
+                        <p class="text-fik-orange fw-bold small mb-1 text-uppercase">SOP Peminjaman Barang</p>
+                        <h5 class="modal-title fw-bold mb-0" id="sopModalLabel">Baca Ketentuan Sebelum Melanjutkan</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4">
+                    <div class="sop-asset-summary mb-3">
+                        <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                            <div>
+                                <span class="small text-muted d-block">Barang yang akan dipinjam</span>
+                                <strong class="text-dark" id="sopAssetName">-</strong>
+                                <span class="small text-muted d-block font-monospace" id="sopAssetCode">-</span>
+                            </div>
+                            <div class="text-md-end">
+                                <span class="small text-muted d-block">Lokasi dan stok</span>
+                                <strong class="text-dark" id="sopAssetRoom">-</strong>
+                                <span class="small text-muted d-block" id="sopAssetStock">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="sop-scroll-box" id="sopScrollBox" tabindex="0" role="region" aria-label="Isi SOP peminjaman barang">
+                        <ol class="mb-0 ps-3 ps-md-4">
+                            <li>Peminjam wajib menggunakan akun pribadi dan mengisi data pengajuan sesuai identitas asli.</li>
+                            <li>Barang hanya dapat dipinjam untuk kegiatan akademik, praktikum, produksi, kepanitiaan, atau aktivitas resmi yang relevan dengan Fakultas Industri Kreatif.</li>
+                            <li>Peminjam wajib memastikan jumlah barang, kode aset, kondisi fisik, dan kelengkapan aksesori sebelum pengajuan dikirim.</li>
+                            <li>Peminjam wajib mengunggah foto kondisi awal barang yang jelas, tidak buram, dan memperlihatkan kelengkapan utama barang.</li>
+                            <li>Setelah pengajuan dikirim, peminjaman masih berstatus menunggu persetujuan. Barang belum boleh diambil sebelum pengajuan disetujui oleh petugas terkait.</li>
+                            <li>Barang wajib diambil dan dikembalikan sesuai tanggal yang diajukan. Perubahan jadwal harus dikonfirmasi kepada laboran atau petugas aset.</li>
+                            <li>Peminjam bertanggung jawab menjaga barang dari kehilangan, kerusakan, kelalaian penggunaan, dan penggunaan di luar keperluan yang diajukan.</li>
+                            <li>Barang tidak boleh dipindahtangankan kepada pihak lain tanpa izin petugas aset.</li>
+                            <li>Jika terjadi kerusakan, kehilangan, atau kendala saat penggunaan, peminjam wajib segera melapor kepada laboran atau petugas aset.</li>
+                            <li>Saat pengembalian, barang harus dalam kondisi lengkap dan sesuai kondisi awal. Petugas berhak melakukan pemeriksaan sebelum transaksi dinyatakan selesai.</li>
+                            <li>Pelanggaran SOP dapat menyebabkan pengajuan ditolak, pembatasan peminjaman berikutnya, atau tindak lanjut sesuai ketentuan fakultas.</li>
+                            <li>Dengan melanjutkan, peminjam menyatakan telah membaca, memahami, dan menyetujui seluruh ketentuan peminjaman barang.</li>
+                        </ol>
+                    </div>
+
+                    <div class="d-flex align-items-start gap-2 mt-2" id="sopScrollHint">
+                        <i class="bi bi-arrow-down-circle text-fik-orange mt-1"></i>
+                        <small class="text-muted">Scroll SOP sampai bagian akhir untuk membuka checkbox persetujuan.</small>
+                    </div>
+
+                    <div class="sop-check-card mt-3" id="sopCheckCard">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="1" id="sopAgreeCheck" disabled>
+                            <label class="form-check-label fw-semibold" for="sopAgreeCheck">
+                                Saya sudah membaca SOP sampai selesai dan menyetujui ketentuan peminjaman barang ini.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer flex-column flex-sm-row gap-2 p-3 p-md-4">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+                    <a href="#" class="btn btn-sop-continue disabled w-100 w-sm-auto" id="sopContinueBtn" aria-disabled="true">
+                        Lanjut ke Form Peminjaman <i class="bi bi-arrow-right ms-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- FOOTER SEDERHANA KHUSUS HALAMAN DALAM -->
     <footer class="bg-dark text-center py-4 mt-5">
         <div class="container">
@@ -279,6 +450,86 @@
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>
         AOS.init({ once: true, offset: 20 });
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const sopModalElement = document.getElementById('sopModal');
+            const sopModal = new bootstrap.Modal(sopModalElement);
+            const sopScrollBox = document.getElementById('sopScrollBox');
+            const sopAgreeCheck = document.getElementById('sopAgreeCheck');
+            const sopContinueBtn = document.getElementById('sopContinueBtn');
+            const sopCheckCard = document.getElementById('sopCheckCard');
+            const sopScrollHint = document.getElementById('sopScrollHint');
+            const sopAssetName = document.getElementById('sopAssetName');
+            const sopAssetCode = document.getElementById('sopAssetCode');
+            const sopAssetRoom = document.getElementById('sopAssetRoom');
+            const sopAssetStock = document.getElementById('sopAssetStock');
+
+            let targetUrl = '#';
+            let hasReadSop = false;
+
+            function setContinueState() {
+                const canContinue = hasReadSop && sopAgreeCheck.checked;
+
+                if (canContinue) {
+                    sopContinueBtn.classList.remove('disabled');
+                    sopContinueBtn.setAttribute('href', targetUrl);
+                    sopContinueBtn.setAttribute('aria-disabled', 'false');
+                } else {
+                    sopContinueBtn.classList.add('disabled');
+                    sopContinueBtn.setAttribute('href', '#');
+                    sopContinueBtn.setAttribute('aria-disabled', 'true');
+                }
+            }
+
+            function resetSopState(button) {
+                targetUrl = button.dataset.sopUrl || '#';
+                hasReadSop = false;
+                sopAgreeCheck.checked = false;
+                sopAgreeCheck.disabled = true;
+                sopCheckCard.classList.remove('is-ready');
+                sopScrollBox.scrollTop = 0;
+                sopAssetName.textContent = button.dataset.sopName || '-';
+                sopAssetCode.textContent = button.dataset.sopCode || '-';
+                sopAssetRoom.textContent = button.dataset.sopRoom || '-';
+                sopAssetStock.textContent = 'Stok tersedia: ' + (button.dataset.sopStock || '0') + ' unit';
+                sopScrollHint.innerHTML = '<i class="bi bi-arrow-down-circle text-fik-orange mt-1"></i><small class="text-muted">Scroll SOP sampai bagian akhir untuk membuka checkbox persetujuan.</small>';
+                setContinueState();
+            }
+
+            function markSopAsReadIfNeeded() {
+                const reachedBottom = sopScrollBox.scrollTop + sopScrollBox.clientHeight >= sopScrollBox.scrollHeight - 8;
+
+                if (reachedBottom && !hasReadSop) {
+                    hasReadSop = true;
+                    sopAgreeCheck.disabled = false;
+                    sopCheckCard.classList.add('is-ready');
+                    sopScrollHint.innerHTML = '<i class="bi bi-check-circle-fill text-success mt-1"></i><small class="text-success fw-semibold">SOP sudah dibaca sampai akhir. Silakan centang persetujuan untuk lanjut.</small>';
+                }
+
+                setContinueState();
+            }
+
+            document.querySelectorAll('.js-open-sop').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    resetSopState(button);
+                    sopModal.show();
+
+                    setTimeout(function () {
+                        sopScrollBox.focus({ preventScroll: true });
+                        markSopAsReadIfNeeded();
+                    }, 250);
+                });
+            });
+
+            sopScrollBox.addEventListener('scroll', markSopAsReadIfNeeded);
+            sopAgreeCheck.addEventListener('change', setContinueState);
+
+            sopContinueBtn.addEventListener('click', function (event) {
+                if (!hasReadSop || !sopAgreeCheck.checked) {
+                    event.preventDefault();
+                }
+            });
+        });
     </script>
 </body>
 </html>

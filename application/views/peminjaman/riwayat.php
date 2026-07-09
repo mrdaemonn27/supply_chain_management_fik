@@ -1,4 +1,8 @@
-<?php /** @var array $riwayat */ ?>
+<?php
+/** @var array $riwayat */
+$session_role = strtolower((string) $this->session->userdata('role'));
+$display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -57,7 +61,7 @@
                 </ul>
             </div>
             <div class="d-none d-lg-block">
-                <button class="btn btn-user"><i class="bi bi-person-circle me-1"></i> <?= $this->session->userdata('nama'); ?></button>
+                <button class="btn btn-user"><i class="bi bi-person-circle me-1"></i> <?= $display_nama; ?></button>
             </div>
         </div>
     </nav>

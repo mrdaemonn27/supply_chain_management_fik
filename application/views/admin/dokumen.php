@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title><?= isset($title) ? $title : 'Dokumen Laboran' ?></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
+        .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
+        .panel-card { border: 1px solid #e8eaed; border-radius: 8px; background: #fff; box-shadow: 0 8px 22px rgba(32,33,36,.05); }
+        .btn-fik { background: #ea5b1a; color: #fff; border: 0; }
+        .btn-fik:hover { background: #c24a13; color: #fff; }
+        .form-control:focus, .form-select:focus { border-color: #ea5b1a; box-shadow: 0 0 0 .2rem rgba(234,91,26,.16); }
+        .table thead th { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: #5f6368; background: #f8f9fa; border-bottom: 1px solid #e8eaed; }
+        .table td { vertical-align: middle; }
+        .soft-badge { border-radius: 999px; padding: 6px 10px; font-weight: 600; font-size: .75rem; background: rgba(234,91,26,.12); color: #c24a13; }
+        @media (max-width: 767.98px) { .topbar-actions { width: 100%; } .topbar-actions .btn { flex: 1; } }
+    </style>
+</head>
+<body>
+<header class="topbar sticky-top"><div class="container-fluid px-3 px-lg-4 py-3"><div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2"><div><div class="fw-bold"><i class="bi bi-file-earmark-arrow-up me-2 text-warning"></i>Dokumen Laboran</div><div class="small text-white-50">Upload dan arsipkan dokumen peminjaman</div></div><div class="topbar-actions d-flex gap-2"><a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a></div></div></div></header>
+<main class="container-fluid px-3 px-lg-4 py-4">
+    <?php if($this->session->flashdata('success')): ?><div class="alert alert-success border-0 shadow-sm"><?= $this->session->flashdata('success'); ?></div><?php endif; ?>
+    <?php if($this->session->flashdata('error')): ?><div class="alert alert-danger border-0 shadow-sm"><?= $this->session->flashdata('error'); ?></div><?php endif; ?>
+    <div class="row g-4">
+        <div class="col-lg-4"><div class="panel-card p-3 p-lg-4"><h5 class="fw-bold mb-3">Masukin Dokumen</h5><form action="<?= base_url('index.php/admin/dokumen/simpan') ?>" method="post" enctype="multipart/form-data" class="vstack gap-3"><div><label class="form-label small fw-semibold text-muted">Judul Dokumen</label><input type="text" name="judul" class="form-control" required></div><div><label class="form-label small fw-semibold text-muted">Jenis</label><select name="jenis" class="form-select"><option>SOP</option><option>Bukti</option><option>Berita Acara</option><option selected>Lainnya</option></select></div><div><label class="form-label small fw-semibold text-muted">Relasi Peminjaman</label><select name="id_peminjaman" class="form-select"><option value="">Tidak dikaitkan</option><?php foreach($peminjaman as $p): ?><option value="<?= $p->id_peminjaman ?>"><?= html_escape(($p->nama_peminjam ?? '-') . ' - ' . ($p->nama_aset ?? '-') . ' (' . ($p->tanggal_pinjam ?? '-') . ')') ?></option><?php endforeach; ?></select></div><div><label class="form-label small fw-semibold text-muted">File</label><input type="file" name="dokumen" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" required><small class="text-muted">PDF, Word, Excel, JPG/PNG. Maks 5MB.</small></div><div><label class="form-label small fw-semibold text-muted">Keterangan</label><textarea name="keterangan" rows="3" class="form-control"></textarea></div><button class="btn btn-fik rounded-pill"><i class="bi bi-upload me-1"></i> Upload Dokumen</button></form></div></div>
+        <div class="col-lg-8"><div class="panel-card p-0 overflow-hidden"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th class="ps-3">Dokumen</th><th>Relasi</th><th>Tanggal</th><th class="text-end pe-3">Aksi</th></tr></thead><tbody><?php if(empty($dokumen)): ?><tr><td colspan="4" class="text-center text-muted py-5">Belum ada dokumen.</td></tr><?php else: foreach($dokumen as $d): ?><tr><td class="ps-3"><div class="fw-semibold"><?= html_escape($d->judul) ?></div><div class="small text-muted"><?= html_escape($d->original_name ?: $d->nama_file) ?> · <span class="soft-badge"><?= html_escape($d->jenis) ?></span></div></td><td><div><?= html_escape($d->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($d->nim_nip ?? '') ?></div></td><td><?= html_escape($d->created_at) ?></td><td class="text-end pe-3"><a class="btn btn-sm btn-outline-primary rounded-pill" href="<?= base_url('assets/uploads/dokumen/'.$d->nama_file) ?>" target="_blank"><i class="bi bi-eye me-1"></i> Buka</a> <a class="btn btn-sm btn-outline-danger rounded-pill" href="<?= base_url('index.php/admin/dokumen/hapus/'.$d->id_dokumen) ?>" onclick="return confirm('Hapus dokumen ini?')"><i class="bi bi-trash"></i></a></td></tr><?php endforeach; endif; ?></tbody></table></div></div></div>
+    </div>
+</main><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body></html>

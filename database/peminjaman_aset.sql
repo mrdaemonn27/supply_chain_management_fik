@@ -191,19 +191,19 @@ CREATE TABLE `notifications` (
 --
 
 INSERT INTO `notifications` (`id_notifikasi`, `id_user`, `id_peminjaman`, `title`, `message`, `type`, `is_read`, `created_at`) VALUES
-(24, 5, 53, 'Pengajuan Peminjaman Baru', 'Administrator mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-12 10:24:20'),
+(24, 5, 53, 'Pengajuan Peminjaman Baru', 'Laboran mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-12 10:24:20'),
 (25, 1, 53, '???? Pengajuan Disetujui', 'Pengajuan peminjaman Anda telah disetujui oleh Laboran.', 'info', 1, '2026-06-12 10:26:15'),
-(26, 1, 53, '✅ Pengajuan Disetujui', 'Pengajuan peminjaman Anda telah disetujui sepenuhnya. Status: DIPINJAM.', 'success', 1, '2026-06-12 10:26:47'),
-(27, 4, 54, 'Pengajuan Peminjaman Baru', 'Administrator mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-12 11:38:02'),
-(28, 5, 54, 'Pengajuan Peminjaman Baru', 'Administrator mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-12 11:38:02'),
+(26, 1, 53, 'Ã¢Å“â€¦ Pengajuan Disetujui', 'Pengajuan peminjaman Anda telah disetujui sepenuhnya. Status: DIPINJAM.', 'success', 1, '2026-06-12 10:26:47'),
+(27, 4, 54, 'Pengajuan Peminjaman Baru', 'Laboran mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-12 11:38:02'),
+(28, 5, 54, 'Pengajuan Peminjaman Baru', 'Laboran mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-12 11:38:02'),
 (29, 1, 54, '???? Pengajuan Disetujui', 'Pengajuan peminjaman Anda telah disetujui oleh Laboran.', 'info', 1, '2026-06-12 11:39:46'),
-(30, 1, 54, '✅ Pengajuan Disetujui', 'Pengajuan peminjaman Anda telah disetujui sepenuhnya. Status: DIPINJAM.', 'success', 1, '2026-06-12 11:40:34'),
-(31, 4, 55, 'Pengajuan Peminjaman Baru', 'Administrator mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-15 07:15:25'),
-(32, 5, 55, 'Pengajuan Peminjaman Baru', 'Administrator mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-15 07:15:25'),
-(33, 4, 56, 'Pengajuan Peminjaman Baru', 'Administrator mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-18 09:53:05'),
-(34, 5, 56, 'Pengajuan Peminjaman Baru', 'Administrator mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-18 09:53:05'),
-(35, 4, 58, 'Pengajuan Peminjaman Baru', 'Administrator mengajukan peminjaman 2 barang.', 'info', 0, '2026-07-06 02:16:51'),
-(36, 5, 58, 'Pengajuan Peminjaman Baru', 'Administrator mengajukan peminjaman 2 barang.', 'info', 0, '2026-07-06 02:16:51');
+(30, 1, 54, 'Ã¢Å“â€¦ Pengajuan Disetujui', 'Pengajuan peminjaman Anda telah disetujui sepenuhnya. Status: DIPINJAM.', 'success', 1, '2026-06-12 11:40:34'),
+(31, 4, 55, 'Pengajuan Peminjaman Baru', 'Laboran mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-15 07:15:25'),
+(32, 5, 55, 'Pengajuan Peminjaman Baru', 'Laboran mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-15 07:15:25'),
+(33, 4, 56, 'Pengajuan Peminjaman Baru', 'Laboran mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-18 09:53:05'),
+(34, 5, 56, 'Pengajuan Peminjaman Baru', 'Laboran mengajukan peminjaman 1 barang.', 'info', 0, '2026-06-18 09:53:05'),
+(35, 4, 58, 'Pengajuan Peminjaman Baru', 'Laboran mengajukan peminjaman 2 barang.', 'info', 0, '2026-07-06 02:16:51'),
+(36, 5, 58, 'Pengajuan Peminjaman Baru', 'Laboran mengajukan peminjaman 2 barang.', 'info', 0, '2026-07-06 02:16:51');
 
 -- --------------------------------------------------------
 
@@ -227,7 +227,7 @@ CREATE TABLE `peminjam` (
 
 INSERT INTO `peminjam` (`id_peminjam`, `nama_peminjam`, `nim_nip`, `email`, `no_hp`, `jenis`, `created_at`) VALUES
 (5, 'Kaeylandri Ramadhan', '1234567899', NULL, NULL, 'Mahasiswa', '2026-04-11 07:06:22'),
-(6, 'Administrator', 'ADMIN001', NULL, NULL, 'Mahasiswa', '2026-04-13 05:52:13'),
+(6, 'Laboran', 'ADMIN001', NULL, NULL, 'Mahasiswa', '2026-04-13 05:52:13'),
 (7, 'Bagian Kemahasiswaan', 'KEMAHASISWAAN001', NULL, NULL, 'Mahasiswa', '2026-04-13 06:03:09');
 
 -- --------------------------------------------------------
@@ -346,7 +346,7 @@ CREATE TABLE `users` (
   `nama_lengkap` varchar(100) NOT NULL,
   `email` varchar(100) DEFAULT NULL,
   `password` varchar(255) NOT NULL,
-  `role` enum('admin','user','laboran','kaur') NOT NULL DEFAULT 'user',
+  `role` enum('admin','user','laboran','kaur','kaprodi') NOT NULL DEFAULT 'user',
   `created_at` datetime NOT NULL,
   `updated_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -356,13 +356,196 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id_user`, `nim_nip`, `nama_lengkap`, `email`, `password`, `role`, `created_at`, `updated_at`) VALUES
-(1, 'ADMIN001', 'Administrator', 'admin@laboran.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2026-04-11 14:01:24', NULL),
+(1, 'ADMIN001', 'Laboran', 'admin@laboran.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', '2026-04-11 14:01:24', NULL),
 (2, '2023001', 'Mahasiswa Test', 'mahasiswa@test.com', '$2y$10$YourHashedPasswordHere', 'user', '2026-04-11 14:01:24', NULL),
 (3, '1234567899', 'Kaeylandri Ramadhan', NULL, '$2a$12$NnlLJ5pyGiaVaYzUY.V.9OYk.xGT/lZ55bXpJi7VI.mEQw6fgxKmC', 'user', '0000-00-00 00:00:00', NULL),
 (4, 'LABORAN001', 'Laboran', 'laboran@lab.com', '$2a$12$NnlLJ5pyGiaVaYzUY.V.9OYk.xGT/lZ55bXpJi7VI.mEQw6fgxKmC', 'laboran', '2026-04-13 12:49:04', NULL),
-(5, 'KAUR001', 'Kepala Urusan', 'kaur@lab.com', '$2a$12$NnlLJ5pyGiaVaYzUY.V.9OYk.xGT/lZ55bXpJi7VI.mEQw6fgxKmC', 'kaur', '2026-04-13 12:49:04', NULL);
+(5, 'KAUR001', 'Kepala Urusan', 'kaur@lab.com', '$2a$12$NnlLJ5pyGiaVaYzUY.V.9OYk.xGT/lZ55bXpJi7VI.mEQw6fgxKmC', 'kaur', '2026-04-13 12:49:04', NULL),
+(6, 'KAPRODI001', 'Kaprodi', 'kaprodi@fik.telkomuniversity.ac.id', '$2y$10$K.nwkA4oVYLSBuuTLlC.fOFJGBU32uC2.QyD0gu5n7xplJmWYJSmu', 'kaprodi', '2026-07-09 00:00:00', NULL),
+(7, 'KAURLAB001', 'Kaur Lab', 'kaurlab@fik.telkomuniversity.ac.id', '$2y$10$EgB0xEJPsfiLYRIRKyHroOEtshBfekvHUPHJiDeVPIAAVrNDrnaTe', 'kaur', '2026-07-09 00:00:00', NULL);
 
 --
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `dokumen_laboran`
+--
+
+CREATE TABLE `dokumen_laboran` (
+  `id_dokumen` int(11) NOT NULL AUTO_INCREMENT,
+  `id_peminjaman` int(11) DEFAULT NULL,
+  `judul` varchar(150) NOT NULL,
+  `jenis` enum('SOP','Bukti','Berita Acara','Lainnya') NOT NULL DEFAULT 'Lainnya',
+  `nama_file` varchar(255) NOT NULL,
+  `original_name` varchar(255) DEFAULT NULL,
+  `keterangan` text DEFAULT NULL,
+  `uploaded_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id_dokumen`),
+  KEY `idx_dokumen_peminjaman` (`id_peminjaman`),
+  KEY `idx_dokumen_uploaded_by` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `distribusi_barang`
+--
+
+CREATE TABLE `distribusi_barang` (
+  `id_distribusi` int(11) NOT NULL AUTO_INCREMENT,
+  `id_aset` int(11) NOT NULL,
+  `id_ruangan_asal` int(11) DEFAULT NULL,
+  `id_ruangan_tujuan` int(11) NOT NULL,
+  `jumlah` int(11) NOT NULL DEFAULT 1,
+  `tanggal_distribusi` date NOT NULL,
+  `keterangan` text DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id_distribusi`),
+  KEY `idx_distribusi_aset` (`id_aset`),
+  KEY `idx_distribusi_asal` (`id_ruangan_asal`),
+  KEY `idx_distribusi_tujuan` (`id_ruangan_tujuan`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `kaprodi_pengajuan`
+--
+
+CREATE TABLE `kaprodi_pengajuan` (
+  `id_pengajuan` int(11) NOT NULL AUTO_INCREMENT,
+  `kode_pengajuan` varchar(40) NOT NULL,
+  `id_user` int(11) NOT NULL,
+  `nama_prodi` varchar(150) NOT NULL,
+  `nama_pengajuan` varchar(200) NOT NULL,
+  `kebutuhan_lab` text DEFAULT NULL,
+  `anak_perusahaan` varchar(150) DEFAULT NULL,
+  `status` enum('Pengajuan','Negosiasi','ACC Anak Perusahaan','Alokasi','BAST','Selesai') NOT NULL DEFAULT 'Pengajuan',
+  `catatan_negosiasi` text DEFAULT NULL,
+  `catatan_alokasi` text DEFAULT NULL,
+  `bast_nomor` varchar(100) DEFAULT NULL,
+  `bast_tanggal` date DEFAULT NULL,
+  `bast_penerima` varchar(150) DEFAULT NULL,
+  `bast_catatan` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_pengajuan`),
+  UNIQUE KEY `kode_pengajuan` (`kode_pengajuan`),
+  KEY `idx_kaprodi_user` (`id_user`),
+  KEY `idx_kaprodi_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `kaprodi_pengajuan_item`
+--
+
+CREATE TABLE `kaprodi_pengajuan_item` (
+  `id_item` int(11) NOT NULL AUTO_INCREMENT,
+  `id_pengajuan` int(11) NOT NULL,
+  `no_urut` int(11) NOT NULL DEFAULT 1,
+  `uraian_barang` varchar(255) NOT NULL,
+  `vol` decimal(12,2) NOT NULL DEFAULT 1.00,
+  `satuan` varchar(50) NOT NULL DEFAULT 'unit',
+  `harga_penawaran_sat` decimal(18,2) NOT NULL DEFAULT 0.00,
+  `link_penawaran` text DEFAULT NULL,
+  `hasil_negosiasi_vol` decimal(12,2) DEFAULT NULL,
+  `hasil_negosiasi_sat` decimal(18,2) DEFAULT NULL,
+  `garansi` varchar(150) DEFAULT NULL,
+  `alokasi_sisa` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id_item`),
+  KEY `idx_item_pengajuan` (`id_pengajuan`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `kaur_pengajuan`
+--
+
+CREATE TABLE `kaur_pengajuan` (
+  `id_pengajuan` int(11) NOT NULL AUTO_INCREMENT,
+  `kode_pengajuan` varchar(40) NOT NULL,
+  `id_user` int(11) NOT NULL,
+  `nama_lab` varchar(150) NOT NULL,
+  `nama_pengajuan` varchar(200) NOT NULL,
+  `kebutuhan_lab` text DEFAULT NULL,
+  `anak_perusahaan` varchar(150) DEFAULT NULL,
+  `status` enum('Pengajuan','Approval Tahap 1 (BAST)','BAST Disetujui','Negosiasi','ACC Anak Perusahaan','Alokasi','Selesai') NOT NULL DEFAULT 'Pengajuan',
+  `catatan_negosiasi` text DEFAULT NULL,
+  `catatan_alokasi` text DEFAULT NULL,
+  `bast_nomor` varchar(100) DEFAULT NULL,
+  `bast_tanggal` date DEFAULT NULL,
+  `bast_penerima` varchar(150) DEFAULT NULL,
+  `bast_catatan` text DEFAULT NULL,
+  `bast_disetujui_oleh` int(11) DEFAULT NULL,
+  `bast_disetujui_pada` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_pengajuan`),
+  UNIQUE KEY `kode_pengajuan` (`kode_pengajuan`),
+  KEY `idx_kaur_user` (`id_user`),
+  KEY `idx_kaur_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `kaur_pengajuan_item`
+--
+
+CREATE TABLE `kaur_pengajuan_item` (
+  `id_item` int(11) NOT NULL AUTO_INCREMENT,
+  `id_pengajuan` int(11) NOT NULL,
+  `no_urut` int(11) NOT NULL DEFAULT 1,
+  `uraian_barang` varchar(255) NOT NULL,
+  `vol` decimal(12,2) NOT NULL DEFAULT 1.00,
+  `satuan` varchar(50) NOT NULL DEFAULT 'unit',
+  `harga_penawaran_sat` decimal(18,2) NOT NULL DEFAULT 0.00,
+  `link_penawaran` text DEFAULT NULL,
+  `hasil_negosiasi_vol` decimal(12,2) DEFAULT NULL,
+  `hasil_negosiasi_sat` decimal(18,2) DEFAULT NULL,
+  `garansi` varchar(150) DEFAULT NULL,
+  `alokasi_sisa` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id_item`),
+  KEY `idx_kaur_item_pengajuan` (`id_pengajuan`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `dokumen_internal`
+--
+
+CREATE TABLE `dokumen_internal` (
+  `id_dokumen` int(11) NOT NULL AUTO_INCREMENT,
+  `judul` varchar(180) NOT NULL,
+  `kategori` enum('SOP','Instruksi Kerja','Tata Tertib','Lainnya') NOT NULL DEFAULT 'SOP',
+  `deskripsi` text DEFAULT NULL,
+  `nama_file` varchar(255) NOT NULL,
+  `original_name` varchar(255) DEFAULT NULL,
+  `mime_type` varchar(120) DEFAULT NULL,
+  `file_size` int(11) DEFAULT 0,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `uploaded_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_dokumen`),
+  KEY `idx_internal_kategori` (`kategori`),
+  KEY `idx_internal_active` (`is_active`),
+  KEY `idx_internal_uploaded_by` (`uploaded_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `dokumen_internal`
+--
+
+INSERT INTO `dokumen_internal` (`id_dokumen`, `judul`, `kategori`, `deskripsi`, `nama_file`, `original_name`, `mime_type`, `file_size`, `is_active`, `uploaded_by`, `created_at`, `updated_at`) VALUES
+(1, 'SOP & Tata Tertib Studio', 'SOP', 'Dokumen SOP peminjaman, penggunaan, pengembalian, dan instruksi kerja ringkas aset studio/laboratorium.', 'sop_tata_tertib_studio.pdf', 'SOP_Tata_Tertib_Studio.pdf', 'application/pdf', 3447, 1, NULL, '2026-07-09 00:00:00', NULL);
 -- Indexes for dumped tables
 --
 
@@ -483,7 +666,7 @@ ALTER TABLE `ruangan`
 -- AUTO_INCREMENT untuk tabel `users`
 --
 ALTER TABLE `users`
-  MODIFY `id_user` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id_user` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)

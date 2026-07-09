@@ -20,7 +20,7 @@ class Barang extends CI_Controller {
 
         // Proteksi: WAJIB ROLE ADMIN
         if(strtolower($this->session->userdata('role')) != 'admin') {
-            $this->session->set_flashdata('error', 'Akses ditolak! Halaman ini khusus Administrator.');
+            $this->session->set_flashdata('error', 'Akses ditolak! Halaman ini khusus Laboran.');
             redirect('dashboard');
         }
 

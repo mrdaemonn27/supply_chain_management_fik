@@ -1,216 +1,166 @@
+<?php
+$stats = isset($stats) && is_array($stats) ? $stats : [];
+$get_stat = function ($key) use ($stats) {
+    return isset($stats[$key]) ? (int) $stats[$key] : 0;
+};
+
+$menus = [
+    [
+        'title' => 'Master Data',
+        'desc' => 'Kelola barang/aset, stok, kondisi, dan foto inventaris.',
+        'url' => base_url('index.php/admin/barang'),
+        'icon' => 'bi-boxes',
+        'class' => 'tone-orange',
+        'metric' => $get_stat('total_aset') . ' jenis aset',
+    ],
+    [
+        'title' => 'Peminjaman',
+        'desc' => 'Pantau transaksi peminjaman aktif, riwayat, dan pengembalian.',
+        'url' => base_url('index.php/admin/peminjaman'),
+        'icon' => 'bi-clipboard-data',
+        'class' => 'tone-green',
+        'metric' => $get_stat('peminjaman_aktif') . ' aktif',
+    ],
+    [
+        'title' => 'Approval',
+        'desc' => 'Setujui atau tolak pengajuan peminjaman yang masuk.',
+        'url' => base_url('index.php/admin/approval'),
+        'icon' => 'bi-patch-check',
+        'class' => 'tone-red',
+        'metric' => $get_stat('menunggu_persetujuan') . ' menunggu',
+        'badge' => $get_stat('menunggu_persetujuan'),
+    ],
+    [
+        'title' => 'Dokumen',
+        'desc' => 'Unggah dokumen SOP, berita acara, bukti, atau arsip peminjaman.',
+        'url' => base_url('index.php/admin/dokumen'),
+        'icon' => 'bi-file-earmark-arrow-up',
+        'class' => 'tone-purple',
+        'metric' => $get_stat('total_dokumen') . ' dokumen',
+    ],
+    [
+        'title' => 'Ruangan',
+        'desc' => 'Atur data ruangan/lab dan foto ruangan yang tampil di dashboard.',
+        'url' => base_url('index.php/admin/ruangan'),
+        'icon' => 'bi-door-open',
+        'class' => 'tone-blue',
+        'metric' => $get_stat('total_ruangan') . ' ruangan',
+    ],
+    [
+        'title' => 'Maintenance Barang',
+        'desc' => 'Catat perawatan, kondisi setelah maintenance, dan riwayat aset.',
+        'url' => base_url('index.php/admin/maintenance'),
+        'icon' => 'bi-tools',
+        'class' => 'tone-yellow',
+        'metric' => $get_stat('total_maintenance') . ' catatan',
+    ],
+    [
+        'title' => 'Distribusi Barang',
+        'desc' => 'Pindahkan lokasi aset antar ruangan dan simpan catatan distribusi.',
+        'url' => base_url('index.php/admin/distribusi'),
+        'icon' => 'bi-truck',
+        'class' => 'tone-cyan',
+        'metric' => $get_stat('total_distribusi') . ' distribusi',
+    ],
+];
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= isset($title) ? $title : 'Dashboard Administrator' ?></title>
-    
-    <!-- Bootstrap 5 CSS -->
+    <title><?= isset($title) ? $title : 'Dashboard Laboran' ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
-    <!-- Font -->
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
     <style>
-        body { 
-            background-color: #f4f6f9; 
-            font-family: 'Poppins', sans-serif; 
-        }
-        
-        /* Topbar Header Admin */
-        .admin-header {
-            background-color: #1a1a1a;
-            color: white;
-            padding: 15px 30px;
-            border-bottom: 4px solid #ea5b1a; /* Orange strip FIK */
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .admin-header .title { font-weight: 700; font-size: 1.1rem; letter-spacing: 1px; }
-        .admin-header .user-info { font-size: 0.9rem; }
-        
-        /* Menu Card Styles */
-        .menu-card {
-            border: none;
-            border-radius: 16px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-            cursor: pointer;
-            height: 100%;
-            text-decoration: none;
-            display: block;
-            color: #2c3e50;
-            background: #ffffff;
-            position: relative;
-            overflow: hidden;
-        }
-        .menu-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 30px rgba(234, 91, 26, 0.12);
-        }
-        
-        /* Efek garis bawah saat hover */
-        .menu-card::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 0%;
-            height: 4px;
-            background-color: #ea5b1a;
-            transition: width 0.3s ease;
-        }
-        .menu-card:hover::after { width: 100%; }
-
-        .menu-card .card-body { padding: 35px 25px; text-align: center; }
-        
-        /* Ikon Modul */
-        .icon-box {
-            width: 75px;
-            height: 75px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.2rem;
-            margin-bottom: 20px;
-            transition: 0.3s;
-        }
-        .menu-card:hover .icon-box { transform: scale(1.1); }
-        
-        /* Custom Colors */
-        .color-aset { background: rgba(234, 91, 26, 0.1); color: #ea5b1a; }
-        .color-ruangan { background: rgba(13, 110, 253, 0.1); color: #0d6efd; }
-        .color-peminjaman { background: rgba(25, 135, 84, 0.1); color: #198754; }
-        .color-user { background: rgba(111, 66, 193, 0.1); color: #6f42c1; }
-        
-        .menu-card h5 { font-weight: 700; margin-bottom: 8px; font-size: 1.1rem; }
-        .menu-card p { font-size: 0.85rem; color: #6c757d; margin-bottom: 15px; line-height: 1.5; }
-        
-        /* Stat Badge */
-        .stat-badge {
-            font-size: 0.8rem;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-weight: 600;
-        }
-        
-        /* Floating Notification Badge */
-        .notify-badge {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            font-size: 0.75rem;
-            padding: 5px 10px;
-            border-radius: 12px;
-            background-color: #dc3545;
-            color: white;
-            font-weight: bold;
-            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+        body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
+        .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
+        .brand-mark { width: 42px; height: 42px; border-radius: 10px; background: rgba(234, 91, 26, 0.15); color: #ea5b1a; display: inline-flex; align-items: center; justify-content: center; font-size: 1.35rem; }
+        .summary-card, .menu-card { border: 1px solid #e8eaed; border-radius: 8px; background: #fff; box-shadow: 0 8px 22px rgba(32, 33, 36, 0.05); }
+        .summary-card { padding: 18px; min-height: 106px; }
+        .summary-value { font-size: 1.65rem; font-weight: 700; line-height: 1; }
+        .summary-label { color: #6c757d; font-size: .82rem; margin-top: 8px; }
+        .menu-card { position: relative; height: 100%; text-decoration: none; color: inherit; display: flex; flex-direction: column; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; overflow: hidden; }
+        .menu-card:hover { transform: translateY(-4px); border-color: rgba(234, 91, 26, .38); box-shadow: 0 14px 34px rgba(32, 33, 36, 0.09); color: inherit; }
+        .menu-card .body { padding: 22px; flex: 1; }
+        .module-icon { width: 54px; height: 54px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.55rem; margin-bottom: 18px; }
+        .menu-card h5 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+        .menu-card p { color: #6c757d; font-size: .86rem; line-height: 1.55; margin-bottom: 18px; }
+        .metric-row { border-top: 1px solid #eef0f2; padding: 12px 22px; font-size: .8rem; color: #5f6368; display: flex; justify-content: space-between; align-items: center; }
+        .tone-orange { background: rgba(234, 91, 26, .12); color: #c24a13; }
+        .tone-green { background: rgba(25, 135, 84, .12); color: #198754; }
+        .tone-red { background: rgba(220, 53, 69, .12); color: #dc3545; }
+        .tone-purple { background: rgba(111, 66, 193, .12); color: #6f42c1; }
+        .tone-blue { background: rgba(13, 110, 253, .12); color: #0d6efd; }
+        .tone-yellow { background: rgba(245, 158, 11, .16); color: #a16207; }
+        .tone-cyan { background: rgba(13, 202, 240, .14); color: #087990; }
+        .notify-badge { position: absolute; top: 16px; right: 16px; border-radius: 999px; padding: 5px 10px; background: #dc3545; color: #fff; font-size: .75rem; font-weight: 700; }
+        @media (max-width: 767.98px) {
+            .topbar .actions { width: 100%; margin-top: 12px; }
+            .topbar .actions .btn { flex: 1; }
+            .summary-card { min-height: auto; }
         }
     </style>
 </head>
 <body>
-
-    <!-- Header / Topbar Administrator -->
-    <header class="admin-header sticky-top">
-        <div class="title d-flex align-items-center">
-            <i class="bi bi-shield-lock-fill me-2" style="color: #ea5b1a; font-size: 1.3rem;"></i> 
-            <span>ADMINISTRATOR <span class="d-none d-md-inline text-muted fw-normal ms-1">| Master Data</span></span>
-        </div>
-        <div class="user-info d-flex align-items-center">
-            <span class="me-4 d-none d-md-block text-light opacity-75">
-                Role: <strong class="text-white"><?= isset($user_role) ? $user_role : 'Admin' ?></strong>
-            </span>
-            <a href="<?= base_url('index.php/dashboard') ?>" class="btn btn-outline-light btn-sm me-2 rounded-pill px-3">
-                <i class="bi bi-globe me-1"></i> <span class="d-none d-md-inline">Lihat Web User</span>
-            </a>
-            <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-danger btn-sm rounded-pill px-3" style="background-color: #ea5b1a; border-color: #ea5b1a;">
-                <i class="bi bi-box-arrow-right"></i> <span class="d-none d-md-inline">Logout</span>
-            </a>
+    <header class="topbar sticky-top">
+        <div class="container-fluid px-3 px-lg-4 py-3">
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="brand-mark"><i class="bi bi-person-workspace"></i></span>
+                    <div>
+                        <div class="fw-bold">Panel Laboran</div>
+                        <div class="small text-white-50">Supply Chain Management FIK</div>
+                    </div>
+                </div>
+                <div class="actions d-flex align-items-center gap-2">
+                    <span class="d-none d-lg-inline small text-white-50 me-2">Role: <strong class="text-white"><?= isset($user_role) ? $user_role : 'Laboran' ?></strong></span>
+                    <a href="<?= base_url('index.php/dashboard') ?>" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-globe me-1"></i> Web User</a>
+                    <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm rounded-pill px-3 text-white" style="background:#ea5b1a;"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
+                </div>
+            </div>
         </div>
     </header>
 
-    <!-- Konten Dashboard -->
-    <div class="container py-5">
-        <div class="row mb-5 align-items-center">
-            <div class="col-md-8">
-                <h3 class="fw-bold text-dark mb-1">Selamat Datang, Administrator! </h3>
-                <p class="text-muted mb-0">Pilih modul di bawah ini untuk mengelola master data pada sistem Supply Chain Management.</p>
+    <main class="container-fluid px-3 px-lg-4 py-4 py-lg-5">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-end gap-3 mb-4">
+            <div>
+                <h1 class="h3 fw-bold mb-2">Selamat Datang, Laboran</h1>
+                <p class="text-muted mb-0">Kelola operasional aset, peminjaman, dokumen, ruangan, maintenance, dan distribusi barang dari satu dashboard.</p>
             </div>
-            <div class="col-md-4 text-md-end mt-3 mt-md-0 text-muted small">
-                <i class="bi bi-calendar3 me-1"></i> <?= date('d F Y') ?>
-            </div>
+            <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?= date('d F Y') ?></div>
         </div>
 
-        <div class="row g-4 justify-content-center">
-            
-            <!-- Modul 1: Manajemen Aset -->
-            <div class="col-md-6 col-lg-3">
-                <a href="<?= base_url('index.php/admin/barang') ?>" class="card menu-card">
-                    <div class="card-body">
-                        <div class="icon-box color-aset">
-                            <i class="bi bi-boxes"></i>
+        <section class="row g-3 mb-4">
+            <div class="col-6 col-lg-3"><div class="summary-card"><div class="summary-value"><?= $get_stat('total_aset') ?></div><div class="summary-label">Jenis aset</div></div></div>
+            <div class="col-6 col-lg-3"><div class="summary-card"><div class="summary-value"><?= $get_stat('total_aset_fisik') ?></div><div class="summary-label">Total fisik barang</div></div></div>
+            <div class="col-6 col-lg-3"><div class="summary-card"><div class="summary-value"><?= $get_stat('menunggu_persetujuan') ?></div><div class="summary-label">Menunggu approval</div></div></div>
+            <div class="col-6 col-lg-3"><div class="summary-card"><div class="summary-value"><?= $get_stat('peminjaman_aktif') ?></div><div class="summary-label">Sedang dipinjam</div></div></div>
+        </section>
+
+        <section class="row g-3 g-lg-4">
+            <?php foreach ($menus as $menu): ?>
+                <div class="col-sm-6 col-xl-3">
+                    <a href="<?= $menu['url'] ?>" class="menu-card">
+                        <?php if (!empty($menu['badge'])): ?>
+                            <span class="notify-badge"><?= (int) $menu['badge'] ?></span>
+                        <?php endif; ?>
+                        <div class="body">
+                            <div class="module-icon <?= $menu['class'] ?>"><i class="bi <?= $menu['icon'] ?>"></i></div>
+                            <h5><?= $menu['title'] ?></h5>
+                            <p><?= $menu['desc'] ?></p>
                         </div>
-                        <h5>Master Data Aset</h5>
-                        <p>Tambah, Edit, dan Hapus data barang secara global.</p>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Modul 2: Manajemen Ruangan / Kategori -->
-            <div class="col-md-6 col-lg-3">
-                <a href="<?= base_url('index.php/admin/ruangan') ?>" class="card menu-card">
-                    <div class="card-body">
-                        <div class="icon-box color-ruangan">
-                            <i class="bi bi-door-open"></i>
+                        <div class="metric-row">
+                            <span><?= $menu['metric'] ?></span>
+                            <i class="bi bi-arrow-right"></i>
                         </div>
-                        <h5>Manajemen Ruangan</h5>
-                        <p>Kelola data nama ruangan lab, kode, dan informasi kuota.</p>
-                    </div>
-                </a>
-            </div>
+                    </a>
+                </div>
+            <?php endforeach; ?>
+        </section>
+    </main>
 
-            <!-- Modul 3: Manajemen Peminjaman -->
-            <div class="col-md-6 col-lg-3">
-                <a href="<?= base_url('index.php/admin/peminjaman') ?>" class="card menu-card">
-                    <div class="card-body">
-                        <div class="icon-box color-peminjaman">
-                            <i class="bi bi-clipboard-check"></i>
-                        </div>
-                        <h5>Data Peminjaman</h5>
-                        <p>Persetujuan (Approve/Reject) dan monitoring barang dipinjam.</p>
-                    </div>
-                </a>
-            </div>
-
-            <!-- Modul 4: Manajemen Pengguna -->
-            <div class="col-md-6 col-lg-3">
-                <a href="<?= base_url('index.php/admin/user') ?>" class="card menu-card">
-                    <div class="card-body">
-                        <div class="icon-box color-user">
-                            <i class="bi bi-people"></i>
-                        </div>
-                        <h5>Data Pengguna</h5>
-                        <p>Kelola data akun mahasiswa, laboran, dan kepala urusan.</p>
-                    </div>
-                </a>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

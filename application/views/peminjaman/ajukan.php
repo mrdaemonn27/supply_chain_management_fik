@@ -1,4 +1,8 @@
-<?php /** @var object $aset */ ?>
+<?php
+/** @var object $aset */
+$session_role = strtolower((string) $this->session->userdata('role'));
+$display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -37,6 +41,66 @@
         
         /* Tambahan untuk menjaga ukuran gambar agar proporsional */
         .aset-thumbnail { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        /* Custom Style untuk Drag & Drop Zone */
+        .drop-zone {
+            border: 2px dashed #adb5bd;
+            border-radius: 12px;
+            padding: 3rem 1.5rem;
+            text-align: center;
+            background-color: #f4f6f9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            background-color: #e2e8f0;
+            border-color: #ea5b1a;
+            transform: scale(1.01);
+        }
+        .drop-zone input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+            z-index: 2;
+        }
+        .preview-container {
+            position: relative;
+            z-index: 3;
+            pointer-events: none; 
+        }
+        .preview-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .btn-remove-preview {
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            pointer-events: auto;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+        }
+        .btn-remove-preview:hover {
+            background-color: #bb2d3b;
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
@@ -58,7 +122,7 @@
                 </ul>
             </div>
             <div class="d-none d-lg-block">
-                <button class="btn btn-user"><i class="bi bi-person-circle me-1"></i> <?= $this->session->userdata('nama'); ?></button>
+                <button class="btn btn-user"><i class="bi bi-person-circle me-1"></i> <?= $display_nama; ?></button>
             </div>
         </div>
     </nav>
@@ -113,7 +177,7 @@
                         <div class="row mb-4">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold text-muted small">Peminjam</label>
-                                <input type="text" class="form-control bg-light" value="<?= $this->session->userdata('nama'); ?>" readonly>
+                                <input type="text" class="form-control bg-light" value="<?= $display_nama; ?>" readonly>
                             </div>
                             <div class="col-md-6 mt-3 mt-md-0">
                                 <label class="form-label fw-semibold text-muted small">Jumlah Pinjam <span class="text-danger">*</span></label>
@@ -135,9 +199,26 @@
 
                         <div class="mb-4 bg-fik-orange-light p-3 rounded-3 border border-warning border-opacity-25">
                             <label class="form-label fw-bold text-fik-brown"><i class="bi bi-camera-fill me-1"></i> Foto Kondisi Awal Alat <span class="text-danger">*</span></label>
-                            <input type="file" name="foto_kondisi" class="form-control bg-white" accept=".jpg,.jpeg,.png" required>
-                            <small class="text-muted mt-1 d-block" style="font-size: 0.75rem;">Format: JPG/PNG. Maksimal ukuran file: 2MB. Pastikan foto memperlihatkan kelengkapan alat.</small>
                             
+                            <div class="drop-zone shadow-sm bg-white mt-2 mb-2" id="dropZone">
+                                <input type="file" name="foto_kondisi" id="fileInput" accept="image/jpeg, image/png, image/jpg, image/webp" required>
+                                
+                                <div id="previewContainer" class="preview-container d-none">
+                                    <div class="preview-wrapper">
+                                        <img id="imagePreview" src="#" data-default-src="#" alt="Preview" class="img-thumbnail shadow-sm mb-2" style="max-height: 160px; border-radius: 8px;">
+                                        <button type="button" id="btnRemovePreview" class="btn-remove-preview" title="Batal Pilih Foto">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </div>
+                                    <p class="small text-muted mb-0 fw-medium" id="fileName" data-default-text=""></p>
+                                </div>
+
+                                <div id="placeholderContainer" class="preview-container d-block">
+                                    <i class="bi bi-camera display-4 text-secondary mb-3 d-block"></i>
+                                    <h6 class="mb-1 text-dark fs-6"><span class="fw-bold">Pilih file</span> atau drag ke sini.</h6>
+                                    <small class="text-muted mt-1 d-block" style="font-size: 0.75rem;">Format: JPG/PNG. Maksimal ukuran file: 2MB. Pastikan foto memperlihatkan kelengkapan alat.</small>
+                                </div>
+                            </div>
                             <label class="form-label fw-semibold text-muted small mt-3">Sesuai pengamatan fisik, kondisi saat ini:</label>
                             <select name="kondisi_saat_pinjam" class="form-select bg-white" required>
                                 <option value="Baik">Baik & Lengkap</option>
@@ -167,5 +248,100 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script>AOS.init({ once: true, offset: 20 });</script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            const previewContainer = document.getElementById('previewContainer');
+            const placeholderContainer = document.getElementById('placeholderContainer');
+            const imagePreview = document.getElementById('imagePreview');
+            const fileNameDisplay = document.getElementById('fileName');
+            const btnRemovePreview = document.getElementById('btnRemovePreview');
+
+            // Ambil data default foto lama (jika sedang di form edit)
+            const defaultSrc = imagePreview ? imagePreview.getAttribute('data-default-src') : '#';
+            const defaultText = fileNameDisplay ? fileNameDisplay.getAttribute('data-default-text') : '';
+
+            if (dropZone && fileInput) {
+                // Mencegah browser membuka file gambar di tab baru saat di-drag
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, preventDefaults, false);
+                    document.body.addEventListener(eventName, preventDefaults, false);
+                });
+
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+
+                // Memberikan efek animasi transisi saat file disorot/drag di atas kotak
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+                });
+
+                // Menangkap event DROP dan mengisi input file secara otomatis
+                dropZone.addEventListener('drop', function(e) {
+                    let dt = e.dataTransfer;
+                    let files = dt.files;
+                    if (files.length > 0) {
+                        fileInput.files = files;
+                        updatePreview(files[0]);
+                    }
+                }, false);
+
+                // Menangkap event CLICK 
+                fileInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        updatePreview(this.files[0]);
+                    }
+                });
+
+                function updatePreview(file) {
+                    // Validasi bahwa file adalah gambar
+                    if (!file.type.match('image.*')) {
+                        alert('Format file ditolak! Pastikan Anda mengunggah format gambar yang didukung (JPG, PNG, WEBP).');
+                        fileInput.value = ''; // Reset input
+                        return;
+                    }
+
+                    let reader = new FileReader();
+                    reader.readAsDataURL(file);
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        fileNameDisplay.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i> File dipilih: <b class="text-dark">${file.name}</b>`;
+                        
+                        previewContainer.classList.remove('d-none');
+                        previewContainer.classList.add('d-block');
+                        placeholderContainer.classList.remove('d-block');
+                        placeholderContainer.classList.add('d-none');
+                    }
+                }
+
+                // Logika Dinamis saat tombol X diklik
+                if(btnRemovePreview) {
+                    btnRemovePreview.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation(); // Mencegah form upload terbuka
+
+                        // Selalu kosongkan input file
+                        fileInput.value = '';
+                        
+                        // Kembalikan ke placeholder awan
+                        imagePreview.src = '#';
+                        fileNameDisplay.innerHTML = '';
+                        previewContainer.classList.remove('d-block');
+                        previewContainer.classList.add('d-none');
+                        placeholderContainer.classList.remove('d-none');
+                        placeholderContainer.classList.add('d-block');
+                    });
+                }
+            }
+        });
+    </script>
 </body>
 </html>

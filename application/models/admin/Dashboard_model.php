@@ -8,41 +8,65 @@ class Dashboard_model extends CI_Model {
         $this->load->database();
     }
 
-    /**
-     * Mengambil rekap jumlah data untuk ditampilkan di Dashboard Admin
-     * Disesuaikan agar dinamis dengan struktur tabel peminjaman_aset
-     */
-    public function get_statistik() {
-        // 1. Hitung total JENIS barang/aset (berdasarkan jumlah baris master data)
-        $total_aset = $this->db->count_all('aset');
-        
-        // 1.b Hitung total FISIK keseluruhan barang (Sum dari kolom jumlah_total)
-        $this->db->select_sum('jumlah_total');
-        $query_fisik = $this->db->get('aset')->row();
-        $total_aset_fisik = $query_fisik->jumlah_total ?? 0;
-        
-        // 2. Hitung total ruangan/lab
-        $total_ruangan = $this->db->count_all('ruangan');
-        
-        // 3. Hitung total peminjaman yang sedang aktif (berstatus 'Dipinjam')
-        $this->db->where('status', 'Dipinjam');
-        $peminjaman_aktif = $this->db->count_all_results('peminjaman');
+    private function count_table($table) {
+        return $this->db->table_exists($table) ? $this->db->count_all($table) : 0;
+    }
 
-        // 3.b Hitung pengajuan yang 'Menunggu Persetujuan' (Cocok untuk notifikasi badge)
-        $this->db->where('status', 'Menunggu Persetujuan');
-        $menunggu_persetujuan = $this->db->count_all_results('peminjaman');
-        
-        // 4. Hitung total pengguna sistem (Admin, Laboran, Kaur, dll)
-        $total_user = $this->db->count_all('users');
-        
-        // Kembalikan dalam bentuk array agar mudah dipanggil di View
+    public function get_statistik() {
+        $total_aset = $this->count_table('aset');
+
+        $total_aset_fisik = 0;
+        if ($this->db->table_exists('aset')) {
+            $this->db->select_sum('jumlah_total');
+            $query_fisik = $this->db->get('aset')->row();
+            $total_aset_fisik = (int) ($query_fisik->jumlah_total ?? 0);
+        }
+
+        $total_ruangan = $this->count_table('ruangan');
+        $total_user = $this->count_table('users');
+        $total_maintenance = $this->count_table('maintenance');
+        $total_dokumen = $this->count_table('dokumen_laboran');
+        $total_distribusi = $this->count_table('distribusi_barang');
+
+        $peminjaman_aktif = 0;
+        $menunggu_persetujuan = 0;
+        $peminjaman_selesai = 0;
+        $stok_habis = 0;
+        $stok_menipis = 0;
+
+        if ($this->db->table_exists('peminjaman')) {
+            $this->db->where('status', 'Dipinjam');
+            $peminjaman_aktif = $this->db->count_all_results('peminjaman');
+
+            $this->db->where('status', 'Menunggu Persetujuan');
+            $menunggu_persetujuan = $this->db->count_all_results('peminjaman');
+
+            $this->db->where('status', 'Dikembalikan');
+            $peminjaman_selesai = $this->db->count_all_results('peminjaman');
+        }
+
+        if ($this->db->table_exists('aset')) {
+            $this->db->where('jumlah_tersedia', 0);
+            $stok_habis = $this->db->count_all_results('aset');
+
+            $this->db->where('jumlah_tersedia >', 0);
+            $this->db->where('jumlah_tersedia <', 3);
+            $stok_menipis = $this->db->count_all_results('aset');
+        }
+
         return [
             'total_aset'           => $total_aset,
             'total_aset_fisik'     => $total_aset_fisik,
             'total_ruangan'        => $total_ruangan,
             'peminjaman_aktif'     => $peminjaman_aktif,
             'menunggu_persetujuan' => $menunggu_persetujuan,
-            'total_user'           => $total_user
+            'peminjaman_selesai'   => $peminjaman_selesai,
+            'total_user'           => $total_user,
+            'total_maintenance'    => $total_maintenance,
+            'total_dokumen'        => $total_dokumen,
+            'total_distribusi'     => $total_distribusi,
+            'stok_habis'           => $stok_habis,
+            'stok_menipis'         => $stok_menipis,
         ];
     }
 }

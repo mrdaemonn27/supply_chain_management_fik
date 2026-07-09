@@ -109,9 +109,13 @@ class Peminjaman extends CI_Controller {
             $upload_data = $this->upload->data();
             
             // Integrasi data peminjam secara otomatis dari session login
+            $nama_peminjam = (strtolower((string) $this->session->userdata('role')) === 'admin')
+                ? 'Laboran'
+                : $this->session->userdata('nama');
+
             $id_peminjam = $this->Peminjaman_model->get_or_create_peminjam(
-                $this->session->userdata('username'), 
-                $this->session->userdata('nama')
+                $this->session->userdata('username'),
+                $nama_peminjam
             );
 
             // Mapping data penampung database

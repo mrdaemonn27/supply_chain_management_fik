@@ -1,4 +1,9 @@
-<!DOCTYPE html>
+<?php
+$session_role = strtolower((string) $this->session->userdata('role'));
+$display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
+$display_role = ($session_role === 'admin') ? 'Laboran' : ucfirst((string) $this->session->userdata('role'));
+$can_read_internal_docs = (bool) $this->session->userdata('logged_in');
+?><!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -74,6 +79,10 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(234, 91, 26, 0.4);
         }
+
+        .internal-doc-frame { width: 100%; height: min(78vh, 760px); border: 0; border-radius: 0 0 8px 8px; background: #f7f8fa; }
+        .btn-doc-internal { border: 1px solid rgba(255,255,255,.7); color: #fff; border-radius: 999px; padding: 10px 18px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-doc-internal:hover { background: #fff; color: #c24a13; }
 
         /* Header Tampilan Awal (Slimmer) */
         .catalog-header {
@@ -153,7 +162,7 @@
         .footer-fik h5 { font-weight: 700; margin-bottom: 1.8rem; font-size: 1.15rem; color: #ffffff; }
         .footer-fik ul { list-style: none; padding-left: 0; }
         .footer-fik ul li { margin-bottom: 0.8rem; position: relative; padding-left: 18px; }
-        .footer-fik ul li::before { content: '•'; position: absolute; left: 0; top: -2px; color: #ffffff; font-size: 1.2rem; }
+        .footer-fik ul li::before { content: 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢'; position: absolute; left: 0; top: -2px; color: #ffffff; font-size: 1.2rem; }
         .footer-fik ul li a { color: #dcdcdc; text-decoration: none; transition: 0.3s; }
         .footer-fik ul li a:hover { color: #ffffff; text-decoration: underline; }
         .map-container iframe { width: 100%; height: 350px; border-radius: 15px; }
@@ -188,30 +197,70 @@
                     <?php if (strtolower($this->session->userdata('role')) == 'admin'): ?>
                     <li class="nav-item ms-lg-3">
                         <a class="nav-link text-fik-orange fw-bold" href="<?= base_url('index.php/admin/dashboard') ?>">
-                            <i class="bi bi-speedometer2 me-1"></i> Dashboard Admin
+                            <i class="bi bi-speedometer2 me-1"></i> Dashboard Laboran
+                        </a>
+                    </li>
+                    <?php elseif (strtolower($this->session->userdata('role')) == 'kaur'): ?>
+                    <li class="nav-item ms-lg-3">
+                        <a class="nav-link text-fik-orange fw-bold" href="<?= base_url('index.php/kaur/dashboard') ?>">
+                            <i class="bi bi-diagram-3 me-1"></i> Dashboard Kaur
+                        </a>
+                    </li>
+                    <?php elseif (strtolower($this->session->userdata('role')) == 'kaprodi'): ?>
+                    <li class="nav-item ms-lg-3">
+                        <a class="nav-link text-fik-orange fw-bold" href="<?= base_url('index.php/kaprodi/dashboard') ?>">
+                            <i class="bi bi-table me-1"></i> Dashboard Kaprodi
                         </a>
                     </li>
                     <?php endif; ?>
                 </ul>
             </div>
             
-            <div class="d-none d-lg-block">
-                <div class="dropdown">
-                    <button class="btn btn-user dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-circle me-1"></i> <?= $this->session->userdata('nama'); ?>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; mt: 2px;">
-                        <li>
-                            <div class="px-3 py-2">
-                                <span class="d-block text-muted small">ID/NIM:</span>
-                                <span class="fw-bold"><?= $this->session->userdata('username'); ?></span>
-                            </div>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#"><i class="bi bi-shield-check me-2 text-fik-orange"></i>Role: <?= ucfirst($this->session->userdata('role')); ?></a></li>
-                        <li><a class="dropdown-item text-danger fw-bold" href="<?= base_url('index.php/auth/logout') ?>"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
-                    </ul>
-                </div>
+           <div class="d-none d-lg-block">
+                <?php if($this->session->userdata('logged_in')): ?>
+                    <!-- Dropdown Jika SUDAH LOGIN -->
+                    <div class="dropdown">
+                        <button class="btn btn-user dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i> <?= $display_nama; ?>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; margin-top: 2px;">
+                            <li>
+                                <div class="px-3 py-2">
+                                    <span class="d-block text-muted small">ID/NIM:</span>
+                                    <span class="fw-bold"><?= $this->session->userdata('username'); ?></span>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-shield-check me-2 text-fik-orange"></i>Role: <?= $display_role; ?></a></li>
+                            <li><a class="dropdown-item text-danger fw-bold" href="<?= base_url('index.php/auth/logout') ?>"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                <?php else: ?>
+                    <!-- Dropdown Jika BELUM LOGIN (Mode Guest) -->
+                    <div class="dropdown">
+                        <button class="btn btn-user dropdown-toggle px-3" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle me-1"></i> Guest
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; margin-top: 2px;">
+                            <li>
+                                <div class="px-3 py-2 text-center pb-1">
+                                    <span class="d-block text-muted small">Selamat Datang, Guest!</span>
+                                </div>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item fw-semibold py-2" href="<?= base_url('index.php/auth') ?>">
+                                    <i class="bi bi-box-arrow-in-right me-2 text-fik-orange"></i> Masuk (Login)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item fw-semibold py-2" href="<?= base_url('index.php/auth/signup') ?>">
+                                    <i class="bi bi-person-plus me-2 text-fik-orange"></i> Daftar Akun Baru
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </nav>
@@ -277,7 +326,16 @@
         <div class="container">
             <div class="text-center mb-5" data-aos="zoom-in">
                 <h2 class="fw-bold text-white mb-2" style="letter-spacing: 1px;">SOP & TATA TERTIB STUDIO</h2>
-                <p class="text-white opacity-75">Mohon patuhi regulasi berikut demi kenyamanan bersama</p>
+                <p class="text-white opacity-75 mb-3">Mohon patuhi regulasi berikut demi kenyamanan bersama</p>
+                <?php if($can_read_internal_docs): ?>
+                    <button type="button" class="btn-doc-internal" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
+                        <i class="bi bi-file-earmark-pdf"></i> Lihat Dokumen SOP & Instruksi Kerja
+                    </button>
+                <?php else: ?>
+                    <a href="<?= base_url('index.php/auth') ?>" class="btn-doc-internal">
+                        <i class="bi bi-lock"></i> Login untuk Akses Dokumen Internal
+                    </a>
+                <?php endif; ?>
             </div>
             
             <div class="row g-4 justify-content-center">
@@ -324,7 +382,7 @@
                     <div class="d-flex align-items-start mb-4">
                         <div class="bg-light p-3 rounded-circle me-3 text-fik-orange"><i class="bi bi-whatsapp"></i></div>
                         <div>
-                            <h6 class="fw-bold mb-1">Kontak Admin Peminjaman</h6>
+                            <h6 class="fw-bold mb-1">Kontak Laboran Peminjaman</h6>
                             <p class="text-muted small mb-0">+62 811 2233 4455 (WA Chat Only)<br>Buka di jam kerja (08:30 - 16:30)</p>
                         </div>
                     </div>
@@ -347,6 +405,23 @@
         </div>
     </section>
 
+    
+    <?php if($can_read_internal_docs): ?>
+    <div class="modal fade" id="internalDocsModal" tabindex="-1" aria-labelledby="internalDocsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-lg-down">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-white border-0">
+                    <div>
+                        <p class="small text-uppercase text-warning fw-bold mb-1">Dokumen Internal</p>
+                        <h5 class="modal-title fw-bold mb-0" id="internalDocsModalLabel">SOP & Instruksi Kerja</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                </div>
+                <iframe class="internal-doc-frame" src="<?= base_url('index.php/dokumen_internal/popup') ?>" title="Dokumen Internal SOP dan Instruksi Kerja"></iframe>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
     <footer class="footer-fik">
         <div class="container">
             <div class="row">

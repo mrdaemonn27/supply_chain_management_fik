@@ -881,6 +881,12 @@ class Peminjaman_model extends CI_Model {
             ]);
             return $this->db->insert_id();
         }
+
+        if ($nama_lengkap && $peminjam->nama_peminjam !== $nama_lengkap) {
+            $this->db->where('id_peminjam', $peminjam->id_peminjam);
+            $this->db->update($this->table_peminjam, ['nama_peminjam' => $nama_lengkap]);
+        }
+
         return $peminjam->id_peminjam;
     }
 
