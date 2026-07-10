@@ -1,5 +1,6 @@
 <?php
 $role = strtolower((string) $this->session->userdata('role'));
+$is_kaur = ($role === 'kaur');
 $back_url = ($role === 'kaur') ? base_url('index.php/kaur/dashboard') : (($role === 'kaprodi') ? base_url('index.php/kaprodi/dashboard') : base_url('index.php/dashboard'));
 function internal_size($bytes) {
     $bytes = (int) $bytes;
@@ -33,6 +34,7 @@ function internal_icon($file) {
         .doc-icon { width: 42px; height: 42px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; background: rgba(234,91,26,.12); color: #c24a13; font-size: 1.3rem; }
         .soft-badge { border-radius: 999px; padding: 6px 10px; font-weight: 600; font-size: .74rem; background: rgba(234,91,26,.12); color: #c24a13; }
         .inactive-row { opacity: .58; }
+        .kaur-preview-frame { width: 100%; height: min(78vh, 760px); border: 0; background: #f7f8fa; }
         @media (max-width: 767.98px) { .topbar-actions { width: 100%; } .topbar-actions .btn { flex: 1 1 auto; } }
     </style>
 </head>
@@ -46,7 +48,9 @@ function internal_icon($file) {
             </div>
             <div class="topbar-actions d-flex flex-wrap gap-2">
                 <a href="<?= $back_url ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-arrow-left me-1"></i> Kembali</a>
-                <a href="<?= base_url('index.php/dokumen_internal/popup') ?>" target="_blank" class="btn btn-sm btn-fik rounded-pill px-3"><i class="bi bi-eye me-1"></i> Preview Popup</a>
+                <?php if(!$is_kaur): ?>
+                    <a href="<?= base_url('index.php/dokumen_internal/popup') ?>" target="_blank" class="btn btn-sm btn-fik rounded-pill px-3"><i class="bi bi-eye me-1"></i> Preview Popup</a>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -127,7 +131,18 @@ function internal_icon($file) {
                                     <td class="text-end pe-3">
                                         <div class="d-inline-flex flex-wrap justify-content-end gap-1">
                                             <?php if($d->is_active): ?>
-                                                <a href="<?= base_url('index.php/dokumen_internal/lihat/'.$d->id_dokumen) ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill"><i class="bi bi-eye me-1"></i> Buka</a>
+                                                <?php if($is_kaur): ?>
+                                                    <button type="button"
+                                                        class="btn btn-sm btn-outline-primary rounded-pill js-kaur-preview"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#kaurPreviewModal"
+                                                        data-title="<?= html_escape($d->judul) ?>"
+                                                        data-preview="<?= base_url('index.php/dokumen_internal/preview/'.$d->id_dokumen) ?>">
+                                                        <i class="bi bi-eye me-1"></i> Preview
+                                                    </button>
+                                                <?php else: ?>
+                                                    <a href="<?= base_url('index.php/dokumen_internal/lihat/'.$d->id_dokumen) ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill"><i class="bi bi-eye me-1"></i> Buka</a>
+                                                <?php endif; ?>
                                                 <a href="<?= base_url('index.php/dokumen_internal/unduh/'.$d->id_dokumen) ?>" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="bi bi-download"></i></a>
                                             <?php endif; ?>
                                             <?php if($can_manage): ?>
@@ -145,6 +160,50 @@ function internal_icon($file) {
         </div>
     </div>
 </main>
+
+<?php if($is_kaur): ?>
+<div class="modal fade" id="kaurPreviewModal" tabindex="-1" aria-labelledby="kaurPreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-lg-down">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white border-0">
+                <div>
+                    <p class="small text-uppercase text-warning fw-bold mb-1">Preview Dokumen</p>
+                    <h5 class="modal-title fw-bold mb-0" id="kaurPreviewModalLabel">Dokumen Internal</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <iframe class="kaur-preview-frame" id="kaurPreviewFrame" title="Preview Dokumen Internal Kaur"></iframe>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<?php if($is_kaur): ?>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const modal = document.getElementById('kaurPreviewModal');
+        const frame = document.getElementById('kaurPreviewFrame');
+        const title = document.getElementById('kaurPreviewModalLabel');
+
+        document.querySelectorAll('.js-kaur-preview').forEach(function (button) {
+            button.addEventListener('click', function () {
+                if (title) {
+                    title.textContent = button.dataset.title || 'Dokumen Internal';
+                }
+                if (frame) {
+                    frame.setAttribute('src', button.dataset.preview || 'about:blank');
+                }
+            });
+        });
+
+        if (modal && frame) {
+            modal.addEventListener('hidden.bs.modal', function () {
+                frame.removeAttribute('src');
+            });
+        }
+    });
+</script>
+<?php endif; ?>
 </body>
 </html>

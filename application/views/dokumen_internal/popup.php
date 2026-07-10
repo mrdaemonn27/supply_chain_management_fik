@@ -1,9 +1,14 @@
 <?php
-function popup_icon($file) {
+/** @var bool $can_manage */
+/** @var array $dokumen */
+$can_manage = isset($can_manage) ? (bool) $can_manage : false;
+$dokumen = isset($dokumen) && is_array($dokumen) ? $dokumen : [];
+
+function popup_icon(?string $file): string {
     $ext = strtolower(pathinfo((string) $file, PATHINFO_EXTENSION));
     return $ext === 'pdf' ? 'file-earmark-pdf' : 'file-earmark-word';
 }
-function popup_previewable($file) {
+function popup_previewable(?string $file): bool {
     return strtolower(pathinfo((string) $file, PATHINFO_EXTENSION)) === 'pdf';
 }
 $first = !empty($dokumen) ? $dokumen[0] : null;
@@ -62,7 +67,7 @@ $first = !empty($dokumen) ? $dokumen[0] : null;
                             data-title="<?= html_escape($d->judul) ?>"
                             data-category="<?= html_escape($d->kategori) ?>"
                             data-description="<?= html_escape($d->deskripsi ?: 'Tidak ada deskripsi.') ?>"
-                            data-preview="<?= base_url('index.php/dokumen_internal/lihat/'.$d->id_dokumen) ?>"
+                            data-preview="<?= base_url('index.php/dokumen_internal/preview/'.$d->id_dokumen) ?>"
                             data-download="<?= base_url('index.php/dokumen_internal/unduh/'.$d->id_dokumen) ?>"
                             data-previewable="<?= popup_previewable($d->nama_file) ? '1' : '0' ?>">
                             <div class="d-flex align-items-start gap-2">
@@ -87,21 +92,22 @@ $first = !empty($dokumen) ? $dokumen[0] : null;
                         <h4 class="fw-bold mb-1" id="docTitle"><?= html_escape($first->judul) ?></h4>
                         <p class="text-muted mb-0" id="docDescription"><?= html_escape($first->deskripsi ?: 'Tidak ada deskripsi.') ?></p>
                     </div>
-                    <div class="d-flex gap-2 align-items-start">
+                    <div class="d-flex flex-wrap gap-2 align-items-start">
+                        <button type="button" class="btn btn-fik rounded-pill px-3" id="docPreviewBtn"
+                            data-preview="<?= base_url('index.php/dokumen_internal/preview/'.$first->id_dokumen) ?>"
+                            data-previewable="<?= popup_previewable($first->nama_file) ? '1' : '0' ?>">
+                            <i class="bi bi-eye me-1"></i> Preview
+                        </button>
                         <a href="<?= base_url('index.php/dokumen_internal/unduh/'.$first->id_dokumen) ?>" class="btn btn-outline-secondary rounded-pill px-3" id="docDownload"><i class="bi bi-download me-1"></i> Unduh</a>
-                        <?php if($can_manage): ?><a href="<?= base_url('index.php/dokumen_internal') ?>" target="_blank" class="btn btn-fik rounded-pill px-3"><i class="bi bi-folder2-open me-1"></i> Kelola</a><?php endif; ?>
+                        <?php if($can_manage): ?><a href="<?= base_url('index.php/dokumen_internal') ?>" target="_blank" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-folder2-open me-1"></i> Kelola</a><?php endif; ?>
                     </div>
                 </div>
                 <div id="docPreviewWrap">
-                    <?php if(popup_previewable($first->nama_file)): ?>
-                        <iframe class="doc-frame" id="docFrame" src="<?= base_url('index.php/dokumen_internal/lihat/'.$first->id_dokumen) ?>"></iframe>
-                    <?php else: ?>
-                        <div class="doc-frame d-flex flex-column align-items-center justify-content-center text-center p-4" id="docNoPreview">
-                            <i class="bi bi-file-earmark-word display-4 text-secondary mb-3"></i>
-                            <h5 class="fw-bold">Preview tidak tersedia untuk file Word</h5>
-                            <p class="text-muted">Silakan unduh dokumen untuk membukanya di aplikasi Office.</p>
-                        </div>
-                    <?php endif; ?>
+                    <div class="doc-frame d-flex flex-column align-items-center justify-content-center text-center p-4" id="docPreviewPlaceholder">
+                        <i class="bi bi-file-earmark-text display-4 text-secondary mb-3"></i>
+                        <h5 class="fw-bold">Preview belum dimuat</h5>
+                        <p class="text-muted mb-0">Klik tombol Preview untuk membaca dokumen langsung di sini. Tombol Unduh dipakai hanya jika ingin download file.</p>
+                    </div>
                 </div>
             <?php else: ?>
                 <div class="h-100 d-flex align-items-center justify-content-center text-center text-muted">
@@ -122,7 +128,28 @@ $first = !empty($dokumen) ? $dokumen[0] : null;
         const category = document.getElementById('docCategory');
         const description = document.getElementById('docDescription');
         const download = document.getElementById('docDownload');
+        const previewBtn = document.getElementById('docPreviewBtn');
         const wrap = document.getElementById('docPreviewWrap');
+
+        function renderPlaceholder() {
+            if (!wrap) return;
+            wrap.innerHTML = '<div class="doc-frame d-flex flex-column align-items-center justify-content-center text-center p-4"><i class="bi bi-file-earmark-text display-4 text-secondary mb-3"></i><h5 class="fw-bold">Preview belum dimuat</h5><p class="text-muted mb-0">Klik tombol Preview untuk membaca dokumen langsung di sini. Tombol Unduh dipakai hanya jika ingin download file.</p></div>';
+        }
+
+        function renderPreview(url, previewable) {
+            if (!wrap) return;
+            if (previewable === '1') {
+                wrap.innerHTML = '<iframe class="doc-frame" id="docFrame" src="' + (url || '#') + '"></iframe>';
+            } else {
+                wrap.innerHTML = '<div class="doc-frame d-flex flex-column align-items-center justify-content-center text-center p-4"><i class="bi bi-file-earmark-word display-4 text-secondary mb-3"></i><h5 class="fw-bold">Preview tidak tersedia untuk file Word</h5><p class="text-muted">Silakan unduh dokumen untuk membukanya di aplikasi Office.</p></div>';
+            }
+        }
+
+        if (previewBtn) {
+            previewBtn.addEventListener('click', function () {
+                renderPreview(previewBtn.dataset.preview, previewBtn.dataset.previewable);
+            });
+        }
 
         document.querySelectorAll('.js-doc-select').forEach(function (button) {
             button.addEventListener('click', function () {
@@ -133,12 +160,11 @@ $first = !empty($dokumen) ? $dokumen[0] : null;
                 category.textContent = button.dataset.category || '-';
                 description.textContent = button.dataset.description || '-';
                 download.setAttribute('href', button.dataset.download || '#');
-
-                if (button.dataset.previewable === '1') {
-                    wrap.innerHTML = '<iframe class="doc-frame" id="docFrame" src="' + (button.dataset.preview || '#') + '"></iframe>';
-                } else {
-                    wrap.innerHTML = '<div class="doc-frame d-flex flex-column align-items-center justify-content-center text-center p-4"><i class="bi bi-file-earmark-word display-4 text-secondary mb-3"></i><h5 class="fw-bold">Preview tidak tersedia untuk file Word</h5><p class="text-muted">Silakan unduh dokumen untuk membukanya di aplikasi Office.</p></div>';
+                if (previewBtn) {
+                    previewBtn.dataset.preview = button.dataset.preview || '#';
+                    previewBtn.dataset.previewable = button.dataset.previewable || '0';
                 }
+                renderPlaceholder();
             });
         });
     });

@@ -14,7 +14,7 @@ class Dashboard extends CI_Controller {
             redirect('auth');
         }
 
-        if (!in_array(strtolower((string) $this->session->userdata('role')), ['admin', 'laboran', 'kaur'], true)) {
+        if (!in_array(strtolower((string) $this->session->userdata('role')), ['admin', 'laboran'], true)) {
             $this->session->set_flashdata('error', 'Akses ditolak. Panel ini khusus Laboran.');
             redirect('dashboard');
         }

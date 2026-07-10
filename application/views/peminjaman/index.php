@@ -365,7 +365,7 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
-                <iframe class="internal-doc-frame" src="<?= base_url('index.php/dokumen_internal/popup') ?>" title="Dokumen Internal SOP dan Instruksi Kerja"></iframe>
+                <iframe class="internal-doc-frame js-internal-doc-frame" data-src="<?= base_url('index.php/dokumen_internal/popup') ?>" title="Dokumen Internal SOP dan Instruksi Kerja"></iframe>
             </div>
         </div>
     </div>
@@ -452,6 +452,20 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
         AOS.init({ once: true, offset: 20 });
 
         document.addEventListener('DOMContentLoaded', function () {
+            const internalDocsModal = document.getElementById('internalDocsModal');
+            const internalDocsFrame = document.querySelector('.js-internal-doc-frame');
+
+            if (internalDocsModal && internalDocsFrame) {
+                internalDocsModal.addEventListener('show.bs.modal', function () {
+                    if (!internalDocsFrame.getAttribute('src')) {
+                        internalDocsFrame.setAttribute('src', internalDocsFrame.dataset.src);
+                    }
+                });
+
+                internalDocsModal.addEventListener('hidden.bs.modal', function () {
+                    internalDocsFrame.removeAttribute('src');
+                });
+            }
             const sopModalElement = document.getElementById('sopModal');
             const sopModal = new bootstrap.Modal(sopModalElement);
             const sopScrollBox = document.getElementById('sopScrollBox');

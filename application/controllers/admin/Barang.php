@@ -4,7 +4,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 /**
  * Controller: Barang
  * Path: application/controllers/admin/Barang.php
- * Khusus untuk ROLE ADMIN mengelola Master Data Aset & Laboratorium
+ * Khusus untuk ROLE ADMIN/LABORAN mengelola Master Data Aset & Laboratorium
  */
 #[\AllowDynamicProperties]
 class Barang extends CI_Controller {
@@ -18,8 +18,8 @@ class Barang extends CI_Controller {
             redirect('auth');
         }
 
-        // Proteksi: WAJIB ROLE ADMIN
-        if(strtolower($this->session->userdata('role')) != 'admin') {
+        // Proteksi: role admin lama tetap diperlakukan sebagai Laboran.
+        if(!in_array(strtolower((string) $this->session->userdata('role')), ['admin', 'laboran'], true)) {
             $this->session->set_flashdata('error', 'Akses ditolak! Halaman ini khusus Laboran.');
             redirect('dashboard');
         }

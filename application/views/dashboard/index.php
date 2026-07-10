@@ -81,8 +81,26 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
         }
 
         .internal-doc-frame { width: 100%; height: min(78vh, 760px); border: 0; border-radius: 0 0 8px 8px; background: #f7f8fa; }
-        .btn-doc-internal { border: 1px solid rgba(255,255,255,.7); color: #fff; border-radius: 999px; padding: 10px 18px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-doc-internal:hover { background: #fff; color: #c24a13; }
+        .btn-doc-internal {
+            border: 1px solid rgba(234, 91, 26, 0.75);
+            color: #fff;
+            background: rgba(234, 91, 26, 0.18);
+            border-radius: 999px;
+            padding: 10px 18px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: 0.25s ease;
+        }
+        .btn-doc-internal:hover {
+            background: rgba(234, 91, 26, 0.32);
+            border-color: #ea5b1a;
+            color: #fff;
+            transform: translateY(-2px);
+        }
 
         /* Header Tampilan Awal (Slimmer) */
         .catalog-header {
@@ -162,7 +180,7 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
         .footer-fik h5 { font-weight: 700; margin-bottom: 1.8rem; font-size: 1.15rem; color: #ffffff; }
         .footer-fik ul { list-style: none; padding-left: 0; }
         .footer-fik ul li { margin-bottom: 0.8rem; position: relative; padding-left: 18px; }
-        .footer-fik ul li::before { content: 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢'; position: absolute; left: 0; top: -2px; color: #ffffff; font-size: 1.2rem; }
+        .footer-fik ul li::before { content: ''; position: absolute; left: 0; top: .55rem; width: 6px; height: 6px; border-radius: 50%; background: #ea5b1a; }
         .footer-fik ul li a { color: #dcdcdc; text-decoration: none; transition: 0.3s; }
         .footer-fik ul li a:hover { color: #ffffff; text-decoration: underline; }
         .map-container iframe { width: 100%; height: 350px; border-radius: 15px; }
@@ -326,20 +344,11 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
         <div class="container">
             <div class="text-center mb-5" data-aos="zoom-in">
                 <h2 class="fw-bold text-white mb-2" style="letter-spacing: 1px;">SOP & TATA TERTIB STUDIO</h2>
-                <p class="text-white opacity-75 mb-3">Mohon patuhi regulasi berikut demi kenyamanan bersama</p>
-                <?php if($can_read_internal_docs): ?>
-                    <button type="button" class="btn-doc-internal" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
-                        <i class="bi bi-file-earmark-pdf"></i> Lihat Dokumen SOP & Instruksi Kerja
-                    </button>
-                <?php else: ?>
-                    <a href="<?= base_url('index.php/auth') ?>" class="btn-doc-internal">
-                        <i class="bi bi-lock"></i> Login untuk Akses Dokumen Internal
-                    </a>
-                <?php endif; ?>
+                <p class="text-white opacity-75 mb-0">Mohon patuhi regulasi berikut demi kenyamanan bersama</p>
             </div>
             
             <div class="row g-4 justify-content-center">
-                <div class="col-md-5" data-aos="fade-right" data-aos-delay="100">
+                <div class="col-md-6 col-xl-4" data-aos="fade-up" data-aos-delay="100">
                     <div class="rule-card h-100">
                         <i class="bi bi-info-circle fs-1 text-fik-orange mb-3 d-block"></i>
                         <h5 class="fw-bold text-white mb-3">Ketentuan Peminjaman</h5>
@@ -350,7 +359,25 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
                         </p>
                     </div>
                 </div>
-                <div class="col-md-5" data-aos="fade-left" data-aos-delay="200">
+                <div class="col-md-6 col-xl-4" data-aos="fade-up" data-aos-delay="200">
+                    <div class="rule-card h-100">
+                        <i class="bi bi-file-earmark-pdf fs-1 text-fik-orange mb-3 d-block"></i>
+                        <h5 class="fw-bold text-white mb-3">Dokumen SOP & Instruksi Kerja</h5>
+                        <p class="text-light opacity-75 small mb-4" style="line-height: 1.8;">
+                            Buka dokumen internal berisi SOP, tata tertib, dan instruksi kerja studio/laboratorium.
+                        </p>
+                        <?php if($can_read_internal_docs): ?>
+                            <button type="button" class="btn-doc-internal" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
+                                <i class="bi bi-eye"></i> Lihat Dokumen
+                            </button>
+                        <?php else: ?>
+                            <a href="<?= base_url('index.php/auth') ?>" class="btn-doc-internal">
+                                <i class="bi bi-lock"></i> Login untuk Akses
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-md-6 col-xl-4" data-aos="fade-up" data-aos-delay="300">
                     <div class="rule-card h-100">
                         <i class="bi bi-exclamation-triangle fs-1 text-fik-orange mb-3 d-block"></i>
                         <h5 class="fw-bold text-white mb-3">Ketentuan Pengembalian</h5>
@@ -417,7 +444,7 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
                 </div>
-                <iframe class="internal-doc-frame" src="<?= base_url('index.php/dokumen_internal/popup') ?>" title="Dokumen Internal SOP dan Instruksi Kerja"></iframe>
+                <iframe class="internal-doc-frame js-internal-doc-frame" data-src="<?= base_url('index.php/dokumen_internal/popup') ?>" title="Dokumen Internal SOP dan Instruksi Kerja"></iframe>
             </div>
         </div>
     </div>
@@ -485,6 +512,23 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
             once: true,
             offset: 50 
         });
+        function bindInternalDocsModal() {
+            const internalDocsModal = document.getElementById('internalDocsModal');
+            const internalDocsFrame = document.querySelector('.js-internal-doc-frame');
+
+            if (internalDocsModal && internalDocsFrame) {
+                internalDocsModal.addEventListener('show.bs.modal', function () {
+                    if (!internalDocsFrame.getAttribute('src')) {
+                        internalDocsFrame.setAttribute('src', internalDocsFrame.dataset.src);
+                    }
+                });
+
+                internalDocsModal.addEventListener('hidden.bs.modal', function () {
+                    internalDocsFrame.removeAttribute('src');
+                });
+            }
+        }
+        document.addEventListener('DOMContentLoaded', bindInternalDocsModal);
     </script>
 </body>
 </html>

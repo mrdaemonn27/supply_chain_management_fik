@@ -135,6 +135,36 @@ class Dokumen_internal extends CI_Controller {
         exit;
     }
 
+    public function preview($id) {
+        $this->guard_login();
+        $dokumen = $this->Dokumen_internal_model->get_by_id($id);
+        if (!$dokumen || !$dokumen->is_active) {
+            show_404();
+        }
+
+        $path = FCPATH . 'assets/uploads/dokumen_internal/' . $dokumen->nama_file;
+        if (!is_file($path)) {
+            show_404();
+        }
+
+        $extension = strtolower(pathinfo($dokumen->nama_file, PATHINFO_EXTENSION));
+        if ($extension !== 'pdf') {
+            $this->load->view('dokumen_internal/pdf_preview', [
+                'dokumen' => $dokumen,
+                'pdf_data_uri' => null,
+                'is_pdf' => false,
+            ]);
+            return;
+        }
+
+        $pdf_data_uri = 'data:application/pdf;base64,' . base64_encode(file_get_contents($path));
+        $this->load->view('dokumen_internal/pdf_preview', [
+            'dokumen' => $dokumen,
+            'pdf_data_uri' => $pdf_data_uri,
+            'is_pdf' => true,
+        ]);
+    }
+
     public function unduh($id) {
         $this->guard_login();
         $dokumen = $this->Dokumen_internal_model->get_by_id($id);

@@ -9,16 +9,38 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
-       :root {
-            --fik-orange: #e04700;
-            --fik-brown: #b6471e;
-            --fik-dark: #6c6868;
+        :root {
+            --fik-orange: #ea5b1a;
+            --fik-red: #d71920;
+            --fik-dark: #1f1f1f;
+            --fik-muted: #6b7280;
+            --fik-line: #e8eaed;
+            --fik-soft: #f4f6f8;
         }
 
+        * { box-sizing: border-box; }
+
         body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, rgba(234, 91, 26, 0.15), rgba(93, 51, 21, 0.12));
             min-height: 100vh;
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            color: #111827;
+            background:
+                linear-gradient(135deg, rgba(31, 31, 31, .94), rgba(31, 31, 31, .9)),
+                url('<?= base_url('assets/logo/Gedung.webp'); ?>') center/cover fixed;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+            background-size: 46px 46px;
+            mask-image: linear-gradient(to bottom, rgba(0,0,0,.75), transparent 80%);
         }
 
         .auth-page {
@@ -26,125 +48,451 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 24px;
+            padding: clamp(18px, 4vw, 44px);
         }
 
-        .auth-card {
-            width: 100%;
-            max-width: 1050px;
-            background: #fff;
-            border-radius: 24px;
+        .auth-shell {
+            width: min(1080px, 100%);
+            min-height: 680px;
+            display: grid;
+            grid-template-columns: .94fr 1.06fr;
             overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.16);
+            background: #fff;
+            border: 1px solid rgba(255,255,255,.24);
+            border-radius: 28px;
+            box-shadow: 0 30px 90px rgba(0,0,0,.32);
+            animation: shellIn .72s cubic-bezier(.2,.8,.2,1) both;
         }
 
-        .auth-sidebar {
-            background: linear-gradient(135deg, var(--fik-dark), var(--fik-brown));
-            color: #fff;
-            padding: 40px;
+        .auth-form-panel {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(28px, 5vw, 54px);
+            background: #fff;
+            animation: formIn .72s cubic-bezier(.2,.8,.2,1) .12s both;
         }
 
-        .auth-form {
-            padding: 40px;
+        .auth-form-inner {
+            width: min(460px, 100%);
+        }
+
+        .brand-lockup {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .brand-lockup img {
+            width: min(260px, 82%);
+            height: auto;
+            object-fit: contain;
+        }
+
+        .auth-title {
+            font-size: clamp(2rem, 5vw, 2.6rem);
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: 0;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .auth-subtitle {
+            text-align: center;
+            color: var(--fik-muted);
+            font-size: .92rem;
+            margin-bottom: 22px;
+        }
+
+        .auth-hint {
+            text-align: center;
+            color: #8a9099;
+            font-size: .86rem;
+            margin-bottom: 18px;
+        }
+
+        .input-wrap {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .input-wrap i {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            z-index: 3;
+            width: 18px;
+            text-align: center;
+            transform: translateY(-50%);
+            color: #9ca3af;
+            font-size: 1rem;
+            line-height: 1;
+            pointer-events: none;
+            transition: color .2s ease, opacity .2s ease;
+        }
+
+        .form-control {
+            position: relative;
+            z-index: 1;
+            height: 50px;
+            border: 0;
+            border-radius: 12px;
+            background: #eef0f3;
+            padding: 0 18px 0 48px;
+            font-size: .95rem;
+            color: #111827;
+            transition: box-shadow .2s ease, background .2s ease, transform .2s ease;
+        }
+
+        .form-control:focus {
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(234,91,26,.17), 0 10px 26px rgba(17,24,39,.08);
+            transform: translateY(-1px);
+        }
+
+        .input-wrap:focus-within i {
+            color: var(--fik-orange);
+            opacity: 1;
         }
 
         .btn-fik {
-            background: linear-gradient(45deg, #c24a13, var(--fik-orange));
+            min-height: 52px;
+            border: 0;
+            border-radius: 12px;
             color: #fff;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
+            font-weight: 800;
+            letter-spacing: 0;
+            background: linear-gradient(135deg, var(--fik-red), var(--fik-orange));
+            box-shadow: 0 16px 30px rgba(234,91,26,.28);
+            transition: transform .2s ease, box-shadow .2s ease;
         }
 
         .btn-fik:hover {
             color: #fff;
-            box-shadow: 0 8px 20px rgba(234, 91, 26, 0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 20px 38px rgba(234,91,26,.38);
         }
 
-        .form-control:focus {
-            border-color: var(--fik-orange);
-            box-shadow: 0 0 0 0.2rem rgba(234, 91, 26, 0.2);
+        .auth-side-panel {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(34px, 5vw, 56px);
+            color: #fff;
+            background: linear-gradient(135deg, #d71920 0%, #f04f19 100%);
+            animation: panelSlideIn .82s cubic-bezier(.2,.8,.2,1) both;
         }
 
-        .text-fik-orange { color: var(--fik-orange) !important; }
-        .text-fik-brown { color: var(--fik-brown) !important; }
+        .auth-side-panel::before {
+            content: '';
+            position: absolute;
+            inset: -35% -20%;
+            z-index: 0;
+            background:
+                linear-gradient(115deg, transparent 0 35%, rgba(255,255,255,.18) 45%, transparent 56%),
+                repeating-linear-gradient(135deg, rgba(255,255,255,.08) 0 1px, transparent 1px 18px);
+            animation: panelSweep 5.8s linear infinite;
+        }
+
+        .auth-side-content {
+            position: relative;
+            z-index: 2;
+            width: min(390px, 100%);
+            text-align: center;
+            animation: sideTextIn .78s cubic-bezier(.2,.8,.2,1) .2s both;
+        }
+
+        .side-kicker {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 16px;
+            border: 1px solid rgba(255,255,255,.34);
+            border-radius: 999px;
+            background: linear-gradient(135deg, rgba(255,255,255,.72), rgba(255,255,255,.42));
+            box-shadow: 0 14px 32px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.42);
+            backdrop-filter: blur(10px) saturate(1.15);
+            -webkit-backdrop-filter: blur(10px) saturate(1.15);
+            margin-bottom: 24px;
+        }
+
+        .side-kicker img {
+            width: min(230px, 54vw);
+            height: auto;
+            display: block;
+            object-fit: contain;
+            filter: saturate(1.08) contrast(1.04) drop-shadow(0 4px 10px rgba(0,0,0,.1));
+        }
+
+        .auth-side-content h2 {
+            font-size: clamp(2.1rem, 5vw, 3rem);
+            line-height: 1.08;
+            font-weight: 800;
+            margin-bottom: 14px;
+            letter-spacing: 0;
+        }
+
+        .auth-side-content p {
+            color: rgba(255,255,255,.82);
+            margin-bottom: 30px;
+        }
+
+        .role-pills {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 28px;
+        }
+
+        .role-pills span {
+            border: 1px solid rgba(255,255,255,.28);
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: rgba(255,255,255,.12);
+            font-size: .78rem;
+            font-weight: 700;
+            animation: floatIcon 3.2s ease-in-out infinite;
+        }
+
+        .role-pills span:nth-child(2) { animation-delay: .16s; }
+        .role-pills span:nth-child(3) { animation-delay: .32s; }
+
+        .btn-ghost {
+            min-width: 170px;
+            border: 2px solid rgba(255,255,255,.82);
+            color: #fff;
+            border-radius: 12px;
+            padding: 12px 20px;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background .2s ease, color .2s ease, transform .2s ease;
+        }
+
+        .btn-ghost:hover {
+            background: #fff;
+            color: var(--fik-red);
+            transform: translateY(-2px);
+        }
+
+        .auth-mobile-link {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: var(--fik-muted);
+            font-size: .9rem;
+        }
+
+        .auth-mobile-link a {
+            color: var(--fik-orange);
+            font-weight: 700;
+            text-decoration: none;
+        }
+
+        .alert {
+            font-size: .9rem;
+            border-radius: 12px;
+        }
+
+        @keyframes shellIn {
+            from { transform: translateY(22px) scale(.985); }
+            to { transform: translateY(0) scale(1); }
+        }
+
+        @keyframes formIn {
+            from { transform: translateX(26px); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes panelSlideIn {
+            from { transform: translateX(-16%); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes sideTextIn {
+            from { transform: translateY(18px); }
+            to { transform: translateY(0); }
+        }
+
+        @keyframes panelSweep {
+            from { transform: translateX(-12%) rotate(0deg); }
+            to { transform: translateX(12%) rotate(0deg); }
+        }
+
+        @keyframes floatIcon {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @media (max-width: 991.98px) {
+            body { background-attachment: scroll; }
+            .auth-page { align-items: flex-start; }
+            .auth-shell {
+                min-height: auto;
+                grid-template-columns: 1fr;
+                max-width: 560px;
+                border-radius: 22px;
+            }
+
+            .auth-side-panel {
+                min-height: 260px;
+                padding: 34px 26px;
+            }
+
+            .auth-form-panel {
+                padding: 32px 24px 34px;
+            }
+
+            .auth-side-content h2 { font-size: 2rem; }
+            .auth-side-content p { margin-bottom: 18px; }
+            .btn-ghost { display: none; }
+            .auth-mobile-link { display: block; }
+        }
+
+        @media (max-width: 420px) {
+            .auth-page { padding: 12px; }
+            .auth-shell { border-radius: 18px; }
+            .auth-side-panel {
+                min-height: auto;
+                padding: 28px 20px;
+            }
+            .side-kicker {
+                margin-bottom: 16px;
+                padding: 8px 14px;
+            }
+            .side-kicker img {
+                width: min(210px, 74vw);
+            }
+            .auth-side-content h2 {
+                max-width: 280px;
+                margin-left: auto;
+                margin-right: auto;
+                font-size: 1.75rem;
+                line-height: 1.08;
+                margin-bottom: 10px;
+            }
+            .auth-side-content p {
+                font-size: .9rem;
+                margin-bottom: 16px;
+            }
+            .role-pills {
+                gap: 8px;
+                margin-bottom: 0;
+            }
+            .role-pills span {
+                padding: 7px 10px;
+            }
+            .auth-form-panel {
+                padding: 26px 18px 28px;
+            }
+            .brand-lockup {
+                margin-bottom: 14px;
+            }
+            .brand-lockup img {
+                width: min(230px, 82%);
+            }
+            .auth-title {
+                font-size: 2rem;
+            }
+            .auth-subtitle {
+                margin-bottom: 16px;
+            }
+            .input-wrap {
+                margin-bottom: 10px;
+            }
+            .form-control, .btn-fik { height: 50px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: .01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="auth-page">
-        <div class="auth-card row g-0">
-            <div class="auth-sidebar col-lg-5 d-flex flex-column justify-content-between">
-                <div>
-                    <div class="d-flex align-items-center mb-4">
-                        <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo" width="300" class="me-2">
-                        <div>
-                            <div class="fw-bold" style="font-size: 1.1rem; letter-spacing: 1px;"></div>
-                            <div class="small text-white-50"></div>
+    <main class="auth-page">
+        <section class="auth-shell" aria-label="Halaman daftar SCM FIK">
+            <aside class="auth-side-panel">
+                <div class="auth-side-content">
+                    <div class="side-kicker">
+                        <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Fakultas Industri Kreatif">
+                    </div>
+                    <h2>Mulai Akses Sistem</h2>
+                    <p>Buat akun untuk mengajukan peminjaman barang studio dan memantau status persetujuannya.</p>
+                    <div class="role-pills" aria-hidden="true">
+                        <span>User</span>
+                        <span>SOP</span>
+                        <span>Riwayat</span>
+                    </div>
+                    <a href="<?= site_url('auth'); ?>" class="btn-ghost">
+                        Masuk
+                    </a>
+                </div>
+            </aside>
+
+            <div class="auth-form-panel">
+                <div class="auth-form-inner">
+                    <h1 class="auth-title">Sign Up</h1>
+                    <p class="auth-hint">Isi data akun baru</p>
+
+                    <?php if ($this->session->flashdata('error')): ?>
+                        <div class="alert alert-danger border-0 text-center">
+                            <?= $this->session->flashdata('error'); ?>
                         </div>
-                    </div>
-                    <h2 class="fw-bold mb-3">Buat akun untuk akses sistem.</h2>
-                    <p class="text-white-50 mb-4">Daftar sebagai pengguna untuk mengajukan peminjaman alat studio dan melihat statusnya.</p>
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-camera me-2 text-fik-orange"></i>
-                        <span>Kelola peminjaman alat studio</span>
-                    </div>
-                    <div class="d-flex align-items-center mb-3">
-                        <i class="bi bi-clipboard-check me-2 text-fik-orange"></i>
-                        <span>Lacak status pengajuan</span>
-                    </div>
-                    <div class="d-flex align-items-center">
-                        <i class="bi bi-person-lines-fill me-2 text-fik-orange"></i>
-                        <span>Data akun tersimpan sesuai tabel users</span>
-                    </div>
-                </div>
-                <div class="mt-5">
-                    <a href="<?= site_url('auth'); ?>" class="btn btn-outline-light rounded-pill px-4">Sudah punya akun?</a>
-                </div>
-            </div>
+                    <?php endif; ?>
 
-            <div class="auth-form col-lg-7">
-                <div class="text-center mb-4">
-                    <h3 class="fw-bold text-fik-brown">Daftar Akun</h3>
-                    <p class="text-muted mb-0">Isi data di bawah untuk membuat akun baru.</p>
-                </div>
+                    <form action="<?= site_url('auth/process_signup'); ?>" method="post">
+                        <div class="input-wrap">
+                            <label for="nim_nip" class="visually-hidden">NIM / NIP</label>
+                            <i class="bi bi-person-vcard"></i>
+                            <input type="text" name="nim_nip" id="nim_nip" class="form-control" placeholder="Contoh: 2023001" required>
+                        </div>
+                        <div class="input-wrap">
+                            <label for="nama_lengkap" class="visually-hidden">Nama Lengkap</label>
+                            <i class="bi bi-person"></i>
+                            <input type="text" name="nama_lengkap" id="nama_lengkap" class="form-control" placeholder="Nama lengkap Anda" required>
+                        </div>
+                        <div class="input-wrap">
+                            <label for="email" class="visually-hidden">Email</label>
+                            <i class="bi bi-envelope"></i>
+                            <input type="email" name="email" id="email" class="form-control" placeholder="email@domain.com" required>
+                        </div>
+                        <div class="input-wrap">
+                            <label for="password" class="visually-hidden">Password</label>
+                            <i class="bi bi-lock"></i>
+                            <input type="password" name="password" id="password" class="form-control" placeholder="Buat password" required>
+                        </div>
+                        <div class="input-wrap">
+                            <label for="password_confirm" class="visually-hidden">Konfirmasi Password</label>
+                            <i class="bi bi-shield-lock"></i>
+                            <input type="password" name="password_confirm" id="password_confirm" class="form-control" placeholder="Ulangi password" required>
+                        </div>
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-fik">
+                                <i class="bi bi-person-plus me-1"></i> Daftar
+                            </button>
+                        </div>
+                    </form>
 
-                <?php if ($this->session->flashdata('error')): ?>
-                    <div class="alert alert-danger rounded-3 border-0 text-center">
-                        <?= $this->session->flashdata('error'); ?>
+                    <div class="auth-mobile-link">
+                        Sudah punya akun? <a href="<?= site_url('auth'); ?>">Masuk di sini</a>
                     </div>
-                <?php endif; ?>
-
-                <form action="<?= site_url('auth/process_signup'); ?>" method="post">
-                    <div class="mb-3">
-                        <label for="nim_nip" class="form-label fw-semibold">NIM / NIP</label>
-                        <input type="text" name="nim_nip" id="nim_nip" class="form-control py-2" placeholder="Contoh: 2023001" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="nama_lengkap" class="form-label fw-semibold">Nama Lengkap</label>
-                        <input type="text" name="nama_lengkap" id="nama_lengkap" class="form-control py-2" placeholder="Nama lengkap Anda" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label fw-semibold">Email</label>
-                        <input type="email" name="email" id="email" class="form-control py-2" placeholder="email@domain.com" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="password" class="form-label fw-semibold">Password</label>
-                        <input type="password" name="password" id="password" class="form-control py-2" placeholder="Buat password" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="password_confirm" class="form-label fw-semibold">Konfirmasi Password</label>
-                        <input type="password" name="password_confirm" id="password_confirm" class="form-control py-2" placeholder="Ulangi password" required>
-                    </div>
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-fik py-2">Daftar</button>
-                    </div>
-                </form>
-
-                <div class="text-center mt-4 text-muted small">
-                    Sudah punya akun? <a href="<?= site_url('auth'); ?>" class="text-fik-orange fw-semibold text-decoration-none">Masuk di sini</a>
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
+    </main>
+
 </body>
 </html>

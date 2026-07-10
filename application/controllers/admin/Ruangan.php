@@ -8,6 +8,19 @@ class Ruangan extends CI_Controller {
         $this->load->model('admin/Ruangan_model');
         $this->load->library('session');
         $this->load->library('form_validation');
+        $this->guard_laboran();
+    }
+
+    private function guard_laboran() {
+        if (!$this->session->userdata('logged_in')) {
+            $this->session->set_flashdata('error', 'Silakan login terlebih dahulu.');
+            redirect('auth');
+        }
+
+        if (!in_array(strtolower((string) $this->session->userdata('role')), ['admin', 'laboran'], true)) {
+            $this->session->set_flashdata('error', 'Akses ruangan khusus Laboran.');
+            redirect('dashboard');
+        }
     }
 
     public function index() {
