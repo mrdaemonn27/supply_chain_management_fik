@@ -40,7 +40,25 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
         .navbar-dark .navbar-nav .nav-link:hover::after { width: 100%; left: 0; background: #ea5b1a; }
         .btn-user { background: linear-gradient(45deg, #c24a13, #ea5b1a); color: white; font-weight: 600; border: none; border-radius: 8px; padding: 8px 20px; }
         .internal-doc-frame { width: 100%; height: min(78vh, 760px); border: 0; border-radius: 0 0 8px 8px; background: #f7f8fa; }
-        .btn-doc-mini { border-radius: 999px; font-weight: 700; padding: 7px 12px; }
+        .btn-doc-mini {
+            border-radius: 999px;
+            font-weight: 700;
+            padding: 7px 12px;
+            background-color: #ea5b1a;
+            border: 1px solid #ea5b1a;
+            color: #ffffff;
+            transition: all 0.3s ease;
+        }
+        .btn-doc-mini:hover,
+        .btn-doc-mini:focus,
+        .btn-doc-mini:active,
+        .btn-doc-mini.active,
+        .btn-doc-mini.show {
+            background-color: #c24a13;
+            border-color: #c24a13;
+            color: #ffffff;
+            box-shadow: 0 0 0 0.2rem rgba(234, 91, 26, 0.25);
+        }
 
         /* Header Katalog (Slim & Elegan, bukan hero besar) */
         .catalog-header {
@@ -259,7 +277,7 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4 pb-3 border-bottom">
             <h5 class="fw-bold text-dark m-0"><i class="bi bi-grid-fill me-2 text-fik-orange"></i>Daftar Barang Tersedia</h5>
             <div class="d-flex flex-wrap gap-2 align-items-center">
-                <button type="button" class="btn btn-sm btn-outline-warning btn-doc-mini" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
+                <button type="button" class="btn btn-sm btn-doc-mini" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
                     <i class="bi bi-file-earmark-pdf me-1"></i> SOP & Instruksi Kerja
                 </button>
                 <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-box-seam me-1"></i> Total: <?= count($barang) ?> Aset</span>

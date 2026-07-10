@@ -81,8 +81,28 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
         }
 
         .internal-doc-frame { width: 100%; height: min(78vh, 760px); border: 0; border-radius: 0 0 8px 8px; background: #f7f8fa; }
-        .btn-doc-internal { border: 1px solid rgba(255,255,255,.7); color: #fff; border-radius: 999px; padding: 10px 18px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-doc-internal:hover { background: #fff; color: #c24a13; }
+        .btn-doc-internal {
+            border: 1px solid #ea5b1a;
+            background: #ea5b1a;
+            color: #fff;
+            border-radius: 999px;
+            padding: 10px 18px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-doc-internal:hover,
+        .btn-doc-internal:focus,
+        .btn-doc-internal:active,
+        .btn-doc-internal.active {
+            background: #c24a13;
+            border-color: #c24a13;
+            color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(234, 91, 26, 0.25);
+        }
 
         /* Header Tampilan Awal (Slimmer) */
         .catalog-header {
