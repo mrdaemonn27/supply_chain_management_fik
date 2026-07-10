@@ -162,9 +162,19 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
         .footer-fik h5 { font-weight: 700; margin-bottom: 1.8rem; font-size: 1.15rem; color: #ffffff; }
         .footer-fik ul { list-style: none; padding-left: 0; }
         .footer-fik ul li { margin-bottom: 0.8rem; position: relative; padding-left: 18px; }
-        .footer-fik ul li::before { content: 'ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¢'; position: absolute; left: 0; top: -2px; color: #ffffff; font-size: 1.2rem; }
-        .footer-fik ul li a { color: #dcdcdc; text-decoration: none; transition: 0.3s; }
-        .footer-fik ul li a:hover { color: #ffffff; text-decoration: underline; }
+        .footer-fik ul li::before { content: '\2022'; position: absolute; left: 0; top: -2px; color: #ffffff; font-size: 1.2rem; }
+        .footer-fik ul li a { 
+            color: #ffffff !important; 
+            text-decoration: none !important; 
+            transition: 0.3s; 
+        }
+        .footer-fik ul li a:visited { 
+            color: #ffffff !important; 
+        }
+        .footer-fik ul li a:hover { 
+            color: #ea5b1a !important; 
+            text-decoration: underline; 
+        }
         .map-container iframe { width: 100%; height: 350px; border-radius: 15px; }
     </style>
 </head>
