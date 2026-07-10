@@ -207,22 +207,25 @@
             animation: sideTextIn .78s cubic-bezier(.2,.8,.2,1) .2s both;
         }
 
-        .side-kicker {
+        .auth-corner-logo {
+            position: absolute;
+            top: clamp(18px, 3vw, 30px);
+            right: clamp(18px, 3vw, 34px);
+            z-index: 4;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 10px 16px;
+            padding: 8px 13px;
             border: 1px solid rgba(255,255,255,.34);
             border-radius: 999px;
             background: linear-gradient(135deg, rgba(255,255,255,.72), rgba(255,255,255,.42));
             box-shadow: 0 14px 32px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.42);
             backdrop-filter: blur(10px) saturate(1.15);
             -webkit-backdrop-filter: blur(10px) saturate(1.15);
-            margin-bottom: 24px;
         }
 
-        .side-kicker img {
-            width: min(230px, 54vw);
+        .auth-corner-logo img {
+            width: min(200px, 34vw);
             height: auto;
             display: block;
             object-fit: contain;
@@ -356,7 +359,7 @@
             .auth-form-panel {
                 width: 100%;
                 min-width: 0;
-                padding: 32px 24px 34px;
+                padding: 92px 24px 34px;
             }
 
             .auth-side-panel,
@@ -379,12 +382,13 @@
                 min-height: auto;
                 padding: 28px 20px;
             }
-            .side-kicker {
-                margin-bottom: 16px;
-                padding: 8px 14px;
+            .auth-corner-logo {
+                top: 16px;
+                right: 16px;
+                padding: 7px 12px;
             }
-            .side-kicker img {
-                width: min(210px, 74vw);
+            .auth-corner-logo img {
+                width: min(170px, 54vw);
             }
             .auth-side-content h2 {
                 max-width: 280px;
@@ -409,7 +413,7 @@
                 padding: 7px 10px;
             }
             .auth-form-panel {
-                padding: 26px 18px 28px;
+                padding: 84px 18px 28px;
             }
             .brand-lockup {
                 margin-bottom: 14px;
@@ -443,9 +447,6 @@
         <section class="auth-shell" aria-label="Halaman daftar SCM FIK">
             <aside class="auth-side-panel">
                 <div class="auth-side-content">
-                    <div class="side-kicker">
-                        <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Fakultas Industri Kreatif">
-                    </div>
                     <h2>Mulai Akses Sistem</h2>
                     <p>Buat akun untuk mengajukan peminjaman barang studio dan memantau status persetujuannya.</p>
                     <div class="role-pills" aria-hidden="true">
@@ -460,6 +461,9 @@
             </aside>
 
             <div class="auth-form-panel">
+                <div class="auth-corner-logo">
+                    <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Fakultas Industri Kreatif">
+                </div>
                 <div class="auth-form-inner">
                     <h1 class="auth-title">Sign Up</h1>
                     <p class="auth-hint">Isi data akun baru</p>
