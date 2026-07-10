@@ -85,6 +85,9 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
             border: 1px solid rgba(234, 91, 26, 0.75);
             color: #fff;
             background: rgba(234, 91, 26, 0.18);
+            border: 1px solid #ea5b1a;
+            background: #ea5b1a;
+            color: #fff;
             border-radius: 999px;
             padding: 10px 18px;
             font-weight: 700;
@@ -100,6 +103,17 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
             border-color: #ea5b1a;
             color: #fff;
             transform: translateY(-2px);
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-doc-internal:hover,
+        .btn-doc-internal:focus,
+        .btn-doc-internal:active,
+        .btn-doc-internal.active {
+            background: #c24a13;
+            border-color: #c24a13;
+            color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(234, 91, 26, 0.25);
         }
 
         /* Header Tampilan Awal (Slimmer) */
@@ -183,6 +197,19 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
         .footer-fik ul li::before { content: ''; position: absolute; left: 0; top: .55rem; width: 6px; height: 6px; border-radius: 50%; background: #ea5b1a; }
         .footer-fik ul li a { color: #dcdcdc; text-decoration: none; transition: 0.3s; }
         .footer-fik ul li a:hover { color: #ffffff; text-decoration: underline; }
+        .footer-fik ul li::before { content: '\2022'; position: absolute; left: 0; top: -2px; color: #ffffff; font-size: 1.2rem; }
+        .footer-fik ul li a { 
+            color: #ffffff !important; 
+            text-decoration: none !important; 
+            transition: 0.3s; 
+        }
+        .footer-fik ul li a:visited { 
+            color: #ffffff !important; 
+        }
+        .footer-fik ul li a:hover { 
+            color: #ea5b1a !important; 
+            text-decoration: underline; 
+        }
         .map-container iframe { width: 100%; height: 350px; border-radius: 15px; }
     </style>
 </head>
