@@ -17,11 +17,12 @@ class Kaprodi_model extends CI_Model {
                 `id_pengajuan` int(11) NOT NULL AUTO_INCREMENT,
                 `kode_pengajuan` varchar(40) NOT NULL,
                 `id_user` int(11) NOT NULL,
+                `jenis_pengajuan` enum('Barang','Jasa') NOT NULL DEFAULT 'Barang',
                 `nama_prodi` varchar(150) NOT NULL,
                 `nama_pengajuan` varchar(200) NOT NULL,
                 `kebutuhan_lab` text DEFAULT NULL,
                 `anak_perusahaan` varchar(150) DEFAULT NULL,
-                `status` enum('Pengajuan','Negosiasi','ACC Anak Perusahaan','Alokasi','BAST','Selesai') NOT NULL DEFAULT 'Pengajuan',
+                `status` varchar(60) NOT NULL DEFAULT 'Pengajuan',
                 `catatan_negosiasi` text DEFAULT NULL,
                 `catatan_alokasi` text DEFAULT NULL,
                 `bast_nomor` varchar(100) DEFAULT NULL,
@@ -33,8 +34,12 @@ class Kaprodi_model extends CI_Model {
                 PRIMARY KEY (`id_pengajuan`),
                 UNIQUE KEY `kode_pengajuan` (`kode_pengajuan`),
                 KEY `idx_kaprodi_user` (`id_user`),
-                KEY `idx_kaprodi_status` (`status`)
+                KEY `idx_kaprodi_status` (`status`),
+                KEY `idx_kaprodi_jenis` (`jenis_pengajuan`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        } else {
+            $this->ensure_column($this->table, 'jenis_pengajuan', "`jenis_pengajuan` enum('Barang','Jasa') NOT NULL DEFAULT 'Barang' AFTER `id_user`");
+            $this->ensure_status_varchar($this->table);
         }
 
         if (!$this->db->table_exists($this->itemTable)) {
@@ -58,6 +63,19 @@ class Kaprodi_model extends CI_Model {
         }
     }
 
+    private function ensure_column($table, $field, $definition) {
+        if (!$this->db->field_exists($field, $table)) {
+            $this->db->query("ALTER TABLE `{$table}` ADD {$definition}");
+        }
+    }
+
+    private function ensure_status_varchar($table) {
+        $column = $this->db->query("SHOW COLUMNS FROM `{$table}` LIKE 'status'")->row();
+        if ($column && stripos((string) $column->Type, 'enum') !== false) {
+            $this->db->query("ALTER TABLE `{$table}` MODIFY `status` varchar(60) NOT NULL DEFAULT 'Pengajuan'");
+        }
+    }
+
     public function create_pengajuan($header, $items) {
         $this->db->trans_start();
         $this->db->insert($this->table, $header);
@@ -78,21 +96,90 @@ class Kaprodi_model extends CI_Model {
     }
 
     public function get_all_by_user($id_user = null) {
+        return $this->get_filtered_by_user($id_user, [], null, null);
+    }
+
+    public function count_filtered_by_user($id_user, $filters = []) {
+        $this->db->from($this->table);
+        $this->apply_filters($id_user, $filters);
+        return $this->db->count_all_results();
+    }
+
+    public function get_filtered_by_user($id_user, $filters = [], $limit = 10, $offset = 0) {
         $this->db->select('kaprodi_pengajuan.*, users.nama_lengkap');
         $this->db->from($this->table);
         $this->db->join('users', 'users.id_user = kaprodi_pengajuan.id_user', 'left');
-        if ($id_user !== null) {
-            $this->db->where('kaprodi_pengajuan.id_user', $id_user);
-        }
+        $this->apply_filters($id_user, $filters);
         $this->db->order_by('kaprodi_pengajuan.created_at', 'DESC');
-        $rows = $this->db->get()->result();
+        if ($limit !== null) {
+            $this->db->limit((int) $limit, (int) $offset);
+        }
 
+        $rows = $this->db->get()->result();
         foreach ($rows as $row) {
             $row->items = $this->get_items($row->id_pengajuan);
             $row->summary = $this->calculate_summary($row->items);
         }
 
         return $rows;
+    }
+
+    private function apply_filters($id_user, $filters) {
+        if ($id_user !== null) {
+            $this->db->where('kaprodi_pengajuan.id_user', $id_user);
+        }
+
+        if (!empty($filters['q'])) {
+            $keyword = trim($filters['q']);
+            $this->db->group_start();
+            $this->db->like('kaprodi_pengajuan.kode_pengajuan', $keyword);
+            $this->db->or_like('kaprodi_pengajuan.nama_pengajuan', $keyword);
+            $this->db->or_like('kaprodi_pengajuan.nama_prodi', $keyword);
+            $this->db->or_like('kaprodi_pengajuan.kebutuhan_lab', $keyword);
+            $this->db->group_end();
+        }
+
+        if (!empty($filters['status'])) {
+            $this->db->where('kaprodi_pengajuan.status', $filters['status']);
+        }
+
+        if (!empty($filters['jenis_pengajuan'])) {
+            $this->db->where('kaprodi_pengajuan.jenis_pengajuan', $filters['jenis_pengajuan']);
+        }
+
+        if (!empty($filters['tanggal_dari'])) {
+            $this->db->where('DATE(kaprodi_pengajuan.created_at) >=', $filters['tanggal_dari']);
+        }
+
+        if (!empty($filters['tanggal_sampai'])) {
+            $this->db->where('DATE(kaprodi_pengajuan.created_at) <=', $filters['tanggal_sampai']);
+        }
+    }
+
+    public function get_stats_by_user($id_user) {
+        $rows = $this->get_filtered_by_user($id_user, [], null, null);
+        $stats = [
+            'total' => count($rows),
+            'pengajuan' => 0,
+            'negosiasi' => 0,
+            'deal' => 0,
+            'selesai' => 0,
+        ];
+
+        foreach ($rows as $row) {
+            $status = strtolower((string) $row->status);
+            if ($status === 'pengajuan') {
+                $stats['pengajuan']++;
+            } elseif (strpos($status, 'negosiasi') !== false) {
+                $stats['negosiasi']++;
+            } elseif (in_array($row->status, ['Deal', 'Approval', 'BAST'], true)) {
+                $stats['deal']++;
+            } elseif ($row->status === 'Selesai') {
+                $stats['selesai']++;
+            }
+        }
+
+        return $stats;
     }
 
     public function get_by_id($id_pengajuan) {
@@ -130,10 +217,10 @@ class Kaprodi_model extends CI_Model {
         $subtotal_negosiasi = 0;
 
         foreach ($items as $item) {
-            $vol = (float) $item->vol;
-            $harga = (float) $item->harga_penawaran_sat;
-            $nego_vol = $item->hasil_negosiasi_vol !== null ? (float) $item->hasil_negosiasi_vol : $vol;
-            $nego_harga = $item->hasil_negosiasi_sat !== null ? (float) $item->hasil_negosiasi_sat : 0;
+            $vol = (float) ($item->vol ?? 0);
+            $harga = (float) ($item->harga_penawaran_sat ?? 0);
+            $nego_vol = isset($item->hasil_negosiasi_vol) && $item->hasil_negosiasi_vol !== null ? (float) $item->hasil_negosiasi_vol : $vol;
+            $nego_harga = isset($item->hasil_negosiasi_sat) && $item->hasil_negosiasi_sat !== null ? (float) $item->hasil_negosiasi_sat : 0;
 
             $subtotal_penawaran += $vol * $harga;
             $subtotal_markup += $vol * ($harga * 1.2);
@@ -154,6 +241,21 @@ class Kaprodi_model extends CI_Model {
             'ppn_negosiasi' => $ppn_negosiasi,
             'total_negosiasi' => $total_negosiasi,
             'sisa_alokasi' => max(0, $total_penawaran - $total_negosiasi),
+        ];
+    }
+
+    public function get_status_options() {
+        return [
+            'Pengajuan',
+            'Revisi',
+            'Negosiasi',
+            'Sedang Negosiasi',
+            'Deal',
+            'Ditolak',
+            'Approval',
+            'BAST',
+            'Inventarisasi',
+            'Selesai',
         ];
     }
 

@@ -26,6 +26,11 @@ class Pengajuan extends CI_Controller {
     public function simpan() {
         $nama_prodi = trim($this->input->post('nama_prodi', true));
         $nama_pengajuan = trim($this->input->post('nama_pengajuan', true));
+        $jenis_pengajuan = trim($this->input->post('jenis_pengajuan', true));
+
+        if (!in_array($jenis_pengajuan, ['Barang', 'Jasa'], true)) {
+            $jenis_pengajuan = 'Barang';
+        }
 
         if ($nama_prodi === '' || $nama_pengajuan === '') {
             $this->session->set_flashdata('error', 'Nama prodi dan nama pengajuan wajib diisi.');
@@ -34,34 +39,43 @@ class Pengajuan extends CI_Controller {
 
         $uraian = $this->input->post('uraian_barang');
         $vol_input = (array) $this->input->post('vol');
-        $nego_vol_input = (array) $this->input->post('hasil_negosiasi_vol');
+        $satuan_input = (array) $this->input->post('satuan');
+        $link_input = (array) $this->input->post('link_penawaran');
         $items = [];
         foreach ((array) $uraian as $i => $value) {
+            $nama_item = trim((string) $value);
+            if ($nama_item === '') {
+                continue;
+            }
+
             $vol = ($vol_input[$i] ?? '') !== '' ? (float) $vol_input[$i] : 1;
-            $nego_vol = ($nego_vol_input[$i] ?? '') !== '' ? (float) $nego_vol_input[$i] : $vol;
-            $harga_penawaran = (float) str_replace(['.', ','], ['', '.'], (string) ($this->input->post('harga_penawaran_sat')[$i] ?? 0));
-            $harga_negosiasi = (float) str_replace(['.', ','], ['', '.'], (string) ($this->input->post('hasil_negosiasi_sat')[$i] ?? 0));
             $items[] = [
-                'uraian_barang' => trim($value),
-                'vol' => $vol,
-                'satuan' => trim($this->input->post('satuan')[$i] ?? 'unit'),
-                'harga_penawaran_sat' => $harga_penawaran,
-                'link_penawaran' => trim($this->input->post('link_penawaran')[$i] ?? ''),
-                'hasil_negosiasi_vol' => $nego_vol,
-                'hasil_negosiasi_sat' => $harga_negosiasi,
-                'garansi' => trim($this->input->post('garansi')[$i] ?? ''),
+                'uraian_barang' => $nama_item,
+                'vol' => max(1, $vol),
+                'satuan' => trim($satuan_input[$i] ?? 'unit'),
+                'harga_penawaran_sat' => 0,
+                'link_penawaran' => trim($link_input[$i] ?? ''),
+                'hasil_negosiasi_vol' => null,
+                'hasil_negosiasi_sat' => null,
+                'garansi' => null,
             ];
+        }
+
+        if (empty($items)) {
+            $this->session->set_flashdata('error', 'Minimal satu kebutuhan barang atau jasa wajib diisi.');
+            redirect('kaprodi/dashboard');
         }
 
         $header = [
             'kode_pengajuan' => $this->Kaprodi_model->generate_kode(),
             'id_user' => $this->session->userdata('id_user'),
+            'jenis_pengajuan' => $jenis_pengajuan,
             'nama_prodi' => $nama_prodi,
             'nama_pengajuan' => $nama_pengajuan,
             'kebutuhan_lab' => $this->input->post('kebutuhan_lab', true),
-            'anak_perusahaan' => $this->input->post('anak_perusahaan', true),
+            'anak_perusahaan' => null,
             'status' => 'Pengajuan',
-            'catatan_negosiasi' => $this->input->post('catatan_negosiasi', true),
+            'catatan_negosiasi' => null,
         ];
 
         $id = $this->Kaprodi_model->create_pengajuan($header, $items);
@@ -70,16 +84,12 @@ class Pengajuan extends CI_Controller {
     }
 
     public function negosiasi($id_pengajuan) {
-        $this->Kaprodi_model->update_status($id_pengajuan, 'Negosiasi', [
-            'catatan_negosiasi' => $this->input->post('catatan_negosiasi', true)
-        ]);
-        $this->session->set_flashdata('success', 'Pengajuan dinaikkan ke tahap negosiasi.');
+        $this->session->set_flashdata('error', 'Tahap negosiasi sekarang menjadi kewenangan Kaur Laboratorium.');
         redirect('kaprodi/dashboard');
     }
 
     public function acc($id_pengajuan) {
-        $this->Kaprodi_model->update_status($id_pengajuan, 'ACC Anak Perusahaan');
-        $this->session->set_flashdata('success', 'Hasil negosiasi ditandai ACC anak perusahaan.');
+        $this->session->set_flashdata('error', 'Approval hasil negosiasi dilakukan oleh Kaur Laboratorium.');
         redirect('kaprodi/dashboard');
     }
 
@@ -90,31 +100,17 @@ class Pengajuan extends CI_Controller {
             redirect('kaprodi/dashboard');
         }
 
-        foreach ((array) $this->input->post('alokasi_item') as $id_item => $alokasi) {
-            $this->Kaprodi_model->update_alokasi_item($id_item, $alokasi);
-        }
-
-        $this->Kaprodi_model->update_status($id_pengajuan, 'Alokasi', [
-            'catatan_alokasi' => $this->input->post('catatan_alokasi', true)
-        ]);
-        $this->session->set_flashdata('success', 'Sisa anggaran berhasil dicatat untuk alokasi.');
+        $this->session->set_flashdata('error', 'Alokasi anggaran sekarang dikelola oleh Kaur Laboratorium.');
         redirect('kaprodi/dashboard');
     }
 
     public function bast($id_pengajuan) {
-        $this->Kaprodi_model->update_status($id_pengajuan, 'BAST', [
-            'bast_nomor' => $this->input->post('bast_nomor', true),
-            'bast_tanggal' => $this->input->post('bast_tanggal', true),
-            'bast_penerima' => $this->input->post('bast_penerima', true),
-            'bast_catatan' => $this->input->post('bast_catatan', true),
-        ]);
-        $this->session->set_flashdata('success', 'BAST distribusi barang berhasil dicatat.');
+        $this->session->set_flashdata('error', 'Dokumen BAST diinput oleh Laboran atau Kaur sesuai alur internal.');
         redirect('kaprodi/dashboard');
     }
 
     public function selesai($id_pengajuan) {
-        $this->Kaprodi_model->update_status($id_pengajuan, 'Selesai');
-        $this->session->set_flashdata('success', 'Pengajuan ditandai selesai.');
+        $this->session->set_flashdata('error', 'Status selesai ditentukan setelah proses BAST dan inventarisasi.');
         redirect('kaprodi/dashboard');
     }
 

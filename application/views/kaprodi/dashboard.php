@@ -1,28 +1,41 @@
 <?php
-function rp_kaprodi($value) {
-    return 'Rp ' . number_format((float) $value, 0, ',', '.');
-}
-function num_kaprodi($value) {
-    return rtrim(rtrim(number_format((float) $value, 2, ',', '.'), '0'), ',');
-}
 function status_class_kaprodi($status) {
     $map = [
         'Pengajuan' => 'status-pengajuan',
+        'Revisi' => 'status-revisi',
         'Negosiasi' => 'status-negosiasi',
-        'ACC Anak Perusahaan' => 'status-acc',
-        'Alokasi' => 'status-alokasi',
+        'Sedang Negosiasi' => 'status-negosiasi',
+        'Deal' => 'status-deal',
+        'Approval' => 'status-approval',
         'BAST' => 'status-bast',
+        'Inventarisasi' => 'status-inventory',
         'Selesai' => 'status-selesai',
+        'Ditolak' => 'status-ditolak',
     ];
     return $map[$status] ?? 'status-pengajuan';
 }
+function query_kaprodi($filters, $page) {
+    $params = [];
+    foreach ((array) $filters as $key => $value) {
+        if ($value !== '' && $value !== null) {
+            $params[$key] = $value;
+        }
+    }
+    $params['page'] = $page;
+    return http_build_query($params);
+}
+$filters = $filters ?? [];
+$stats = $stats ?? ['total' => 0, 'pengajuan' => 0, 'negosiasi' => 0, 'deal' => 0, 'selesai' => 0];
+$page = $page ?? 1;
+$total_pages = $total_pages ?? 1;
+$total_rows = $total_rows ?? count($pengajuan ?? []);
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= isset($title) ? $title : 'Dashboard Kaprodi' ?></title>
+    <title><?= html_escape($title ?? 'Dashboard Kaprodi') ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -34,27 +47,25 @@ function status_class_kaprodi($status) {
         .btn-fik { background: #ea5b1a; color: #fff; border: 0; }
         .btn-fik:hover { background: #c24a13; color: #fff; }
         .form-control:focus, .form-select:focus { border-color: #ea5b1a; box-shadow: 0 0 0 .2rem rgba(234, 91, 26, .16); }
-        .summary-card { min-height: 92px; padding: 18px; }
-        .summary-card .value { font-weight: 700; font-size: 1.45rem; line-height: 1; }
-        .summary-card .label { color: #6c757d; font-size: .8rem; margin-top: 8px; }
-        .procurement-table { min-width: 1280px; border-color: #60656b; font-size: .82rem; }
-        .procurement-table th, .procurement-table td { border: 1px solid #60656b; vertical-align: middle; padding: 7px 8px; }
-        .procurement-table thead th { background: #e9ecef; text-align: center; font-weight: 700; }
-        .procurement-table .group-row td { background: #f8f9fa; font-weight: 700; }
-        .procurement-table .total-label { text-align: right; font-weight: 700; background: #f8f9fa; }
-        .status-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: .75rem; font-weight: 700; }
+        .summary-card { min-height: 96px; padding: 18px; }
+        .summary-card .value { font-weight: 700; font-size: 1.5rem; line-height: 1; }
+        .summary-card .label { color: #6c757d; font-size: .82rem; margin-top: 8px; }
+        .table-clean thead th { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; color: #5f6368; background: #f8f9fa; border-bottom: 1px solid #e8eaed; white-space: nowrap; }
+        .table-clean td { vertical-align: middle; }
+        .status-pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 6px 10px; font-size: .74rem; font-weight: 700; white-space: nowrap; }
         .status-pengajuan { background: rgba(13, 110, 253, .12); color: #0d6efd; }
+        .status-revisi { background: rgba(245, 158, 11, .16); color: #a16207; }
         .status-negosiasi { background: rgba(245, 158, 11, .16); color: #a16207; }
-        .status-acc { background: rgba(25, 135, 84, .12); color: #198754; }
-        .status-alokasi { background: rgba(111, 66, 193, .12); color: #6f42c1; }
+        .status-deal, .status-approval { background: rgba(25, 135, 84, .12); color: #198754; }
         .status-bast { background: rgba(13, 202, 240, .15); color: #087990; }
-        .status-selesai { background: rgba(32, 201, 151, .14); color: #087f5b; }
-        .sticky-actions { background: #fff; border-top: 1px solid #e8eaed; }
-        .item-row .form-control { min-width: 120px; }
-        .item-row .uraian-input { min-width: 260px; }
+        .status-inventory, .status-selesai { background: rgba(32, 201, 151, .14); color: #087f5b; }
+        .status-ditolak { background: rgba(220, 53, 69, .12); color: #dc3545; }
+        .need-row { border: 1px solid #e8eaed; border-radius: 8px; padding: 12px; background: #fff; }
+        .nav-tabs .nav-link { color: #495057; font-weight: 600; }
+        .nav-tabs .nav-link.active { color: #ea5b1a; border-bottom-color: #ea5b1a; }
         @media (max-width: 767.98px) {
             .topbar-actions { width: 100%; }
-            .topbar-actions .btn { flex: 1; }
+            .topbar-actions .btn { flex: 1 1 auto; }
             .summary-card { min-height: auto; }
         }
     </style>
@@ -78,230 +89,236 @@ function status_class_kaprodi($status) {
         </div>
     </header>
 
-    <main class="container-fluid px-3 px-lg-4 py-4 py-lg-5">
+    <main class="container-fluid px-3 px-lg-4 py-4">
         <?php if($this->session->flashdata('success')): ?>
-            <div class="alert alert-success border-0 shadow-sm"><?= $this->session->flashdata('success'); ?></div>
+            <div class="alert alert-success rounded-3"><?= html_escape($this->session->flashdata('success')) ?></div>
         <?php endif; ?>
         <?php if($this->session->flashdata('error')): ?>
-            <div class="alert alert-danger border-0 shadow-sm"><?= $this->session->flashdata('error'); ?></div>
+            <div class="alert alert-danger rounded-3"><?= html_escape($this->session->flashdata('error')) ?></div>
         <?php endif; ?>
 
-        <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-end gap-3 mb-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
             <div>
-                <h1 class="h3 fw-bold mb-2">Pengajuan Barang Kaprodi</h1>
-                <p class="text-muted mb-0">Setiap prodi bisa mengajukan kebutuhan berbeda, masuk negosiasi, ACC anak perusahaan, alokasi sisa, BAST, lalu export Excel.</p>
+                <h1 class="h3 fw-bold mb-1">Pengajuan Barang dan Jasa</h1>
+                <p class="text-muted mb-0">Kaprodi mengajukan kebutuhan. Vendor, harga, negosiasi, dan BAST diproses oleh Kaur Laboratorium.</p>
             </div>
-            <button class="btn btn-fik rounded-pill px-4" type="button" data-bs-toggle="collapse" data-bs-target="#formPengajuan"><i class="bi bi-plus-circle me-1"></i> Buat Pengajuan</button>
+            <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?= date('d F Y') ?></div>
         </div>
 
-        <section class="row g-3 mb-4">
-            <div class="col-6 col-lg-3"><div class="panel-card summary-card"><div class="value"><?= count($pengajuan) ?></div><div class="label">Total pengajuan</div></div></div>
-            <div class="col-6 col-lg-3"><div class="panel-card summary-card"><div class="value"><?= count(array_filter($pengajuan, fn($p) => $p->status === 'Negosiasi')) ?></div><div class="label">Dalam negosiasi</div></div></div>
-            <div class="col-6 col-lg-3"><div class="panel-card summary-card"><div class="value"><?= count(array_filter($pengajuan, fn($p) => $p->status === 'ACC Anak Perusahaan')) ?></div><div class="label">ACC anak perusahaan</div></div></div>
-            <div class="col-6 col-lg-3"><div class="panel-card summary-card"><div class="value"><?= count(array_filter($pengajuan, fn($p) => in_array($p->status, ['BAST','Selesai'], true))) ?></div><div class="label">BAST/selesai</div></div></div>
-        </section>
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-lg-3"><div class="panel-card summary-card"><div class="value"><?= (int) $stats['total'] ?></div><div class="label">Total pengajuan</div></div></div>
+            <div class="col-6 col-lg-3"><div class="panel-card summary-card"><div class="value"><?= (int) $stats['pengajuan'] ?></div><div class="label">Menunggu proses</div></div></div>
+            <div class="col-6 col-lg-3"><div class="panel-card summary-card"><div class="value"><?= (int) $stats['negosiasi'] ?></div><div class="label">Dalam negosiasi</div></div></div>
+            <div class="col-6 col-lg-3"><div class="panel-card summary-card"><div class="value"><?= (int) ($stats['deal'] + $stats['selesai']) ?></div><div class="label">Deal / selesai</div></div></div>
+        </div>
 
-        <section class="collapse mb-4" id="formPengajuan">
-            <div class="panel-card p-3 p-lg-4">
-                <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
-                    <div>
-                        <h5 class="fw-bold mb-1">Form Pengajuan Kebutuhan</h5>
-                        <p class="text-muted small mb-0">Isi barang/pekerjaan, link penawaran, harga dari Kaprodi, dan hasil negosiasi awal bila sudah ada.</p>
-                    </div>
-                </div>
-                <form action="<?= base_url('index.php/kaprodi/pengajuan/simpan') ?>" method="post">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-4"><label class="form-label small fw-semibold text-muted">Nama Prodi</label><input type="text" name="nama_prodi" class="form-control" placeholder="Contoh: S1 Desain Komunikasi Visual" required></div>
-                        <div class="col-md-4"><label class="form-label small fw-semibold text-muted">Nama Pengajuan</label><input type="text" name="nama_pengajuan" class="form-control" placeholder="Contoh: Pengadaan Inventaris Lab" required></div>
-                        <div class="col-md-4"><label class="form-label small fw-semibold text-muted">Anak Perusahaan / Vendor</label><input type="text" name="anak_perusahaan" class="form-control" placeholder="Contoh: PT Trengginas Jaya"></div>
-                        <div class="col-12"><label class="form-label small fw-semibold text-muted">Kebutuhan Lab</label><textarea name="kebutuhan_lab" class="form-control" rows="2" placeholder="Jelaskan kebutuhan prodi ke lab"></textarea></div>
-                    </div>
-                    <div class="table-responsive mb-3">
-                        <table class="table table-bordered align-middle mb-0" id="itemTable">
-                            <thead class="table-light"><tr><th>Uraian Barang/Pekerjaan</th><th>Vol</th><th>Satuan</th><th>Harga Penawaran Sat</th><th>Link Penawaran</th><th>Vol Nego</th><th>Harga Nego Sat</th><th>Garansi</th><th></th></tr></thead>
-                            <tbody>
-                                <tr class="item-row">
-                                    <td><input type="text" name="uraian_barang[]" class="form-control uraian-input" placeholder="Nama barang/pekerjaan" required></td>
-                                    <td><input type="number" step="0.01" min="0" name="vol[]" class="form-control" value="1" required></td>
-                                    <td><input type="text" name="satuan[]" class="form-control" value="unit" required></td>
-                                    <td><input type="number" step="1" min="0" name="harga_penawaran_sat[]" class="form-control" placeholder="0" required></td>
-                                    <td><input type="url" name="link_penawaran[]" class="form-control" placeholder="https://..."></td>
-                                    <td><input type="number" step="0.01" min="0" name="hasil_negosiasi_vol[]" class="form-control" value="1"></td>
-                                    <td><input type="number" step="1" min="0" name="hasil_negosiasi_sat[]" class="form-control" placeholder="0"></td>
-                                    <td><input type="text" name="garansi[]" class="form-control" placeholder="Contoh: 1 Tahun"></td>
-                                    <td><button type="button" class="btn btn-sm btn-outline-danger js-remove-row"><i class="bi bi-x-lg"></i></button></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="mb-3"><label class="form-label small fw-semibold text-muted">Catatan Negosiasi</label><textarea name="catatan_negosiasi" class="form-control" rows="2"></textarea></div>
-                    <div class="d-flex flex-column flex-sm-row gap-2 justify-content-between">
-                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" id="addRowBtn"><i class="bi bi-plus-lg me-1"></i> Tambah Baris</button>
-                        <button class="btn btn-fik rounded-pill px-4"><i class="bi bi-send-check me-1"></i> Simpan Pengajuan</button>
-                    </div>
-                </form>
-            </div>
-        </section>
+        <ul class="nav nav-tabs mb-3" id="kaprodiTabs" role="tablist">
+            <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ajukan" type="button"><i class="bi bi-plus-circle me-1"></i> Ajukan</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-riwayat" type="button"><i class="bi bi-clock-history me-1"></i> Riwayat</button></li>
+        </ul>
 
-        <?php if(empty($pengajuan)): ?>
-            <section class="panel-card p-5 text-center text-muted"><i class="bi bi-table display-5 d-block mb-3 text-secondary"></i>Belum ada pengajuan Kaprodi.</section>
-        <?php else: ?>
-            <?php foreach($pengajuan as $p): ?>
-                <section class="panel-card mb-4 overflow-hidden">
-                    <div class="p-3 p-lg-4 border-bottom">
-                        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
-                            <div>
-                                <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                                    <h5 class="fw-bold mb-0"><?= html_escape($p->nama_pengajuan) ?></h5>
-                                    <span class="status-pill <?= status_class_kaprodi($p->status) ?>"><?= html_escape($p->status) ?></span>
+        <div class="tab-content">
+            <section class="tab-pane fade show active" id="tab-ajukan">
+                <form action="<?= base_url('index.php/kaprodi/pengajuan/simpan') ?>" method="post" class="panel-card p-3 p-lg-4 mb-4">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Jenis Pengajuan</label>
+                            <select name="jenis_pengajuan" class="form-select" required>
+                                <option value="Barang">Barang</option>
+                                <option value="Jasa">Jasa</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Program Studi</label>
+                            <input type="text" name="nama_prodi" class="form-control" placeholder="Contoh: S1 Desain Komunikasi Visual" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Nama Pengajuan</label>
+                            <input type="text" name="nama_pengajuan" class="form-control" placeholder="Contoh: Kebutuhan studio fotografi" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Keterangan Kebutuhan</label>
+                            <textarea name="kebutuhan_lab" class="form-control" rows="3" placeholder="Jelaskan alasan kebutuhan, prioritas, atau ruangan terkait."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-4 mb-3">
+                        <div>
+                            <h2 class="h6 fw-bold mb-1">Daftar Kebutuhan</h2>
+                            <div class="small text-muted">Tidak ada input vendor atau harga negosiasi di tahap Kaprodi.</div>
+                        </div>
+                        <button type="button" class="btn btn-outline-dark rounded-pill px-3" id="addNeed"><i class="bi bi-plus-lg me-1"></i> Tambah Baris</button>
+                    </div>
+
+                    <div id="needList" class="vstack gap-2">
+                        <div class="need-row">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-lg-5">
+                                    <label class="form-label small fw-semibold">Uraian Barang/Jasa</label>
+                                    <input type="text" name="uraian_barang[]" class="form-control" placeholder="Contoh: Kamera mirrorless / jasa instalasi" required>
                                 </div>
-                                <div class="small text-muted"><?= html_escape($p->kode_pengajuan) ?> · <?= html_escape($p->nama_prodi) ?> · <?= html_escape($p->anak_perusahaan ?: 'Vendor belum diisi') ?></div>
-                                <?php if(!empty($p->kebutuhan_lab)): ?><div class="small mt-2"><?= nl2br(html_escape($p->kebutuhan_lab)) ?></div><?php endif; ?>
-                            </div>
-                            <div class="text-lg-end">
-                                <div class="small text-muted">Total setelah +20% dan PPN</div>
-                                <div class="h5 fw-bold mb-1"><?= rp_kaprodi($p->summary['total_penawaran']) ?></div>
-                                <div class="small text-success">Sisa alokasi: <?= rp_kaprodi($p->summary['sisa_alokasi']) ?></div>
+                                <div class="col-6 col-lg-2">
+                                    <label class="form-label small fw-semibold">Volume</label>
+                                    <input type="number" name="vol[]" class="form-control" min="1" step="1" value="1" required>
+                                </div>
+                                <div class="col-6 col-lg-2">
+                                    <label class="form-label small fw-semibold">Satuan</label>
+                                    <input type="text" name="satuan[]" class="form-control" value="unit" required>
+                                </div>
+                                <div class="col-lg-2">
+                                    <label class="form-label small fw-semibold">Link Referensi</label>
+                                    <input type="url" name="link_penawaran[]" class="form-control" placeholder="https://...">
+                                </div>
+                                <div class="col-lg-1 d-grid">
+                                    <button type="button" class="btn btn-outline-danger remove-need" disabled><i class="bi bi-trash"></i></button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
+                    <div class="d-flex justify-content-end mt-4">
+                        <button class="btn btn-fik rounded-pill px-4 fw-semibold"><i class="bi bi-send me-1"></i> Kirim Pengajuan</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="tab-pane fade" id="tab-riwayat">
+                <div class="panel-card p-3 p-lg-4 mb-3">
+                    <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="row g-2 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Kata Kunci</label>
+                            <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, kebutuhan">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Jenis</label>
+                            <select name="jenis_pengajuan" class="form-select">
+                                <option value="">Semua</option>
+                                <option value="Barang" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang') ? 'selected' : '' ?>>Barang</option>
+                                <option value="Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">Semua</option>
+                                <?php foreach (($status_options ?? []) as $option): ?>
+                                    <option value="<?= html_escape($option) ?>" <?= (($filters['status'] ?? '') === $option) ? 'selected' : '' ?>><?= html_escape($option) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Dari</label>
+                            <input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small fw-semibold">Sampai</label>
+                            <input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>">
+                        </div>
+                        <div class="col-md-1 d-grid">
+                            <button class="btn btn-fik"><i class="bi bi-search"></i></button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="panel-card overflow-hidden">
                     <div class="table-responsive">
-                        <table class="table procurement-table mb-0">
+                        <table class="table table-clean align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th rowspan="2" style="width:44px;">No.</th>
-                                    <th rowspan="2">Uraian Barang/Pekerjaan</th>
-                                    <th rowspan="2">Vol</th>
-                                    <th rowspan="2">Satuan</th>
-                                    <th colspan="4">Harga Penawaran Kaprodi (Rp)</th>
-                                    <th rowspan="2">Uraian Barang/Pekerjaan</th>
-                                    <th colspan="3">Hasil Negosiasi (Rp)</th>
-                                    <th rowspan="2">Garansi</th>
-                                    <th rowspan="2">Alokasi Sisa</th>
-                                </tr>
-                                <tr>
-                                    <th>Harga Sat</th><th>Jmlh Harga</th><th>Harga +20%</th><th>Link</th>
-                                    <th>Vol</th><th>Harga Sat</th><th>Jmlh Harga</th>
+                                    <th>Kode</th>
+                                    <th>Pengajuan</th>
+                                    <th>Jenis</th>
+                                    <th>Kebutuhan</th>
+                                    <th>Status</th>
+                                    <th>Tanggal</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach($p->items as $i => $item): ?>
-                                    <?php
-                                    $jumlah_penawaran = (float)$item->vol * (float)$item->harga_penawaran_sat;
-                                    $harga_markup_sat = (float)$item->harga_penawaran_sat * 1.2;
-                                    $jumlah_markup = (float)$item->vol * $harga_markup_sat;
-                                    $nego_vol = $item->hasil_negosiasi_vol !== null ? (float)$item->hasil_negosiasi_vol : (float)$item->vol;
-                                    $nego_sat = $item->hasil_negosiasi_sat !== null ? (float)$item->hasil_negosiasi_sat : 0;
-                                    $jumlah_nego = $nego_vol * $nego_sat;
-                                    ?>
+                                <?php if (empty($pengajuan)): ?>
+                                    <tr><td colspan="6" class="text-center text-muted py-5">Belum ada data pengajuan sesuai filter.</td></tr>
+                                <?php else: foreach ($pengajuan as $p): ?>
                                     <tr>
-                                        <td class="text-center"><?= $i + 1 ?></td>
-                                        <td><?= html_escape($item->uraian_barang) ?></td>
-                                        <td class="text-center"><?= num_kaprodi($item->vol) ?></td>
-                                        <td class="text-center"><?= html_escape($item->satuan) ?></td>
-                                        <td class="text-end"><?= rp_kaprodi($item->harga_penawaran_sat) ?></td>
-                                        <td class="text-end"><?= rp_kaprodi($jumlah_penawaran) ?></td>
-                                        <td class="text-end"><?= rp_kaprodi($jumlah_markup) ?></td>
-                                        <td class="text-center"><?php if($item->link_penawaran): ?><a href="<?= html_escape($item->link_penawaran) ?>" target="_blank">Link</a><?php else: ?>-<?php endif; ?></td>
-                                        <td><?= html_escape($item->uraian_barang) ?></td>
-                                        <td class="text-center"><?= num_kaprodi($nego_vol) ?></td>
-                                        <td class="text-end"><?= rp_kaprodi($nego_sat) ?></td>
-                                        <td class="text-end"><?= rp_kaprodi($jumlah_nego) ?></td>
-                                        <td><?= html_escape($item->garansi ?: '-') ?></td>
-                                        <td><?= html_escape($item->alokasi_sisa ?: '-') ?></td>
+                                        <td class="fw-semibold"><?= html_escape($p->kode_pengajuan) ?></td>
+                                        <td>
+                                            <div class="fw-semibold"><?= html_escape($p->nama_pengajuan) ?></div>
+                                            <div class="small text-muted"><?= html_escape($p->nama_prodi) ?></div>
+                                        </td>
+                                        <td><span class="badge text-bg-light border"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
+                                        <td style="min-width: 300px;">
+                                            <div class="small text-muted mb-1"><?= html_escape($p->kebutuhan_lab ?: '-') ?></div>
+                                            <?php foreach (($p->items ?? []) as $item): ?>
+                                                <div class="small"><i class="bi bi-dot"></i><?= html_escape($item->uraian_barang) ?> - <?= rtrim(rtrim(number_format((float) $item->vol, 2, ',', '.'), '0'), ',') ?> <?= html_escape($item->satuan) ?></div>
+                                            <?php endforeach; ?>
+                                        </td>
+                                        <td><span class="status-pill <?= status_class_kaprodi($p->status) ?>"><?= html_escape($p->status) ?></span></td>
+                                        <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($p->created_at)) ?></td>
                                     </tr>
-                                <?php endforeach; ?>
-                                <tr><td colspan="6" class="total-label">Sub Total (+20%)</td><td class="text-end fw-bold"><?= rp_kaprodi($p->summary['subtotal_markup']) ?></td><td></td><td colspan="3" class="total-label">Sub Total</td><td class="text-end fw-bold"><?= rp_kaprodi($p->summary['subtotal_negosiasi']) ?></td><td colspan="2"></td></tr>
-                                <tr><td colspan="6" class="total-label">PPN 11%</td><td class="text-end fw-bold"><?= rp_kaprodi($p->summary['ppn_penawaran']) ?></td><td></td><td colspan="3" class="total-label">PPN 11%</td><td class="text-end fw-bold"><?= rp_kaprodi($p->summary['ppn_negosiasi']) ?></td><td colspan="2"></td></tr>
-                                <tr><td colspan="6" class="total-label">Total</td><td class="text-end fw-bold"><?= rp_kaprodi($p->summary['total_penawaran']) ?></td><td></td><td colspan="3" class="total-label">Total</td><td class="text-end fw-bold"><?= rp_kaprodi($p->summary['total_negosiasi']) ?></td><td colspan="2"></td></tr>
+                                <?php endforeach; endif; ?>
                             </tbody>
                         </table>
                     </div>
-
-                    <div class="sticky-actions p-3 p-lg-4">
-                        <div class="row g-3 align-items-start">
-                            <div class="col-lg-4">
-                                <div class="small text-muted mb-1">BAST Distribusi</div>
-                                <div class="fw-semibold"><?= html_escape($p->bast_nomor ?: 'Belum ada BAST') ?></div>
-                                <div class="small text-muted"><?= html_escape($p->bast_tanggal ?: '-') ?> <?= $p->bast_penerima ? '· ' . html_escape($p->bast_penerima) : '' ?></div>
-                            </div>
-                            <div class="col-lg-8">
-                                <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
-                                    <form method="post" action="<?= base_url('index.php/kaprodi/pengajuan/negosiasi/'.$p->id_pengajuan) ?>" class="d-inline-flex gap-2"><input type="hidden" name="catatan_negosiasi" value="Naik ke tahap negosiasi"><button class="btn btn-sm btn-outline-warning rounded-pill">Naik ke Negosiasi</button></form>
-                                    <a href="<?= base_url('index.php/kaprodi/pengajuan/acc/'.$p->id_pengajuan) ?>" class="btn btn-sm btn-outline-success rounded-pill" onclick="return confirm('Tandai hasil negosiasi sudah ACC anak perusahaan?')">ACC Anak Perusahaan</a>
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill" type="button" data-bs-toggle="collapse" data-bs-target="#alokasi<?= $p->id_pengajuan ?>">Alokasi Sisa</button>
-                                    <button class="btn btn-sm btn-outline-info rounded-pill" type="button" data-bs-toggle="collapse" data-bs-target="#bast<?= $p->id_pengajuan ?>">BAST</button>
-                                    <a href="<?= base_url('index.php/kaprodi/pengajuan/export_excel/'.$p->id_pengajuan) ?>" class="btn btn-sm btn-fik rounded-pill"><i class="bi bi-file-earmark-spreadsheet me-1"></i> Excel</a>
-                                    <a href="<?= base_url('index.php/kaprodi/pengajuan/selesai/'.$p->id_pengajuan) ?>" class="btn btn-sm btn-outline-secondary rounded-pill" onclick="return confirm('Tandai pengajuan selesai?')">Selesai</a>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="collapse mt-3" id="alokasi<?= $p->id_pengajuan ?>">
-                            <form method="post" action="<?= base_url('index.php/kaprodi/pengajuan/alokasi/'.$p->id_pengajuan) ?>" class="panel-card p-3 shadow-none">
-                                <div class="fw-semibold mb-2">Alokasi sisa anggaran: <?= rp_kaprodi($p->summary['sisa_alokasi']) ?></div>
-                                <div class="row g-2">
-                                    <?php foreach($p->items as $item): ?>
-                                        <div class="col-md-6"><label class="form-label small text-muted"><?= html_escape($item->uraian_barang) ?></label><input type="text" name="alokasi_item[<?= $item->id_item ?>]" class="form-control" value="<?= html_escape($item->alokasi_sisa) ?>" placeholder="Contoh: dialihkan ke kabel / sparepart"></div>
-                                    <?php endforeach; ?>
-                                    <div class="col-12"><label class="form-label small text-muted">Catatan alokasi umum</label><textarea name="catatan_alokasi" class="form-control" rows="2"><?= html_escape($p->catatan_alokasi) ?></textarea></div>
-                                    <div class="col-12 text-end"><button class="btn btn-fik rounded-pill px-4">Simpan Alokasi</button></div>
-                                </div>
-                            </form>
-                        </div>
-
-                        <div class="collapse mt-3" id="bast<?= $p->id_pengajuan ?>">
-                            <form method="post" action="<?= base_url('index.php/kaprodi/pengajuan/bast/'.$p->id_pengajuan) ?>" class="panel-card p-3 shadow-none">
-                                <div class="row g-2">
-                                    <div class="col-md-3"><label class="form-label small text-muted">Nomor BAST</label><input type="text" name="bast_nomor" class="form-control" value="<?= html_escape($p->bast_nomor) ?>"></div>
-                                    <div class="col-md-3"><label class="form-label small text-muted">Tanggal BAST</label><input type="date" name="bast_tanggal" class="form-control" value="<?= html_escape($p->bast_tanggal ?: date('Y-m-d')) ?>"></div>
-                                    <div class="col-md-3"><label class="form-label small text-muted">Penerima Distribusi</label><input type="text" name="bast_penerima" class="form-control" value="<?= html_escape($p->bast_penerima) ?>"></div>
-                                    <div class="col-md-3"><label class="form-label small text-muted">Catatan</label><input type="text" name="bast_catatan" class="form-control" value="<?= html_escape($p->bast_catatan) ?>"></div>
-                                    <div class="col-12 text-end"><button class="btn btn-fik rounded-pill px-4">Simpan BAST</button></div>
-                                </div>
-                            </form>
-                        </div>
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 p-3 border-top">
+                        <div class="small text-muted">Menampilkan <?= count($pengajuan ?? []) ?> dari <?= (int) $total_rows ?> data</div>
+                        <nav>
+                            <ul class="pagination pagination-sm mb-0">
+                                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, max(1, $page - 1))) ?>">Prev</a></li>
+                                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                    <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, $i)) ?>"><?= $i ?></a></li>
+                                <?php endfor; ?>
+                                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, min($total_pages, $page + 1))) ?>">Next</a></li>
+                            </ul>
+                        </nav>
                     </div>
-                </section>
-            <?php endforeach; ?>
-        <?php endif; ?>
+                </div>
+            </section>
+        </div>
     </main>
+
+    <template id="needTemplate">
+        <div class="need-row">
+            <div class="row g-2 align-items-end">
+                <div class="col-lg-5">
+                    <label class="form-label small fw-semibold">Uraian Barang/Jasa</label>
+                    <input type="text" name="uraian_barang[]" class="form-control" placeholder="Contoh: Kamera mirrorless / jasa instalasi" required>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label small fw-semibold">Volume</label>
+                    <input type="number" name="vol[]" class="form-control" min="1" step="1" value="1" required>
+                </div>
+                <div class="col-6 col-lg-2">
+                    <label class="form-label small fw-semibold">Satuan</label>
+                    <input type="text" name="satuan[]" class="form-control" value="unit" required>
+                </div>
+                <div class="col-lg-2">
+                    <label class="form-label small fw-semibold">Link Referensi</label>
+                    <input type="url" name="link_penawaran[]" class="form-control" placeholder="https://...">
+                </div>
+                <div class="col-lg-1 d-grid">
+                    <button type="button" class="btn btn-outline-danger remove-need"><i class="bi bi-trash"></i></button>
+                </div>
+            </div>
+        </div>
+    </template>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const addRowBtn = document.getElementById('addRowBtn');
-            const tbody = document.querySelector('#itemTable tbody');
-
-            function bindRemoveButtons() {
-                document.querySelectorAll('.js-remove-row').forEach(function (button) {
-                    button.onclick = function () {
-                        if (tbody.querySelectorAll('tr').length > 1) {
-                            button.closest('tr').remove();
-                        }
-                    };
-                });
-            }
-
-            addRowBtn?.addEventListener('click', function () {
-                const firstRow = tbody.querySelector('tr');
-                const clone = firstRow.cloneNode(true);
-                clone.querySelectorAll('input').forEach(function (input) {
-                    if (input.name === 'vol[]' || input.name === 'hasil_negosiasi_vol[]') {
-                        input.value = '1';
-                    } else if (input.name === 'satuan[]') {
-                        input.value = 'unit';
-                    } else {
-                        input.value = '';
-                    }
-                });
-                tbody.appendChild(clone);
-                bindRemoveButtons();
-            });
-
-            bindRemoveButtons();
+        const needList = document.getElementById('needList');
+        const template = document.getElementById('needTemplate');
+        document.getElementById('addNeed').addEventListener('click', () => {
+            needList.appendChild(template.content.cloneNode(true));
+            refreshRemoveButtons();
         });
+        needList.addEventListener('click', (event) => {
+            const button = event.target.closest('.remove-need');
+            if (!button || button.disabled) return;
+            button.closest('.need-row').remove();
+            refreshRemoveButtons();
+        });
+        function refreshRemoveButtons() {
+            const buttons = needList.querySelectorAll('.remove-need');
+            buttons.forEach((button) => button.disabled = buttons.length <= 1);
+        }
+        refreshRemoveButtons();
     </script>
 </body>
 </html>

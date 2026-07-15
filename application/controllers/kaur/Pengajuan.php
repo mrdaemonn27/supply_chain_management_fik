@@ -28,6 +28,140 @@ class Pengajuan extends CI_Controller {
         return (float) str_replace(['.', ','], ['', '.'], $clean);
     }
 
+    public function simpan_negosiasi($id_pengajuan, $id_item) {
+        $pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
+        if (!$pengajuan) {
+            $this->session->set_flashdata('error', 'Pengajuan Kaprodi tidak ditemukan.');
+            redirect('kaur/dashboard#negosiasi');
+        }
+
+        $vendor = trim($this->input->post('vendor', true));
+        $status = trim($this->input->post('status', true));
+        $harga_awal = $this->parse_money($this->input->post('harga_awal'));
+        $harga_negosiasi = $this->parse_money($this->input->post('harga_negosiasi'));
+        $volume_negosiasi = (float) $this->input->post('volume_negosiasi');
+
+        if ($vendor === '' || $harga_awal < 0 || $harga_negosiasi < 0 || $volume_negosiasi <= 0) {
+            $this->session->set_flashdata('error', 'Vendor, harga, dan volume negosiasi wajib diisi dengan benar.');
+            redirect('kaur/dashboard#negosiasi');
+        }
+
+        $ok = $this->Kaur_model->save_negosiasi($id_pengajuan, $id_item, [
+            'vendor' => $vendor,
+            'harga_awal' => $harga_awal,
+            'harga_negosiasi' => $harga_negosiasi,
+            'volume_negosiasi' => $volume_negosiasi,
+            'garansi' => trim($this->input->post('garansi', true)),
+            'catatan' => trim($this->input->post('catatan', true)),
+            'status' => $status ?: 'Belum Negosiasi',
+            'created_by' => $this->session->userdata('id_user'),
+        ]);
+
+        $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Riwayat negosiasi berhasil disimpan.' : 'Gagal menyimpan negosiasi.');
+        redirect('kaur/dashboard#negosiasi');
+    }
+
+    public function approval($id_pengajuan, $aksi = 'approve') {
+        $pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
+        if (!$pengajuan) {
+            $this->session->set_flashdata('error', 'Pengajuan Kaprodi tidak ditemukan.');
+            redirect('kaur/dashboard#approval');
+        }
+
+        $map = [
+            'approve' => 'Approval',
+            'revisi' => 'Revisi',
+            'tolak' => 'Ditolak',
+        ];
+        $status = $map[$aksi] ?? 'Approval';
+        $catatan = trim($this->input->post('catatan_approval', true));
+        $ok = $this->Kaur_model->update_kaprodi_status($id_pengajuan, $status, $catatan);
+
+        $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Status pengajuan berhasil diperbarui.' : 'Gagal memperbarui status.');
+        redirect('kaur/dashboard#approval');
+    }
+
+    public function simpan_anggaran() {
+        $tahun = (int) $this->input->post('tahun');
+        $total = $this->parse_money($this->input->post('total_anggaran'));
+
+        if ($tahun < 2000 || $total <= 0) {
+            $this->session->set_flashdata('error', 'Tahun dan total anggaran wajib diisi dengan benar.');
+            redirect('kaur/dashboard#anggaran');
+        }
+
+        $id = $this->Kaur_model->save_anggaran([
+            'tahun' => $tahun,
+            'total_anggaran' => $total,
+            'catatan' => trim($this->input->post('catatan', true)),
+            'created_by' => $this->session->userdata('id_user'),
+        ]);
+
+        $this->session->set_flashdata($id ? 'success' : 'error', $id ? 'Total anggaran berhasil disimpan.' : 'Gagal menyimpan anggaran.');
+        redirect('kaur/dashboard#anggaran');
+    }
+
+    public function simpan_bast($id_pengajuan) {
+        $pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
+        if (!$pengajuan) {
+            $this->session->set_flashdata('error', 'Pengajuan Kaprodi tidak ditemukan.');
+            redirect('kaur/dashboard#bast');
+        }
+
+        $nomor = trim($this->input->post('nomor_bast', true));
+        $tanggal = trim($this->input->post('tanggal_bast', true));
+        $jenis = trim($this->input->post('jenis_bast', true));
+
+        if ($nomor === '' || $tanggal === '' || !in_array($jenis, ['Barang', 'Jasa'], true)) {
+            $this->session->set_flashdata('error', 'Nomor, tanggal, dan jenis BAST wajib diisi.');
+            redirect('kaur/dashboard#bast');
+        }
+
+        $file_path = $this->upload_bast_file();
+        if ($file_path === false && !empty($_FILES['file_bast']['name'])) {
+            redirect('kaur/dashboard#bast');
+        }
+
+        $id = $this->Kaur_model->save_bast($id_pengajuan, [
+            'nomor_bast' => $nomor,
+            'tanggal_bast' => $tanggal,
+            'jenis_bast' => $jenis,
+            'file_bast' => $file_path,
+            'catatan' => trim($this->input->post('catatan', true)),
+            'input_by' => $this->session->userdata('id_user'),
+        ]);
+
+        $this->session->set_flashdata($id ? 'success' : 'error', $id ? 'BAST berhasil disimpan dan barang diproses ke inventory bila jenisnya Barang.' : 'Gagal menyimpan BAST.');
+        redirect('kaur/dashboard#bast');
+    }
+
+    private function upload_bast_file() {
+        if (empty($_FILES['file_bast']['name'])) {
+            return null;
+        }
+
+        $path = './uploads/bast/';
+        if (!is_dir($path)) {
+            mkdir($path, 0777, true);
+        }
+
+        $config = [
+            'upload_path' => $path,
+            'allowed_types' => 'pdf|jpg|jpeg|png',
+            'max_size' => 10240,
+            'encrypt_name' => true,
+        ];
+
+        $this->load->library('upload', $config);
+        if (!$this->upload->do_upload('file_bast')) {
+            $this->session->set_flashdata('error', 'Upload BAST gagal: ' . $this->upload->display_errors('', ''));
+            return false;
+        }
+
+        $file = $this->upload->data();
+        return 'uploads/bast/' . $file['file_name'];
+    }
+
     public function simpan() {
         $nama_lab = trim($this->input->post('nama_lab', true));
         $nama_pengajuan = trim($this->input->post('nama_pengajuan', true));
