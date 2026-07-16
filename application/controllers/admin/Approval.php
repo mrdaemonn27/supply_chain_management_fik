@@ -26,7 +26,13 @@ class Approval extends CI_Controller {
 
     public function index() {
         $data['title'] = 'Approval Peminjaman';
-        $data['pengajuan'] = $this->Peminjaman_model->search_peminjaman(['status' => 'Menunggu Persetujuan']);
+        $data['pengajuan'] = array_merge(
+            $this->Peminjaman_model->search_peminjaman(['status' => 'Menunggu Verifikasi Laboran']),
+            $this->Peminjaman_model->search_peminjaman(['status' => 'Menunggu Pengecekan Laboran']),
+            $this->Peminjaman_model->search_peminjaman(['status' => 'Menunggu Persetujuan'])
+        );
+        $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
+        $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);
         $this->load->view('admin/approval', $data);
     }
 
@@ -37,7 +43,7 @@ class Approval extends CI_Controller {
             redirect('admin/approval');
         }
 
-        if ($peminjaman->status !== 'Menunggu Persetujuan') {
+        if (!in_array($peminjaman->status, ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu Persetujuan'], true)) {
             $this->session->set_flashdata('error', 'Pengajuan ini sudah diproses sebelumnya.');
             redirect('admin/approval');
         }
@@ -52,20 +58,13 @@ class Approval extends CI_Controller {
         }
 
         $this->db->trans_start();
-        foreach ($items as $item) {
-            $this->Aset_model->update_jumlah_tersedia($item->id_aset, $item->jumlah_pinjam);
-            $this->Aset_model->increment_total_peminjaman($item->id_aset);
-        }
-
         $update = [
-            'status' => 'Dipinjam',
+            'status' => 'Menunggu ACC Kaur',
             'status_laboran' => 'Disetujui',
             'catatan_laboran' => $this->input->post('catatan_laboran', true),
             'tgl_approve_laboran' => date('Y-m-d H:i:s'),
             'id_approver_laboran' => $this->session->userdata('id_user'),
-            'status_kaur' => 'Disetujui',
-            'tgl_approve_kaur' => date('Y-m-d H:i:s'),
-            'id_approver_kaur' => $this->session->userdata('id_user'),
+            'status_kaur' => 'Pending',
             'updated_at' => date('Y-m-d H:i:s')
         ];
 
@@ -74,9 +73,16 @@ class Approval extends CI_Controller {
         } else {
             $this->db->where('id_peminjaman', $id_peminjaman)->update('peminjaman', $update);
         }
+        $this->Peminjaman_model->create_notifikasi(
+            'kaur',
+            null,
+            'Pengajuan menunggu ACC Kaur',
+            ($peminjaman->nama_peminjam ?? 'Peminjam') . ' sudah dicek Laboran dan menunggu persetujuan Kaur.',
+            site_url('kaur/dashboard/peminjaman')
+        );
         $this->db->trans_complete();
 
-        $this->session->set_flashdata($this->db->trans_status() ? 'success' : 'error', $this->db->trans_status() ? 'Pengajuan berhasil disetujui dan stok diperbarui.' : 'Gagal menyetujui pengajuan.');
+        $this->session->set_flashdata($this->db->trans_status() ? 'success' : 'error', $this->db->trans_status() ? 'Pengajuan diteruskan ke Kaur. Stok belum dikurangi sampai serah terima.' : 'Gagal meneruskan pengajuan.');
         redirect('admin/approval');
     }
 
@@ -93,7 +99,7 @@ class Approval extends CI_Controller {
             'catatan_laboran' => $this->input->post('catatan_laboran', true),
             'tgl_approve_laboran' => date('Y-m-d H:i:s'),
             'id_approver_laboran' => $this->session->userdata('id_user'),
-            'status_kaur' => 'Ditolak',
+            'status_kaur' => 'Pending',
             'updated_at' => date('Y-m-d H:i:s')
         ];
 
@@ -101,6 +107,15 @@ class Approval extends CI_Controller {
             $this->db->where('group_id', $peminjaman->group_id)->update('peminjaman', $update);
         } else {
             $this->db->where('id_peminjaman', $id_peminjaman)->update('peminjaman', $update);
+        }
+        if (!empty($peminjaman->id_user)) {
+            $this->Peminjaman_model->create_notifikasi(
+                null,
+                $peminjaman->id_user,
+                'Pengajuan ditolak Laboran',
+                'Pengajuan peminjaman Anda ditolak pada tahap pengecekan Laboran.',
+                site_url('peminjaman/riwayat')
+            );
         }
 
         $this->session->set_flashdata('success', 'Pengajuan berhasil ditolak.');

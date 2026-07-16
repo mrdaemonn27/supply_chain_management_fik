@@ -19,11 +19,28 @@ class Dashboard extends CI_Controller {
 
         // Memuat Model Ruangan agar bisa mengambil data
         $this->load->model('admin/Ruangan_model');
+        $this->load->model('Peminjaman_model');
     }
 
     public function index() {
         // Mengambil semua data ruangan dari database
         $data['ruangan_list'] = $this->Ruangan_model->get_all();
+        $data['notifikasi'] = [];
+        $data['unread_notifikasi'] = 0;
+
+        if ($this->session->userdata('logged_in')) {
+            $role = strtolower((string) $this->session->userdata('role'));
+            if (in_array($role, ['admin', 'laboran'], true)) {
+                $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
+                $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);
+            } elseif ($role === 'kaur') {
+                $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null);
+                $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('kaur', null);
+            } else {
+                $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi(null, $this->session->userdata('id_user'));
+                $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread(null, $this->session->userdata('id_user'));
+            }
+        }
 
         // PERINTAH INI YANG MENGUBAH TAMPILAN:
         // Memanggil file UI dari folder views/dashboard/index.php beserta datanya

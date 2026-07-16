@@ -3,6 +3,8 @@ $stats = isset($stats) && is_array($stats) ? $stats : [];
 $get_stat = function ($key) use ($stats) {
     return isset($stats[$key]) ? (int) $stats[$key] : 0;
 };
+$notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
+$notif_count = (int) ($unread_notifikasi ?? 0);
 
 $menus = [
     [
@@ -23,7 +25,7 @@ $menus = [
     ],
     [
         'title' => 'Approval',
-        'desc' => 'Setujui atau tolak pengajuan peminjaman yang masuk.',
+        'desc' => 'Cek stok fisik lalu teruskan pengajuan ke Kaur.',
         'url' => base_url('index.php/admin/approval'),
         'icon' => 'bi-patch-check',
         'class' => 'tone-red',
@@ -96,9 +98,12 @@ $menus = [
         .tone-yellow { background: rgba(245, 158, 11, .16); color: #a16207; }
         .tone-cyan { background: rgba(13, 202, 240, .14); color: #087990; }
         .notify-badge { position: absolute; top: 16px; right: 16px; border-radius: 999px; padding: 5px 10px; background: #dc3545; color: #fff; font-size: .75rem; font-weight: 700; }
+        .notif-bell { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 38px; }
+        .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }
         @media (max-width: 767.98px) {
             .topbar .actions { width: 100%; margin-top: 12px; }
             .topbar .actions .btn { flex: 1; }
+            .topbar .actions .notif-bell { flex: 0 0 38px; }
             .summary-card { min-height: auto; }
         }
     </style>
@@ -115,7 +120,25 @@ $menus = [
                     </div>
                 </div>
                 <div class="actions d-flex align-items-center gap-2">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light btn-sm rounded-circle notif-bell position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi">
+                            <i class="bi bi-bell"></i>
+                            <?php if ($notif_count > 0): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $notif_count ?></span><?php endif; ?>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow border-0 p-2 notif-menu">
+                            <div class="fw-bold px-2 py-1">Notifikasi</div>
+                            <?php if (empty($notif_items)): ?>
+                                <div class="small text-muted px-2 py-3">Belum ada notifikasi.</div>
+                            <?php else: foreach ($notif_items as $n): ?>
+                                <a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>">
+                                    <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
+                                    <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
+                                </a>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </div>
                     <span class="d-none d-lg-inline small text-white-50 me-2">Role: <strong class="text-white"><?= isset($user_role) ? $user_role : 'Laboran' ?></strong></span>
+                    <a href="<?= base_url('index.php/admin/peminjaman/export_pengajuan_acc') ?>" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel ACC</a>
                     <a href="<?= base_url('index.php/dashboard') ?>" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-globe me-1"></i> Web User</a>
                     <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm rounded-pill px-3 text-white" style="background:#ea5b1a;"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
                 </div>
@@ -135,7 +158,7 @@ $menus = [
         <section class="row g-3 mb-4">
             <div class="col-6 col-lg-3"><div class="summary-card"><div class="summary-value"><?= $get_stat('total_aset') ?></div><div class="summary-label">Jenis aset</div></div></div>
             <div class="col-6 col-lg-3"><div class="summary-card"><div class="summary-value"><?= $get_stat('total_aset_fisik') ?></div><div class="summary-label">Total fisik barang</div></div></div>
-            <div class="col-6 col-lg-3"><div class="summary-card"><div class="summary-value"><?= $get_stat('menunggu_persetujuan') ?></div><div class="summary-label">Menunggu approval</div></div></div>
+            <div class="col-6 col-lg-3"><div class="summary-card"><div class="summary-value"><?= $get_stat('menunggu_persetujuan') ?></div><div class="summary-label">Menunggu pengecekan</div></div></div>
             <div class="col-6 col-lg-3"><div class="summary-card"><div class="summary-value"><?= $get_stat('peminjaman_aktif') ?></div><div class="summary-label">Sedang dipinjam</div></div></div>
         </section>
 

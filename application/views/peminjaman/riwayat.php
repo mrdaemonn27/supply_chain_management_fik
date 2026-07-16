@@ -2,6 +2,8 @@
 /** @var array $riwayat */
 $session_role = strtolower((string) $this->session->userdata('role'));
 $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
+$notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
+$notif_count = (int) ($unread_notifikasi ?? 0);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -30,6 +32,8 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
         .navbar-dark .navbar-nav .nav-link::after { content: ''; position: absolute; width: 0; height: 2px; display: block; margin-top: 5px; right: 0; background: #ea5b1a; transition: width 0.3s ease; }
         .navbar-dark .navbar-nav .nav-link:hover::after { width: 100%; left: 0; background: #ea5b1a; }
         .btn-user { background: linear-gradient(45deg, #c24a13, #ea5b1a); color: white; font-weight: 600; border: none; border-radius: 8px; padding: 8px 20px; }
+        .notif-bell { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+        .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }
 
         /* Custom Table Styling */
         .table-custom { border-radius: 12px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
@@ -60,7 +64,24 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
                     <li class="nav-item"><a class="nav-link active" href="<?= base_url('index.php/peminjaman/riwayat') ?>">Riwayat</a></li>
                 </ul>
             </div>
-            <div class="d-none d-lg-block">
+            <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary rounded-circle notif-bell position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi">
+                        <i class="bi bi-bell"></i>
+                        <?php if ($notif_count > 0): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $notif_count ?></span><?php endif; ?>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow border-0 p-2 notif-menu">
+                        <div class="fw-bold px-2 py-1">Notifikasi</div>
+                        <?php if (empty($notif_items)): ?>
+                            <div class="small text-muted px-2 py-3">Belum ada notifikasi.</div>
+                            <?php else: foreach ($notif_items as $n): ?>
+                            <a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>">
+                                <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
+                                <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
+                            </a>
+                        <?php endforeach; endif; ?>
+                    </div>
+                </div>
                 <button class="btn btn-user"><i class="bi bi-person-circle me-1"></i> <?= $display_nama; ?></button>
             </div>
         </div>
@@ -122,8 +143,10 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
                                     // Logika Pewarnaan Badge Status
                                     if(strpos($r->status, 'Menunggu') !== false || strpos($r->status, 'Pending') !== false) {
                                         echo '<span class="badge bg-warning text-dark badge-status"><i class="bi bi-hourglass-split me-1"></i> '.$r->status.'</span>';
-                                    } elseif($r->status == 'Dipinjam') {
-                                        echo '<span class="badge bg-primary badge-status"><i class="bi bi-play-circle-fill me-1"></i> Dipinjam</span>';
+                                    } elseif($r->status == 'Disetujui (Menunggu Pengambilan)') {
+                                        echo '<span class="badge bg-success badge-status"><i class="bi bi-qr-code-scan me-1"></i> QR Aktif</span>';
+                                    } elseif($r->status == 'Sedang Dipinjam' || $r->status == 'Dipinjam') {
+                                        echo '<span class="badge bg-primary badge-status"><i class="bi bi-play-circle-fill me-1"></i> Sedang Dipinjam</span>';
                                     } elseif($r->status == 'Dikembalikan') {
                                         echo '<span class="badge bg-success badge-status"><i class="bi bi-check2-circle me-1"></i> Dikembalikan</span>';
                                     } elseif($r->status == 'Ditolak') {
@@ -134,10 +157,13 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
                                 ?>
                             </td>
                             <td class="text-center">
-                                <!-- Tombol Buka QR Code Modal -->
-                                <button class="btn btn-sm btn-outline-dark fw-semibold px-3" data-bs-toggle="modal" data-bs-target="#qrModal<?= $r->id_peminjaman ?>">
-                                    <i class="bi bi-qr-code-scan me-1"></i> Tampilkan Tiket
-                                </button>
+                                <?php if(in_array($r->status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam'], true)): ?>
+                                    <button class="btn btn-sm btn-outline-dark fw-semibold px-3" data-bs-toggle="modal" data-bs-target="#qrModal<?= $r->id_peminjaman ?>">
+                                        <i class="bi bi-qr-code-scan me-1"></i> Tampilkan QR
+                                    </button>
+                                <?php else: ?>
+                                    <span class="small text-muted">QR belum aktif</span>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -150,15 +176,16 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
     <!-- MODAL TIKET QR CODE (DIPINDAHKAN KELUAR DARI TABLE AGAR TIDAK BUG/KEPOTONG) -->
     <?php if(!empty($riwayat)): ?>
         <?php foreach($riwayat as $r): ?>
+        <?php if(!in_array($r->status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam'], true)) { continue; } ?>
         <div class="modal fade" id="qrModal<?= $r->id_peminjaman ?>" tabindex="-1" aria-labelledby="qrModalLabel<?= $r->id_peminjaman ?>" aria-hidden="true">
             <div class="modal-dialog modal-sm modal-dialog-centered">
                 <div class="modal-content text-center p-4 border-0 shadow-lg" style="border-radius: 20px;">
                     <h5 class="fw-bold text-fik-orange mb-1" id="qrModalLabel<?= $r->id_peminjaman ?>">E-Ticket Laboratorium</h5>
                     <p class="small text-muted mb-4">Tunjukkan kode ini kepada Laboran saat serah terima barang.</p>
                     
-                    <!-- Men-generate QR Code menggunakan API publik berdasakan ID Unik Transaksi -->
+                    <!-- QR berisi link serah terima untuk scanner Laboran -->
                     <div class="bg-white p-3 rounded-4 mb-3 mx-auto shadow-sm border" style="display: inline-block;">
-                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=<?= $r->group_id ?>" alt="QR Code" class="img-fluid">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=<?= rawurlencode(site_url('admin/peminjaman/serah_terima/'.rawurlencode($r->group_id))) ?>" alt="QR Code" class="img-fluid">
                     </div>
                     
                     <div class="font-monospace fs-6 fw-bold bg-light border px-3 py-2 rounded-3 text-secondary mb-3">

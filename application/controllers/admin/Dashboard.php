@@ -8,6 +8,7 @@ class Dashboard extends CI_Controller {
         $this->load->library('session');
         $this->load->helper('url');
         $this->load->model('admin/Dashboard_model');
+        $this->load->model('Peminjaman_model');
 
         if (!$this->session->userdata('logged_in')) {
             $this->session->set_flashdata('error', 'Silakan login terlebih dahulu.');
@@ -26,6 +27,8 @@ class Dashboard extends CI_Controller {
         $data['title'] = 'Dashboard Laboran - SCM FIK';
         $data['user_role'] = ($role === 'admin') ? 'Laboran' : ($role ? ucfirst($role) : 'Laboran');
         $data['stats'] = $this->Dashboard_model->get_statistik();
+        $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
+        $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);
 
         $this->load->view('admin/dashboard', $data);
     }

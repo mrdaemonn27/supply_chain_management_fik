@@ -8,6 +8,7 @@ class Dashboard extends CI_Controller {
         $this->load->library('session');
         $this->load->helper(['url', 'form']);
         $this->load->model('kaur/Kaur_model');
+        $this->load->model('Peminjaman_model');
         $this->guard_kaur();
     }
 
@@ -24,6 +25,38 @@ class Dashboard extends CI_Controller {
     }
 
     public function index() {
+        $this->render('overview');
+    }
+
+    public function pengajuan() {
+        $this->render('pengajuan');
+    }
+
+    public function negosiasi() {
+        $this->render('negosiasi');
+    }
+
+    public function approval() {
+        $this->render('approval');
+    }
+
+    public function peminjaman() {
+        $this->render('peminjaman');
+    }
+
+    public function anggaran() {
+        $this->render('anggaran');
+    }
+
+    public function bast() {
+        $this->render('bast');
+    }
+
+    public function laporan() {
+        $this->render('laporan');
+    }
+
+    private function render($active_module = 'overview') {
         $id_user = $this->session->userdata('id_user');
         $filters = [
             'q' => trim((string) $this->input->get('q', true)),
@@ -36,7 +69,19 @@ class Dashboard extends CI_Controller {
         $limit = 8;
         $offset = ($page - 1) * $limit;
 
-        $data['title'] = 'Dashboard Kaur Laboratorium';
+        $titles = [
+            'overview' => 'Dashboard Kaur Laboratorium',
+            'pengajuan' => 'Pengajuan Kaprodi',
+            'negosiasi' => 'Negosiasi Pengadaan',
+            'approval' => 'Approval Pengadaan',
+            'peminjaman' => 'ACC Peminjaman',
+            'anggaran' => 'Alokasi Anggaran',
+            'bast' => 'Input BAST',
+            'laporan' => 'Laporan Kaur',
+        ];
+
+        $data['active_module'] = array_key_exists($active_module, $titles) ? $active_module : 'overview';
+        $data['title'] = $titles[$data['active_module']] . ' - Kaur Laboratorium';
         $data['filters'] = $filters;
         $data['page'] = $page;
         $data['limit'] = $limit;
@@ -46,7 +91,11 @@ class Dashboard extends CI_Controller {
         $data['stats'] = $this->Kaur_model->get_dashboard_stats();
         $data['anggaran'] = $this->Kaur_model->get_anggaran_summary((int) date('Y'));
         $data['laporan_negosiasi'] = $this->Kaur_model->get_laporan_negosiasi_deal([], 20);
+        $data['bast_ready'] = $this->Kaur_model->get_bast_ready_pengajuan(12);
         $data['bast_list'] = $this->Kaur_model->get_bast_list(12);
+        $data['peminjaman_pending_kaur'] = $this->Peminjaman_model->get_pending_kaur();
+        $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null);
+        $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('kaur', null);
         $data['pengajuan'] = $this->Kaur_model->get_all_by_user($id_user);
         $data['approval_bast'] = $this->Kaur_model->get_approval_bast_queue($id_user);
         $data['maintenance'] = $this->Kaur_model->get_laporan_maintenance(12);

@@ -3,6 +3,8 @@ $session_role = strtolower((string) $this->session->userdata('role'));
 $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
 $display_role = ($session_role === 'admin') ? 'Laboran' : ucfirst((string) $this->session->userdata('role'));
 $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
+$notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
+$notif_count = (int) ($unread_notifikasi ?? 0);
 ?><!DOCTYPE html>
 <html lang="id">
 <head>
@@ -79,6 +81,8 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(234, 91, 26, 0.4);
         }
+        .notif-bell { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+        .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }
 
         .internal-doc-frame { width: 100%; height: min(78vh, 760px); border: 0; border-radius: 0 0 8px 8px; background: #f7f8fa; }
         .btn-doc-internal {
@@ -261,8 +265,25 @@ $can_read_internal_docs = (bool) $this->session->userdata('logged_in');
                 </ul>
             </div>
             
-           <div class="d-none d-lg-block">
+           <div class="d-none d-lg-flex align-items-center gap-2">
                 <?php if($this->session->userdata('logged_in')): ?>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary rounded-circle notif-bell position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi">
+                            <i class="bi bi-bell"></i>
+                            <?php if ($notif_count > 0): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $notif_count ?></span><?php endif; ?>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow border-0 p-2 notif-menu">
+                            <div class="fw-bold px-2 py-1">Notifikasi</div>
+                            <?php if (empty($notif_items)): ?>
+                                <div class="small text-muted px-2 py-3">Belum ada notifikasi.</div>
+                            <?php else: foreach ($notif_items as $n): ?>
+                                <a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>">
+                                    <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
+                                    <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
+                                </a>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </div>
                     <!-- Dropdown Jika SUDAH LOGIN -->
                     <div class="dropdown">
                         <button class="btn btn-user dropdown-toggle" type="button" data-bs-toggle="dropdown">

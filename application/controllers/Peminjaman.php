@@ -28,6 +28,20 @@ class Peminjaman extends CI_Controller {
         $this->load->model('Aset_model'); 
     }
 
+    private function attach_notifikasi(&$data) {
+        $role = strtolower((string) $this->session->userdata('role'));
+        if (in_array($role, ['admin', 'laboran'], true)) {
+            $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
+            $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);
+        } elseif ($role === 'kaur') {
+            $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null);
+            $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('kaur', null);
+        } else {
+            $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi(null, $this->session->userdata('id_user'));
+            $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread(null, $this->session->userdata('id_user'));
+        }
+    }
+
     /**
      * Halaman Default (Katalog Barang)
      * URL: http://localhost/supply_chain_management_fik/index.php/peminjaman
@@ -50,6 +64,7 @@ class Peminjaman extends CI_Controller {
         }
         
         // Memanggil file view utama yang sudah Anda ubah namanya menjadi index.php
+        $this->attach_notifikasi($data);
         $this->load->view('peminjaman/index', $data);
     }
 
@@ -67,6 +82,7 @@ class Peminjaman extends CI_Controller {
         }
 
         // Tampilkan form pengajuan (views/peminjaman/ajukan.php)
+        $this->attach_notifikasi($data);
         $this->load->view('peminjaman/ajukan', $data);
     }
 
@@ -118,25 +134,37 @@ class Peminjaman extends CI_Controller {
                 $nama_peminjam
             );
 
+            $group_id = uniqid('PJM_');
+
             // Mapping data penampung database
             $data_peminjaman = [
-                'group_id' => uniqid('PJM_'),
+                'group_id' => $group_id,
                 'id_aset' => $id_aset,
                 'id_peminjam' => $id_peminjam,
+                'id_user' => $this->session->userdata('id_user'),
                 'jumlah_pinjam' => $jumlah_pinjam,
                 'tanggal_pinjam' => $tanggal_pinjam,
                 'tanggal_kembali_rencana' => $tanggal_kembali,
                 'keperluan' => $this->input->post('keperluan'),
                 'kondisi_saat_pinjam' => $this->input->post('kondisi_saat_pinjam'),
                 'foto_bukti' => $upload_data['file_name'],
-                'status' => 'Menunggu Persetujuan',
+                'status' => 'Menunggu Verifikasi Laboran',
+                'status_laboran' => 'Pending',
+                'status_kaur' => 'Pending',
                 'created_at' => date('Y-m-d H:i:s')
             ];
 
             // Kirim array data ke Peminjaman_model
             $this->Peminjaman_model->insert_peminjaman($data_peminjaman);
+            $this->Peminjaman_model->create_notifikasi(
+                'laboran',
+                null,
+                'Pengajuan peminjaman baru',
+                $nama_peminjam . ' mengajukan peminjaman dan menunggu verifikasi Laboran.',
+                site_url('admin/approval')
+            );
             
-            $this->session->set_flashdata('success', 'Berhasil! Pengajuan terkirim dan menunggu verifikasi.');
+            $this->session->set_flashdata('success', 'Berhasil! Pengajuan terkirim dan menunggu verifikasi Laboran.');
             
             // UBAH redirect INI agar setelah submit form langsung masuk ke halaman riwayat
             redirect('peminjaman/riwayat'); 
@@ -159,8 +187,19 @@ class Peminjaman extends CI_Controller {
             // Jika sama sekali belum pernah minjam (tabel masih kosong untuk user ini)
             $data['riwayat'] = [];
         }
+        $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi(null, $this->session->userdata('id_user'));
+        $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread(null, $this->session->userdata('id_user'));
         
         // Tampilkan halaman view riwayat
         $this->load->view('peminjaman/riwayat', $data);
+    }
+
+    public function detail_barang($id_aset) {
+        $data['aset'] = $this->Aset_model->get_aset_by_id($id_aset);
+        if (!$data['aset']) {
+            show_404();
+        }
+
+        $this->load->view('peminjaman/detail_barang', $data);
     }
 }

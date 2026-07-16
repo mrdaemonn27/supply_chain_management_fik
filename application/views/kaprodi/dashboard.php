@@ -6,6 +6,7 @@ function status_class_kaprodi($status) {
         'Negosiasi' => 'status-negosiasi',
         'Sedang Negosiasi' => 'status-negosiasi',
         'Deal' => 'status-deal',
+        'Disetujui' => 'status-approval',
         'Approval' => 'status-approval',
         'BAST' => 'status-bast',
         'Inventarisasi' => 'status-inventory',
@@ -183,6 +184,13 @@ $total_rows = $total_rows ?? count($pengajuan ?? []);
             </section>
 
             <section class="tab-pane fade" id="tab-riwayat">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+                    <div>
+                        <h2 class="h5 fw-bold mb-1">Riwayat Pengajuan</h2>
+                        <div class="small text-muted">Export mengikuti filter tanggal, jenis, status, dan kata kunci.</div>
+                    </div>
+                    <a href="<?= base_url('index.php/kaprodi/pengajuan/export_pengajuan?' . query_kaprodi($filters, 1)) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3 align-self-start"><i class="bi bi-file-earmark-excel me-1"></i> Export Excel</a>
+                </div>
                 <div class="panel-card p-3 p-lg-4 mb-3">
                     <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="row g-2 align-items-end">
                         <div class="col-md-3">
@@ -231,11 +239,12 @@ $total_rows = $total_rows ?? count($pengajuan ?? []);
                                     <th>Kebutuhan</th>
                                     <th>Status</th>
                                     <th>Tanggal</th>
+                                    <th class="text-end">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($pengajuan)): ?>
-                                    <tr><td colspan="6" class="text-center text-muted py-5">Belum ada data pengajuan sesuai filter.</td></tr>
+                                    <tr><td colspan="7" class="text-center text-muted py-5">Belum ada data pengajuan sesuai filter.</td></tr>
                                 <?php else: foreach ($pengajuan as $p): ?>
                                     <tr>
                                         <td class="fw-semibold"><?= html_escape($p->kode_pengajuan) ?></td>
@@ -252,6 +261,7 @@ $total_rows = $total_rows ?? count($pengajuan ?? []);
                                         </td>
                                         <td><span class="status-pill <?= status_class_kaprodi($p->status) ?>"><?= html_escape($p->status) ?></span></td>
                                         <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($p->created_at)) ?></td>
+                                        <td class="text-end"><a href="<?= base_url('index.php/kaprodi/pengajuan/export_excel/'.$p->id_pengajuan) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a></td>
                                     </tr>
                                 <?php endforeach; endif; ?>
                             </tbody>

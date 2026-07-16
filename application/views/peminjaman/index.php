@@ -4,6 +4,8 @@
  */
 $session_role = strtolower((string) $this->session->userdata('role'));
 $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
+$notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
+$notif_count = (int) ($unread_notifikasi ?? 0);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -39,6 +41,8 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
         .navbar-dark .navbar-nav .nav-link::after { content: ''; position: absolute; width: 0; height: 2px; display: block; margin-top: 5px; right: 0; background: #ea5b1a; transition: width 0.3s ease; }
         .navbar-dark .navbar-nav .nav-link:hover::after { width: 100%; left: 0; background: #ea5b1a; }
         .btn-user { background: linear-gradient(45deg, #c24a13, #ea5b1a); color: white; font-weight: 600; border: none; border-radius: 8px; padding: 8px 20px; }
+        .notif-bell { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+        .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }
         .internal-doc-frame { width: 100%; height: min(78vh, 760px); border: 0; border-radius: 0 0 8px 8px; background: #f7f8fa; }
         .btn-doc-mini {
             border-radius: 999px;
@@ -242,7 +246,24 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
                 </ul>
             </div>
             
-            <div class="d-none d-lg-block">
+            <div class="d-none d-lg-flex align-items-center gap-2">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary rounded-circle notif-bell position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi">
+                        <i class="bi bi-bell"></i>
+                        <?php if ($notif_count > 0): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $notif_count ?></span><?php endif; ?>
+                    </button>
+                    <div class="dropdown-menu dropdown-menu-end shadow border-0 p-2 notif-menu">
+                        <div class="fw-bold px-2 py-1">Notifikasi</div>
+                        <?php if (empty($notif_items)): ?>
+                            <div class="small text-muted px-2 py-3">Belum ada notifikasi.</div>
+                            <?php else: foreach ($notif_items as $n): ?>
+                            <a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>">
+                                <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
+                                <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
+                            </a>
+                        <?php endforeach; endif; ?>
+                    </div>
+                </div>
                 <div class="dropdown">
                     <button class="btn btn-user dropdown-toggle" type="button" data-bs-toggle="dropdown">
                         <i class="bi bi-person-circle me-1"></i> <?= $display_nama; ?>

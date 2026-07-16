@@ -10,10 +10,51 @@ class Peminjaman_model extends CI_Model {
 
     private $table_peminjaman = 'peminjaman';
     private $table_peminjam = 'peminjam';
+    private $table_notifikasi = 'notifikasi_progress';
 
     public function __construct() {
         parent::__construct();
         $this->load->database();
+        $this->load->helper('url');
+        $this->ensure_workflow_schema();
+    }
+
+    private function ensure_workflow_schema() {
+        if ($this->db->table_exists($this->table_peminjaman)) {
+            $column = $this->db->query("SHOW COLUMNS FROM `{$this->table_peminjaman}` LIKE 'status'")->row();
+            if ($column && (
+                stripos((string) $column->Type, 'enum') !== false
+                || (string) $column->Default !== 'Menunggu Verifikasi Laboran'
+            )) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` MODIFY `status` varchar(80) NOT NULL DEFAULT 'Menunggu Verifikasi Laboran'");
+            }
+
+            if (!$this->db->field_exists('id_user', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `id_user` int(11) DEFAULT NULL AFTER `id_peminjam`");
+            }
+
+            if (!$this->db->field_exists('foto_pengembalian', $this->table_peminjaman)) {
+                $after = $this->db->field_exists('foto_bukti', $this->table_peminjaman) ? ' AFTER `foto_bukti`' : '';
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `foto_pengembalian` varchar(255) DEFAULT NULL{$after}");
+            }
+        }
+
+        if (!$this->db->table_exists($this->table_notifikasi)) {
+            $this->db->query("CREATE TABLE `notifikasi_progress` (
+                `id_notifikasi` int(11) NOT NULL AUTO_INCREMENT,
+                `recipient_role` varchar(30) DEFAULT NULL,
+                `recipient_user_id` int(11) DEFAULT NULL,
+                `judul` varchar(160) NOT NULL,
+                `pesan` text DEFAULT NULL,
+                `link` varchar(255) DEFAULT NULL,
+                `is_read` tinyint(1) NOT NULL DEFAULT 0,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                PRIMARY KEY (`id_notifikasi`),
+                KEY `idx_notif_role` (`recipient_role`),
+                KEY `idx_notif_user` (`recipient_user_id`),
+                KEY `idx_notif_read` (`is_read`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        }
     }
 
     // ===================== PEMINJAM =====================
@@ -45,7 +86,7 @@ class Peminjaman_model extends CI_Model {
 
     public function delete_peminjam($id_peminjam) {
         $this->db->where('id_peminjam', $id_peminjam);
-        $this->db->where('status', 'Dipinjam');
+        $this->db->where_in('status', ['Sedang Dipinjam', 'Dipinjam']);
         $active_loans = $this->db->count_all_results($this->table_peminjaman);
         
         if ($active_loans > 0) {
@@ -72,11 +113,15 @@ class Peminjaman_model extends CI_Model {
         $this->db->select('
             p.group_id,
             MIN(p.id_peminjaman) as id_peminjaman,
+            MAX(p.id_user) as id_user,
             MAX(p.tanggal_pinjam) as tanggal_pinjam,
             MAX(p.tanggal_kembali_rencana) as tanggal_kembali_rencana,
             MAX(p.tanggal_kembali_actual) as tanggal_kembali_actual,
             MAX(p.status) as status,
+            MAX(p.status_laboran) as status_laboran,
+            MAX(p.status_kaur) as status_kaur,
             MAX(p.keperluan) as keperluan,
+            MAX(p.foto_pengembalian) as foto_pengembalian,
             MAX(p.created_at) as created_at,
             MAX(peminjam.nama_peminjam) as nama_peminjam,
             MAX(peminjam.nim_nip) as nim_nip,
@@ -90,7 +135,7 @@ class Peminjaman_model extends CI_Model {
         // Filter status
         if (!empty($filters['status'])) {
             if ($filters['status'] == 'Terlambat') {
-                $this->db->where('p.status', 'Dipinjam');
+                $this->db->where_in('p.status', ['Sedang Dipinjam', 'Dipinjam']);
                 $this->db->where('p.tanggal_kembali_rencana <', date('Y-m-d'));
             } else {
                 $this->db->where('p.status', $filters['status']);
@@ -159,7 +204,7 @@ class Peminjaman_model extends CI_Model {
      * GET PEMINJAMAN AKTIF - Terurut dari terbaru
      */
     public function get_peminjaman_aktif() {
-        return $this->search_peminjaman(['status' => 'Dipinjam']);
+        return $this->search_peminjaman(['status' => 'Sedang Dipinjam']);
     }
 
     /**
@@ -341,6 +386,101 @@ class Peminjaman_model extends CI_Model {
         return $this->db->update($this->table_peminjaman, $data);
     }
 
+    public function update_group_status($group_id, $data) {
+        $data['updated_at'] = date('Y-m-d H:i:s');
+        $this->db->where('group_id', $group_id);
+        return $this->db->update($this->table_peminjaman, $data);
+    }
+
+    public function get_peminjaman_by_group_id($group_id) {
+        $this->db->select('MIN(id_peminjaman) as id_peminjaman');
+        $row = $this->db->where('group_id', $group_id)->get($this->table_peminjaman)->row();
+        return $row && $row->id_peminjaman ? $this->get_peminjaman_by_id($row->id_peminjaman) : null;
+    }
+
+    public function get_pending_laboran() {
+        return array_merge(
+            $this->search_peminjaman(['status' => 'Menunggu Verifikasi Laboran']),
+            $this->search_peminjaman(['status' => 'Menunggu Pengecekan Laboran']),
+            $this->search_peminjaman(['status' => 'Menunggu Persetujuan'])
+        );
+    }
+
+    public function get_pending_kaur() {
+        return $this->search_peminjaman(['status' => 'Menunggu ACC Kaur']);
+    }
+
+    public function get_qr_payload($group_id) {
+        return site_url('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
+    }
+
+    public function qr_is_visible($status) {
+        return in_array((string) $status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam'], true);
+    }
+
+    public function create_notifikasi($recipient_role, $recipient_user_id, $judul, $pesan, $link = null) {
+        if (!$this->db->table_exists($this->table_notifikasi)) {
+            return false;
+        }
+
+        return $this->db->insert($this->table_notifikasi, [
+            'recipient_role' => $recipient_role ?: null,
+            'recipient_user_id' => $recipient_user_id ?: null,
+            'judul' => $judul,
+            'pesan' => $pesan,
+            'link' => $link,
+            'is_read' => 0,
+            'created_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function get_notifikasi($recipient_role = null, $recipient_user_id = null, $limit = null) {
+        if (!$this->db->table_exists($this->table_notifikasi)) {
+            return [];
+        }
+
+        $this->db->from($this->table_notifikasi);
+        $this->db->group_start();
+        if ($recipient_role) {
+            $this->db->where('recipient_role', $recipient_role);
+        }
+        if ($recipient_user_id) {
+            if ($recipient_role) {
+                $this->db->or_where('recipient_user_id', $recipient_user_id);
+            } else {
+                $this->db->where('recipient_user_id', $recipient_user_id);
+            }
+        }
+        $this->db->group_end();
+        $this->db->order_by('created_at', 'DESC');
+        if ($limit !== null && (int) $limit > 0) {
+            $this->db->limit((int) $limit);
+        }
+        return $this->db->get()->result();
+    }
+
+    public function count_notifikasi_unread($recipient_role = null, $recipient_user_id = null) {
+        if (!$this->db->table_exists($this->table_notifikasi)) {
+            return 0;
+        }
+
+        $this->db->from($this->table_notifikasi);
+        $this->db->where('is_read', 0);
+        $this->db->group_start();
+        if ($recipient_role) {
+            $this->db->where('recipient_role', $recipient_role);
+        }
+        if ($recipient_user_id) {
+            if ($recipient_role) {
+                $this->db->or_where('recipient_user_id', $recipient_user_id);
+            } else {
+                $this->db->where('recipient_user_id', $recipient_user_id);
+            }
+        }
+        $this->db->group_end();
+        return $this->db->count_all_results();
+    }
+
     public function delete_peminjaman($id) {
         $peminjaman = $this->get_peminjaman_by_id($id);
         
@@ -353,7 +493,7 @@ class Peminjaman_model extends CI_Model {
         $this->db->where('id_peminjaman', $id);
         $this->db->delete($this->table_peminjaman);
         
-        if ($peminjaman->status == 'Dipinjam') {
+        if (in_array($peminjaman->status, ['Sedang Dipinjam', 'Dipinjam'], true)) {
             $this->load->model('Aset_model');
             $this->Aset_model->kembalikan_jumlah_tersedia($peminjaman->id_aset, $peminjaman->jumlah_pinjam);
         }
@@ -372,16 +512,16 @@ class Peminjaman_model extends CI_Model {
         // Total peminjaman
         $stats['total_peminjaman'] = $this->db->count_all($this->table_peminjaman);
         
-        // Peminjaman aktif (status Dipinjam dan belum lewat tanggal kembali)
-        $this->db->where('status', 'Dipinjam');
+        // Peminjaman aktif
+        $this->db->where_in('status', ['Sedang Dipinjam', 'Dipinjam']);
         $stats['peminjaman_aktif'] = $this->db->count_all_results($this->table_peminjaman);
         
         // Peminjaman selesai (Dikembalikan)
         $this->db->where('status', 'Dikembalikan');
         $stats['peminjaman_selesai'] = $this->db->count_all_results($this->table_peminjaman);
         
-        // Peminjaman terlambat (status Dipinjam dan tanggal kembali rencana < hari ini)
-        $this->db->where('status', 'Dipinjam');
+        // Peminjaman terlambat
+        $this->db->where_in('status', ['Sedang Dipinjam', 'Dipinjam']);
         $this->db->where('tanggal_kembali_rencana <', date('Y-m-d'));
         $stats['peminjaman_terlambat'] = $this->db->count_all_results($this->table_peminjaman);
         
@@ -446,7 +586,7 @@ class Peminjaman_model extends CI_Model {
         
         if (!empty($params['status'])) {
             if ($params['status'] == 'Terlambat') {
-                $this->db->where('peminjaman.status', 'Dipinjam');
+                $this->db->where_in('peminjaman.status', ['Sedang Dipinjam', 'Dipinjam']);
                 $this->db->where('peminjaman.tanggal_kembali_rencana <', date('Y-m-d'));
             } else {
                 $this->db->where('peminjaman.status', $params['status']);
@@ -498,7 +638,7 @@ class Peminjaman_model extends CI_Model {
         
         if (!empty($params['status'])) {
             if ($params['status'] == 'Terlambat') {
-                $this->db->where('peminjaman.status', 'Dipinjam');
+                $this->db->where_in('peminjaman.status', ['Sedang Dipinjam', 'Dipinjam']);
                 $this->db->where('peminjaman.tanggal_kembali_rencana <', date('Y-m-d'));
             } else {
                 $this->db->where('peminjaman.status', $params['status']);
@@ -559,7 +699,7 @@ class Peminjaman_model extends CI_Model {
         if (!empty($filters)) {
             if (!empty($filters['status'])) {
                 if ($filters['status'] == 'Terlambat') {
-                    $this->db->where('peminjaman.status', 'Dipinjam');
+                    $this->db->where_in('peminjaman.status', ['Sedang Dipinjam', 'Dipinjam']);
                     $this->db->where('peminjaman.tanggal_kembali_rencana <', date('Y-m-d'));
                 } else {
                     $this->db->where('peminjaman.status', $filters['status']);
@@ -588,6 +728,60 @@ class Peminjaman_model extends CI_Model {
         return $this->db->get()->result();
     }
 
+    public function get_pengajuan_sampai_acc_report($filters = []) {
+        $this->db->select('
+            p.group_id,
+            MIN(p.id_peminjaman) as id_peminjaman,
+            MAX(p.tanggal_pinjam) as tanggal_pinjam,
+            MAX(p.tanggal_kembali_rencana) as tanggal_kembali_rencana,
+            MAX(p.status) as status,
+            MAX(p.status_laboran) as status_laboran,
+            MAX(p.catatan_laboran) as catatan_laboran,
+            MAX(p.tgl_approve_laboran) as tgl_approve_laboran,
+            MAX(p.status_kaur) as status_kaur,
+            MAX(p.catatan_kaur) as catatan_kaur,
+            MAX(p.tgl_approve_kaur) as tgl_approve_kaur,
+            MAX(p.keperluan) as keperluan,
+            MAX(p.created_at) as created_at,
+            MAX(peminjam.nama_peminjam) as nama_peminjam,
+            MAX(peminjam.nim_nip) as nim_nip,
+            COUNT(p.id_peminjaman) as total_jenis,
+            SUM(p.jumlah_pinjam) as total_jumlah,
+            GROUP_CONCAT(CONCAT(COALESCE(aset.kode_aset, "-"), " - ", COALESCE(aset.nama_aset, "-"), " (", p.jumlah_pinjam, " unit)") SEPARATOR "; ") as daftar_barang
+        ', false);
+        $this->db->from($this->table_peminjaman . ' as p');
+        $this->db->join('peminjam', 'peminjam.id_peminjam = p.id_peminjam', 'left');
+        $this->db->join('aset', 'aset.id_aset = p.id_aset', 'left');
+        $this->db->where_in('p.status', [
+            'Menunggu Pengecekan Laboran',
+            'Menunggu Verifikasi Laboran',
+            'Menunggu Persetujuan',
+            'Menunggu ACC Kaur',
+            'Disetujui (Menunggu Pengambilan)',
+        ]);
+
+        if (!empty($filters['status'])) {
+            $this->db->where('p.status', $filters['status']);
+        }
+        if (!empty($filters['tanggal'])) {
+            $this->db->where('DATE(p.tanggal_pinjam)', $filters['tanggal']);
+        }
+        if (!empty($filters['pencarian'])) {
+            $search = trim($filters['pencarian']);
+            $this->db->group_start();
+            $this->db->like('peminjam.nama_peminjam', $search);
+            $this->db->or_like('peminjam.nim_nip', $search);
+            $this->db->or_like('p.keperluan', $search);
+            $this->db->or_like('aset.nama_aset', $search);
+            $this->db->or_like('aset.kode_aset', $search);
+            $this->db->group_end();
+        }
+
+        $this->db->group_by('COALESCE(p.group_id, p.id_peminjaman)', false);
+        $this->db->order_by('created_at', 'DESC');
+        return $this->db->get()->result();
+    }
+
     public function get_peminjaman_terbaru($limit = 5) {
         $this->db->select('
             peminjaman.*,
@@ -604,18 +798,18 @@ class Peminjaman_model extends CI_Model {
 
     public function is_aset_dipinjam($id_aset) {
         $this->db->where('id_aset', $id_aset);
-        $this->db->where('status', 'Dipinjam');
+        $this->db->where_in('status', ['Sedang Dipinjam', 'Dipinjam']);
         $query = $this->db->get($this->table_peminjaman);
         return $query->num_rows() > 0;
     }
 
     public function get_statistik_per_status() {
         $result = [];
-        $statuses = ['Dipinjam', 'Dikembalikan', 'Terlambat'];
+        $statuses = ['Sedang Dipinjam', 'Dikembalikan', 'Terlambat'];
         
         foreach ($statuses as $status) {
             if ($status == 'Terlambat') {
-                $this->db->where('status', 'Dipinjam');
+                $this->db->where_in('status', ['Sedang Dipinjam', 'Dipinjam']);
                 $this->db->where('tanggal_kembali_rencana <', date('Y-m-d'));
                 $result[$status] = $this->db->count_all_results($this->table_peminjaman);
             } else {
@@ -632,7 +826,7 @@ class Peminjaman_model extends CI_Model {
             DATE(peminjaman.tanggal_pinjam) as tanggal,
             COUNT(*) as total_peminjaman,
             SUM(CASE WHEN peminjaman.status = "Dikembalikan" THEN 1 ELSE 0 END) as total_dikembalikan,
-            SUM(CASE WHEN peminjaman.status = "Dipinjam" THEN 1 ELSE 0 END) as total_dipinjam,
+            SUM(CASE WHEN peminjaman.status IN ("Sedang Dipinjam", "Dipinjam") THEN 1 ELSE 0 END) as total_dipinjam,
             SUM(peminjaman.jumlah_pinjam) as total_barang
         ');
         $this->db->from($this->table_peminjaman . ' as peminjaman');
@@ -704,7 +898,7 @@ class Peminjaman_model extends CI_Model {
         $this->db->from('peminjaman');
         $this->db->join('peminjam', 'peminjam.id_peminjam = peminjaman.id_peminjam', 'left');
         $this->db->join('users u_laboran', 'u_laboran.id_user = peminjaman.id_approver_laboran', 'left');
-        $this->db->join('users u_kaur', 'u_laboran.id_user = peminjaman.id_approver_kaur', 'left');
+        $this->db->join('users u_kaur', 'u_kaur.id_user = peminjaman.id_approver_kaur', 'left');
         $this->db->where('peminjaman.id_peminjaman', $id_peminjaman);
         return $this->db->get()->row();
     }
@@ -744,12 +938,14 @@ class Peminjaman_model extends CI_Model {
         ');
         $this->db->from('peminjaman');
         $this->db->join('peminjam', 'peminjam.id_peminjam = peminjaman.id_peminjam', 'left');
-        $this->db->where('peminjaman.status', 'Menunggu Persetujuan');
- 
         if ($role === 'laboran') {
+            $this->db->where_in('peminjaman.status', ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran']);
             $this->db->where('peminjaman.status_laboran', 'Pending');
         } elseif ($role === 'kaur') {
+            $this->db->where('peminjaman.status', 'Menunggu ACC Kaur');
             $this->db->where('peminjaman.status_kaur', 'Pending');
+        } else {
+            $this->db->where_in('peminjaman.status', ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur', 'Menunggu Persetujuan']);
         }
  
         $this->db->order_by('peminjaman.created_at', 'DESC');

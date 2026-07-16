@@ -114,17 +114,43 @@ class Pengajuan extends CI_Controller {
         redirect('kaprodi/dashboard');
     }
 
+    public function export_pengajuan() {
+        $filters = [
+            'q' => trim((string) $this->input->get('q', true)),
+            'status' => trim((string) $this->input->get('status', true)),
+            'jenis_pengajuan' => trim((string) $this->input->get('jenis_pengajuan', true)),
+            'tanggal_dari' => trim((string) $this->input->get('tanggal_dari', true)),
+            'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
+        ];
+
+        $rows = $this->Kaprodi_model->get_filtered_by_user($this->session->userdata('id_user'), $filters, null, null);
+        $filename = 'berita_acara_klarifikasi_kaprodi_' . date('Ymd_His') . '.xls';
+        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        $this->load->view('kaur/export_ba_klarifikasi', [
+            'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
+            'pengajuan_list' => $rows,
+            'show_negosiasi' => false,
+            'role_label' => 'Kaprodi',
+        ]);
+    }
+
     public function export_excel($id_pengajuan) {
         $pengajuan = $this->Kaprodi_model->get_by_id($id_pengajuan);
         if (!$pengajuan) {
             show_404();
         }
 
-        $filename = 'klarifikasi_pengadaan_' . $pengajuan->kode_pengajuan . '.xls';
+        $filename = 'berita_acara_klarifikasi_' . $pengajuan->kode_pengajuan . '.xls';
         header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
-        echo "\xEF\xBB\xBF";
-        $this->load->view('kaprodi/export_excel', ['pengajuan' => $pengajuan]);
+        $this->load->view('kaur/export_ba_klarifikasi', [
+            'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
+            'pengajuan' => $pengajuan,
+            'show_negosiasi' => false,
+            'role_label' => 'Kaprodi',
+        ]);
     }
 }

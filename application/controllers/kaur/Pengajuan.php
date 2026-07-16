@@ -32,7 +32,7 @@ class Pengajuan extends CI_Controller {
         $pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
         if (!$pengajuan) {
             $this->session->set_flashdata('error', 'Pengajuan Kaprodi tidak ditemukan.');
-            redirect('kaur/dashboard#negosiasi');
+            redirect('kaur/dashboard/negosiasi');
         }
 
         $vendor = trim($this->input->post('vendor', true));
@@ -43,7 +43,7 @@ class Pengajuan extends CI_Controller {
 
         if ($vendor === '' || $harga_awal < 0 || $harga_negosiasi < 0 || $volume_negosiasi <= 0) {
             $this->session->set_flashdata('error', 'Vendor, harga, dan volume negosiasi wajib diisi dengan benar.');
-            redirect('kaur/dashboard#negosiasi');
+            redirect('kaur/dashboard/negosiasi');
         }
 
         $ok = $this->Kaur_model->save_negosiasi($id_pengajuan, $id_item, [
@@ -58,27 +58,32 @@ class Pengajuan extends CI_Controller {
         ]);
 
         $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Riwayat negosiasi berhasil disimpan.' : 'Gagal menyimpan negosiasi.');
-        redirect('kaur/dashboard#negosiasi');
+        redirect('kaur/dashboard/negosiasi');
     }
 
     public function approval($id_pengajuan, $aksi = 'approve') {
         $pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
         if (!$pengajuan) {
             $this->session->set_flashdata('error', 'Pengajuan Kaprodi tidak ditemukan.');
-            redirect('kaur/dashboard#approval');
+            redirect('kaur/dashboard/approval');
+        }
+
+        if ($aksi === 'approve' && !$this->Kaur_model->kaprodi_all_items_deal($id_pengajuan)) {
+            $this->session->set_flashdata('error', 'Pengajuan baru bisa disetujui setelah seluruh item berstatus Deal pada tahap negosiasi.');
+            redirect('kaur/dashboard/approval');
         }
 
         $map = [
-            'approve' => 'Approval',
+            'approve' => 'Disetujui',
             'revisi' => 'Revisi',
             'tolak' => 'Ditolak',
         ];
-        $status = $map[$aksi] ?? 'Approval';
+        $status = $map[$aksi] ?? 'Disetujui';
         $catatan = trim($this->input->post('catatan_approval', true));
         $ok = $this->Kaur_model->update_kaprodi_status($id_pengajuan, $status, $catatan);
 
         $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Status pengajuan berhasil diperbarui.' : 'Gagal memperbarui status.');
-        redirect('kaur/dashboard#approval');
+        redirect('kaur/dashboard/approval');
     }
 
     public function simpan_anggaran() {
@@ -87,7 +92,7 @@ class Pengajuan extends CI_Controller {
 
         if ($tahun < 2000 || $total <= 0) {
             $this->session->set_flashdata('error', 'Tahun dan total anggaran wajib diisi dengan benar.');
-            redirect('kaur/dashboard#anggaran');
+            redirect('kaur/dashboard/anggaran');
         }
 
         $id = $this->Kaur_model->save_anggaran([
@@ -98,14 +103,19 @@ class Pengajuan extends CI_Controller {
         ]);
 
         $this->session->set_flashdata($id ? 'success' : 'error', $id ? 'Total anggaran berhasil disimpan.' : 'Gagal menyimpan anggaran.');
-        redirect('kaur/dashboard#anggaran');
+        redirect('kaur/dashboard/anggaran');
     }
 
     public function simpan_bast($id_pengajuan) {
         $pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
         if (!$pengajuan) {
             $this->session->set_flashdata('error', 'Pengajuan Kaprodi tidak ditemukan.');
-            redirect('kaur/dashboard#bast');
+            redirect('kaur/dashboard/bast');
+        }
+
+        if ($this->Kaur_model->pengajuan_has_bast($id_pengajuan)) {
+            $this->session->set_flashdata('error', 'Pengajuan ini sudah memiliki dokumen BAST.');
+            redirect('kaur/dashboard/bast');
         }
 
         $nomor = trim($this->input->post('nomor_bast', true));
@@ -114,12 +124,27 @@ class Pengajuan extends CI_Controller {
 
         if ($nomor === '' || $tanggal === '' || !in_array($jenis, ['Barang', 'Jasa'], true)) {
             $this->session->set_flashdata('error', 'Nomor, tanggal, dan jenis BAST wajib diisi.');
-            redirect('kaur/dashboard#bast');
+            redirect('kaur/dashboard/bast');
+        }
+
+        if (empty($_FILES['file_bast']['name'])) {
+            $this->session->set_flashdata('error', 'Dokumen BAST wajib diupload dalam format PDF atau hasil scan.');
+            redirect('kaur/dashboard/bast');
+        }
+
+        if (!in_array($pengajuan->status, ['Disetujui', 'Approval'], true)) {
+            $this->session->set_flashdata('error', 'BAST hanya bisa diinput setelah pengajuan disetujui Kaur.');
+            redirect('kaur/dashboard/bast');
+        }
+
+        if ($jenis !== ($pengajuan->jenis_pengajuan ?? 'Barang')) {
+            $this->session->set_flashdata('error', 'Jenis BAST harus sama dengan jenis pengajuan.');
+            redirect('kaur/dashboard/bast');
         }
 
         $file_path = $this->upload_bast_file();
         if ($file_path === false && !empty($_FILES['file_bast']['name'])) {
-            redirect('kaur/dashboard#bast');
+            redirect('kaur/dashboard/bast');
         }
 
         $id = $this->Kaur_model->save_bast($id_pengajuan, [
@@ -132,7 +157,7 @@ class Pengajuan extends CI_Controller {
         ]);
 
         $this->session->set_flashdata($id ? 'success' : 'error', $id ? 'BAST berhasil disimpan dan barang diproses ke inventory bila jenisnya Barang.' : 'Gagal menyimpan BAST.');
-        redirect('kaur/dashboard#bast');
+        redirect('kaur/dashboard/bast');
     }
 
     private function upload_bast_file() {
@@ -228,7 +253,7 @@ class Pengajuan extends CI_Controller {
             'bast_disetujui_pada' => null,
         ]);
         $this->session->set_flashdata('success', 'BAST masuk ke Approval Tahap 1.');
-        redirect('kaur/dashboard#approval-bast');
+        redirect('kaur/dashboard/bast');
     }
 
     public function setujui_bast($id_pengajuan) {
@@ -243,7 +268,7 @@ class Pengajuan extends CI_Controller {
             'bast_disetujui_pada' => date('Y-m-d H:i:s'),
         ]);
         $this->session->set_flashdata('success', 'Approval Tahap 1 BAST berhasil disetujui.');
-        redirect('kaur/dashboard#approval-bast');
+        redirect('kaur/dashboard/bast');
     }
 
     public function negosiasi($id_pengajuan) {
@@ -284,17 +309,47 @@ class Pengajuan extends CI_Controller {
         redirect('kaur/dashboard');
     }
 
+    public function export_pengajuan_acc() {
+        $filters = [
+            'q' => trim((string) $this->input->get('q', true)),
+            'status' => trim((string) $this->input->get('status', true)),
+            'jenis_pengajuan' => trim((string) $this->input->get('jenis_pengajuan', true)),
+            'tanggal_dari' => trim((string) $this->input->get('tanggal_dari', true)),
+            'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
+        ];
+
+        $data['title'] = 'Berita Acara Klarifikasi Pengajuan Barang/Jasa';
+        $data['rows'] = $this->Kaur_model->get_kaprodi_pengajuan_acc_report($filters);
+        $data['pengajuan_list'] = $data['rows'];
+        $data['show_negosiasi'] = true;
+        $data['role_label'] = 'Kaur Laboratorium';
+        $filename = 'laporan_pengajuan_barang_jasa_sampai_acc_' . date('Ymd_His') . '.xls';
+
+        $this->output
+            ->set_content_type('application/vnd.ms-excel')
+            ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
+            ->set_header('Cache-Control: max-age=0');
+        $this->load->view('kaur/export_ba_klarifikasi', $data);
+    }
+
     public function export_excel($id_pengajuan) {
-        $pengajuan = $this->Kaur_model->get_by_id($id_pengajuan);
+        $pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
+        if (!$pengajuan) {
+            $pengajuan = $this->Kaur_model->get_by_id($id_pengajuan);
+        }
         if (!$pengajuan) {
             show_404();
         }
 
-        $filename = 'laporan_pengajuan_kaur_' . $pengajuan->kode_pengajuan . '.xls';
+        $filename = 'berita_acara_klarifikasi_' . $pengajuan->kode_pengajuan . '.xls';
         header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
-        echo "\xEF\xBB\xBF";
-        $this->load->view('kaur/export_excel', ['pengajuan' => $pengajuan]);
+        $this->load->view('kaur/export_ba_klarifikasi', [
+            'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
+            'pengajuan' => $pengajuan,
+            'show_negosiasi' => true,
+            'role_label' => 'Kaur Laboratorium',
+        ]);
     }
 }

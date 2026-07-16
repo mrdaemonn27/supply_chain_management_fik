@@ -12,6 +12,7 @@ function status_class_kaur($status) {
         'Negosiasi' => 'status-negosiasi',
         'Sedang Negosiasi' => 'status-negosiasi',
         'Deal' => 'status-deal',
+        'Disetujui' => 'status-approval',
         'Approval' => 'status-approval',
         'BAST' => 'status-bast',
         'Inventarisasi' => 'status-inventory',
@@ -36,6 +37,24 @@ $anggaran = $anggaran ?? ['tahun' => date('Y'), 'total_anggaran' => 0, 'total_pe
 $page = $page ?? 1;
 $total_pages = $total_pages ?? 1;
 $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
+$notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
+$notif_count = (int) ($unread_notifikasi ?? 0);
+$active_module = $active_module ?? 'overview';
+$module_meta = [
+    'overview' => ['title' => 'Dashboard Kaur Laboratorium', 'desc' => 'Pilih fitur operasional Kaur Laboratorium dari panel berikut.'],
+    'pengajuan' => ['title' => 'Pengajuan Kaprodi', 'desc' => 'Pantau seluruh kebutuhan barang dan jasa dari prodi.'],
+    'negosiasi' => ['title' => 'Negosiasi Pengadaan', 'desc' => 'Pilih vendor dan simpan riwayat harga negosiasi.'],
+    'approval' => ['title' => 'Approval Pengadaan', 'desc' => 'Setujui, revisi, atau tolak pengajuan setelah negosiasi selesai.'],
+    'peminjaman' => ['title' => 'ACC Peminjaman', 'desc' => 'Setujui peminjaman yang sudah diverifikasi Laboran agar QR aktif.'],
+    'anggaran' => ['title' => 'Alokasi Anggaran', 'desc' => 'Kelola total anggaran, pengeluaran, sisa, dan persentase penggunaan.'],
+    'bast' => ['title' => 'BAST', 'desc' => 'Input dokumen BAST dari Logistik dan proses barang ke inventory.'],
+    'laporan' => ['title' => 'Laporan', 'desc' => 'Lihat hasil akhir negosiasi yang sudah Deal.'],
+];
+$module = $module_meta[$active_module] ?? $module_meta['overview'];
+$is_overview = $active_module === 'overview';
+function kaur_module_url($module) {
+    return base_url('index.php/kaur/dashboard' . ($module === 'overview' ? '' : '/' . $module));
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -73,9 +92,12 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
         .item-card { border: 1px solid #e8eaed; border-radius: 8px; background: #fff; }
         .mini-label { font-size: .74rem; color: #6c757d; font-weight: 600; }
         .progress { height: 10px; border-radius: 999px; }
+        .notif-bell { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 38px; }
+        .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }
         @media (max-width: 767.98px) {
             .topbar-actions { width: 100%; flex-wrap: wrap; }
             .topbar-actions .btn { flex: 1 1 auto; }
+            .topbar-actions .notif-bell { flex: 0 0 38px; }
             .summary-card { min-height: auto; }
         }
     </style>
@@ -92,9 +114,23 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                     </div>
                 </div>
                 <div class="topbar-actions d-flex align-items-center gap-2">
-                    <a href="#pengajuan" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-inboxes me-1"></i> Pengajuan</a>
-                    <a href="#negosiasi" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-chat-square-text me-1"></i> Negosiasi</a>
-                    <a href="#laporan" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-file-earmark-bar-graph me-1"></i> Laporan</a>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light btn-sm rounded-circle notif-bell position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi">
+                            <i class="bi bi-bell"></i>
+                            <?php if ($notif_count > 0): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $notif_count ?></span><?php endif; ?>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end shadow border-0 p-2 notif-menu">
+                            <div class="fw-bold px-2 py-1">Notifikasi</div>
+                            <?php if (empty($notif_items)): ?>
+                                <div class="small text-muted px-2 py-3">Belum ada notifikasi.</div>
+                            <?php else: foreach ($notif_items as $n): ?>
+                                <a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>">
+                                    <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
+                                    <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
+                                </a>
+                            <?php endforeach; endif; ?>
+                        </div>
+                    </div>
                     <a href="<?= base_url('index.php/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-globe me-1"></i> Web User</a>
                     <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
                 </div>
@@ -109,15 +145,20 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
         <?php if($this->session->flashdata('error')): ?>
             <div class="alert alert-danger rounded-3"><?= html_escape($this->session->flashdata('error')) ?></div>
         <?php endif; ?>
-
         <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
             <div>
-                <h1 class="h3 fw-bold mb-1">Dashboard Kaur Laboratorium</h1>
-                <p class="text-muted mb-0">Kelola alur dari pengajuan Kaprodi sampai negosiasi, approval, BAST, dan inventarisasi.</p>
+                <h1 class="h3 fw-bold mb-1"><?= html_escape($module['title']) ?></h1>
+                <p class="text-muted mb-0"><?= html_escape($module['desc']) ?></p>
             </div>
-            <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?= date('d F Y') ?></div>
+            <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
+                <?php if (!$is_overview): ?>
+                    <a href="<?= kaur_module_url('overview') ?>" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-grid me-1"></i> Panel Kaur</a>
+                <?php endif; ?>
+                <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?= date('d F Y') ?></div>
+            </div>
         </div>
 
+        <?php if ($is_overview): ?>
         <div class="row g-3 mb-4">
             <div class="col-6 col-xl-2"><div class="panel-card summary-card"><div class="value"><?= (int) $stats['pengajuan'] ?></div><div class="label">Pengajuan</div></div></div>
             <div class="col-6 col-xl-2"><div class="panel-card summary-card"><div class="value"><?= (int) $stats['negosiasi'] ?></div><div class="label">Negosiasi</div></div></div>
@@ -131,29 +172,75 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
             $menus = [
                 ['id' => 'pengajuan', 'icon' => 'bi-inboxes', 'title' => 'Pengajuan', 'desc' => 'Pantau semua kebutuhan prodi.'],
                 ['id' => 'negosiasi', 'icon' => 'bi-chat-square-text', 'title' => 'Negosiasi', 'desc' => 'Pilih vendor dan catat histori harga.'],
-                ['id' => 'approval', 'icon' => 'bi-check2-circle', 'title' => 'Approval', 'desc' => 'Setujui, revisi, atau tolak.'],
+                ['id' => 'approval', 'icon' => 'bi-patch-check', 'title' => 'Approval', 'desc' => 'Setujui pengadaan yang sudah Deal.'],
+                ['id' => 'peminjaman', 'icon' => 'bi-qr-code-scan', 'title' => 'ACC Peminjaman', 'desc' => 'Aktifkan QR peminjam.'],
                 ['id' => 'anggaran', 'icon' => 'bi-cash-coin', 'title' => 'Alokasi Anggaran', 'desc' => 'Kelola total, pengeluaran, dan sisa.'],
                 ['id' => 'bast', 'icon' => 'bi-file-earmark-pdf', 'title' => 'BAST', 'desc' => 'Input dokumen dari Logistik.'],
                 ['id' => 'laporan', 'icon' => 'bi-file-earmark-spreadsheet', 'title' => 'Laporan', 'desc' => 'Hasil akhir negosiasi Deal.'],
             ];
             foreach ($menus as $menu): ?>
                 <div class="col-md-6 col-xl-2">
-                    <a class="quick-link d-flex align-items-center gap-3 p-3 h-100" href="#<?= $menu['id'] ?>">
+                    <a class="quick-link d-flex align-items-center gap-3 p-3 h-100" href="<?= kaur_module_url($menu['id']) ?>">
                         <span class="quick-icon"><i class="bi <?= $menu['icon'] ?>"></i></span>
                         <span><span class="fw-bold d-block"><?= $menu['title'] ?></span><span class="small text-muted"><?= $menu['desc'] ?></span></span>
                     </a>
                 </div>
             <?php endforeach; ?>
         </div>
+        <?php endif; ?>
 
+        <?php if ($active_module === 'peminjaman'): ?>
+        <section id="approval-peminjaman" class="section-anchor panel-card p-3 p-lg-4 mb-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">Approval Peminjaman oleh Kaur</h2>
+                    <div class="text-muted small">Pengajuan yang sudah dicek Laboran akan muncul di sini. Setelah disetujui, QR Code tampil di akun peminjam.</div>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-start">
+                    <a href="<?= base_url('index.php/kaur/peminjaman/export_pengajuan_acc') ?>" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Export Excel ACC</a>
+                    <span class="badge text-bg-warning align-self-start"><?= count($peminjaman_pending_kaur ?? []) ?> menunggu ACC</span>
+                </div>
+            </div>
+            <div class="row g-3">
+                <?php if(empty($peminjaman_pending_kaur)): ?>
+                    <div class="col-12"><div class="border rounded-3 p-4 text-center text-muted">Tidak ada peminjaman yang menunggu ACC Kaur.</div></div>
+                <?php else: foreach($peminjaman_pending_kaur as $p): ?>
+                    <div class="col-lg-6">
+                        <form class="item-card p-3 h-100" method="post" action="<?= base_url('index.php/kaur/peminjaman/setujui/'.$p->id_peminjaman) ?>">
+                            <div class="d-flex justify-content-between gap-2 mb-2">
+                                <div>
+                                    <div class="fw-bold"><?= html_escape($p->nama_peminjam ?? '-') ?></div>
+                                    <div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?> - <?= html_escape($p->tanggal_pinjam ?? '-') ?></div>
+                                </div>
+                                <span class="status-pill status-negosiasi"><?= html_escape($p->status ?? '-') ?></span>
+                            </div>
+                            <div class="small mb-2">
+                                <?php foreach(($p->detail_barang ?? []) as $d): ?>
+                                    <div class="d-flex justify-content-between border-bottom py-1"><span><?= html_escape($d->nama_aset ?? '-') ?></span><strong><?= (int)($d->jumlah_pinjam ?? 0) ?> unit</strong></div>
+                                <?php endforeach; ?>
+                            </div>
+                            <textarea name="catatan_kaur" class="form-control mb-2" rows="2" placeholder="Catatan ACC Kaur"></textarea>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button class="btn btn-success btn-sm rounded-pill px-3" onclick="return confirm('Setujui peminjaman ini dan aktifkan QR?')"><i class="bi bi-check2-circle me-1"></i> Setujui</button>
+                                <button formaction="<?= base_url('index.php/kaur/peminjaman/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="return confirm('Tolak peminjaman ini?')"><i class="bi bi-x-lg me-1"></i> Tolak</button>
+                            </div>
+                        </form>
+                    </div>
+                <?php endforeach; endif; ?>
+            </div>
+        </section>
+        <?php endif; ?>
+
+        <?php if ($active_module === 'pengajuan'): ?>
         <section id="pengajuan" class="section-anchor panel-card p-3 p-lg-4 mb-4">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
                 <div>
                     <h2 class="h5 fw-bold mb-1">Pengajuan Kaprodi</h2>
                     <div class="text-muted small">Data dapat dicari berdasarkan tanggal, jenis, status, dan kata kunci.</div>
                 </div>
+                <a href="<?= base_url('index.php/kaur/pengajuan/export_pengajuan_acc?' . query_kaur($filters, 1)) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3 align-self-start"><i class="bi bi-file-earmark-excel me-1"></i> Export Pengajuan ACC</a>
             </div>
-            <form method="get" action="<?= base_url('index.php/kaur/dashboard') ?>" class="row g-2 align-items-end mb-3">
+            <form method="get" action="<?= kaur_module_url('pengajuan') ?>" class="row g-2 align-items-end mb-3">
                 <div class="col-md-3">
                     <label class="form-label small fw-semibold">Kata Kunci</label>
                     <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, barang">
@@ -170,7 +257,7 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                     <label class="form-label small fw-semibold">Status</label>
                     <select name="status" class="form-select">
                         <option value="">Semua</option>
-                        <?php foreach (['Pengajuan','Revisi','Sedang Negosiasi','Deal','Approval','BAST','Selesai','Ditolak'] as $status): ?>
+                        <?php foreach (['Pengajuan','Revisi','Sedang Negosiasi','Deal','Disetujui','Approval','BAST','Selesai','Ditolak'] as $status): ?>
                             <option value="<?= $status ?>" <?= (($filters['status'] ?? '') === $status) ? 'selected' : '' ?>><?= $status ?></option>
                         <?php endforeach; ?>
                     </select>
@@ -182,10 +269,10 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
 
             <div class="table-responsive">
                 <table class="table table-clean align-middle">
-                    <thead><tr><th>Kode</th><th>Prodi</th><th>Jenis</th><th>Kebutuhan</th><th>Status</th><th>Tanggal</th></tr></thead>
+                    <thead><tr><th>Kode</th><th>Prodi</th><th>Jenis</th><th>Kebutuhan</th><th>Status</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
                     <tbody>
                         <?php if (empty($pengajuan_kaprodi)): ?>
-                            <tr><td colspan="6" class="text-center text-muted py-5">Belum ada pengajuan sesuai filter.</td></tr>
+                            <tr><td colspan="7" class="text-center text-muted py-5">Belum ada pengajuan sesuai filter.</td></tr>
                         <?php else: foreach ($pengajuan_kaprodi as $p): ?>
                             <tr>
                                 <td class="fw-semibold"><?= html_escape($p->kode_pengajuan) ?></td>
@@ -199,6 +286,7 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                                 </td>
                                 <td><span class="status-pill <?= status_class_kaur($p->status) ?>"><?= html_escape($p->status) ?></span></td>
                                 <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($p->created_at)) ?></td>
+                                <td class="text-end"><a href="<?= base_url('index.php/kaur/pengajuan/export_excel/'.$p->id_pengajuan) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a></td>
                             </tr>
                         <?php endforeach; endif; ?>
                     </tbody>
@@ -208,16 +296,18 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                 <div class="small text-muted">Menampilkan <?= count($pengajuan_kaprodi ?? []) ?> dari <?= (int) $total_rows ?> data</div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaur/dashboard?' . query_kaur($filters, max(1, $page - 1))) ?>#pengajuan">Prev</a></li>
+                        <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, max(1, $page - 1)) ?>">Prev</a></li>
                         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                            <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaur/dashboard?' . query_kaur($filters, $i)) ?>#pengajuan"><?= $i ?></a></li>
+                            <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, $i) ?>"><?= $i ?></a></li>
                         <?php endfor; ?>
-                        <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaur/dashboard?' . query_kaur($filters, min($total_pages, $page + 1))) ?>#pengajuan">Next</a></li>
+                        <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, min($total_pages, $page + 1)) ?>">Next</a></li>
                     </ul>
                 </nav>
             </div>
         </section>
+        <?php endif; ?>
 
+        <?php if ($active_module === 'negosiasi'): ?>
         <section id="negosiasi" class="section-anchor mb-4">
             <div class="d-flex justify-content-between align-items-end mb-3">
                 <div>
@@ -264,12 +354,23 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                 <?php endforeach; endif; ?>
             </div>
         </section>
+        <?php endif; ?>
 
+        <?php if ($active_module === 'approval'): ?>
         <section id="approval" class="section-anchor panel-card p-3 p-lg-4 mb-4">
             <h2 class="h5 fw-bold mb-1">Approval Kaur</h2>
             <div class="text-muted small mb-3">Kaur dapat menyetujui, meminta revisi, atau menolak pengajuan sesuai kebutuhan proses bisnis.</div>
             <div class="row g-3">
                 <?php foreach (($pengajuan_kaprodi ?? []) as $p): ?>
+                    <?php
+                    $can_approve = !empty($p->items);
+                    foreach (($p->items ?? []) as $approval_item) {
+                        if (empty($approval_item->latest_negosiasi) || $approval_item->latest_negosiasi->status !== 'Deal') {
+                            $can_approve = false;
+                            break;
+                        }
+                    }
+                    ?>
                     <div class="col-lg-6">
                         <form class="item-card p-3 h-100" method="post" action="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/approve') ?>">
                             <div class="d-flex justify-content-between gap-2 mb-2">
@@ -277,8 +378,9 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                                 <span class="status-pill <?= status_class_kaur($p->status) ?>"><?= html_escape($p->status) ?></span>
                             </div>
                             <textarea name="catatan_approval" class="form-control mb-2" rows="2" placeholder="Catatan approval atau revisi"><?= html_escape($p->catatan_approval ?? '') ?></textarea>
+                            <?php if (!$can_approve): ?><div class="small text-warning mb-2"><i class="bi bi-exclamation-triangle me-1"></i> Setujui aktif setelah semua item negosiasi berstatus Deal.</div><?php endif; ?>
                             <div class="d-flex flex-wrap gap-2">
-                                <button formaction="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/approve') ?>" class="btn btn-success btn-sm rounded-pill px-3"><i class="bi bi-check2 me-1"></i> Setujui</button>
+                                <button formaction="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/approve') ?>" class="btn btn-success btn-sm rounded-pill px-3" <?= $can_approve ? '' : 'disabled' ?>><i class="bi bi-check2 me-1"></i> Setujui</button>
                                 <button formaction="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/revisi') ?>" class="btn btn-warning btn-sm rounded-pill px-3"><i class="bi bi-pencil-square me-1"></i> Revisi</button>
                                 <button formaction="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/tolak') ?>" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="return confirm('Tolak pengajuan ini?')"><i class="bi bi-x-lg me-1"></i> Tolak</button>
                             </div>
@@ -287,7 +389,9 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                 <?php endforeach; ?>
             </div>
         </section>
+        <?php endif; ?>
 
+        <?php if ($active_module === 'anggaran'): ?>
         <section id="anggaran" class="section-anchor panel-card p-3 p-lg-4 mb-4">
             <div class="row g-4 align-items-center">
                 <div class="col-lg-6">
@@ -310,18 +414,24 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                 </div>
             </div>
         </section>
+        <?php endif; ?>
 
+        <?php if ($active_module === 'bast'): ?>
         <section id="bast" class="section-anchor mb-4">
             <h2 class="h5 fw-bold mb-3">Input BAST dari Logistik</h2>
             <div class="row g-3">
                 <div class="col-xl-7">
                     <div class="panel-card p-3 p-lg-4 h-100">
                         <div class="accordion" id="bastAccordion">
-                            <?php foreach (($pengajuan_kaprodi ?? []) as $index => $p): ?>
+                            <?php $bast_rows = $bast_ready ?? []; ?>
+                            <?php if (empty($bast_rows)): ?>
+                                <div class="text-muted small p-3">Belum ada pengajuan yang siap BAST. BAST baru tersedia setelah pengajuan disetujui Kaur.</div>
+                            <?php endif; ?>
+                            <?php foreach ($bast_rows as $index => $p): ?>
                                 <div class="accordion-item">
                                     <h2 class="accordion-header">
                                         <button class="accordion-button <?= $index > 0 ? 'collapsed' : '' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#bastForm<?= (int) $p->id_pengajuan ?>">
-                                            <?= html_escape($p->kode_pengajuan) ?> - <?= html_escape($p->nama_pengajuan) ?>
+                                            <?= html_escape($p->kode_pengajuan) ?> - <?= html_escape($p->nama_pengajuan) ?> <span class="badge text-bg-success ms-2"><?= html_escape($p->status) ?></span>
                                         </button>
                                     </h2>
                                     <div id="bastForm<?= (int) $p->id_pengajuan ?>" class="accordion-collapse collapse <?= $index === 0 ? 'show' : '' ?>" data-bs-parent="#bastAccordion">
@@ -329,7 +439,7 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                                             <div class="col-md-4"><label class="form-label small fw-semibold">Nomor BAST</label><input type="text" name="nomor_bast" class="form-control" required></div>
                                             <div class="col-md-4"><label class="form-label small fw-semibold">Tanggal</label><input type="date" name="tanggal_bast" class="form-control" required></div>
                                             <div class="col-md-4"><label class="form-label small fw-semibold">Jenis</label><select name="jenis_bast" class="form-select"><option value="Barang" <?= (($p->jenis_pengajuan ?? 'Barang') === 'Barang') ? 'selected' : '' ?>>Barang</option><option value="Jasa" <?= (($p->jenis_pengajuan ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option></select></div>
-                                            <div class="col-md-7"><label class="form-label small fw-semibold">File PDF/Scan</label><input type="file" name="file_bast" class="form-control" accept=".pdf,.jpg,.jpeg,.png"></div>
+                                            <div class="col-md-7"><label class="form-label small fw-semibold">File PDF/Scan</label><input type="file" name="file_bast" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required></div>
                                             <div class="col-md-5"><label class="form-label small fw-semibold">Catatan</label><input type="text" name="catatan" class="form-control"></div>
                                             <div class="col-12 d-grid d-md-flex justify-content-md-end"><button class="btn btn-fik rounded-pill px-4"><i class="bi bi-upload me-1"></i> Simpan BAST</button></div>
                                         </form>
@@ -357,7 +467,9 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                 </div>
             </div>
         </section>
+        <?php endif; ?>
 
+        <?php if ($active_module === 'laporan'): ?>
         <section id="laporan" class="section-anchor panel-card p-3 p-lg-4 mb-4">
             <h2 class="h5 fw-bold mb-1">Laporan Hasil Negosiasi</h2>
             <div class="text-muted small mb-3">Hanya data dengan status Deal yang tampil sebagai dokumentasi resmi hasil akhir.</div>
@@ -384,6 +496,7 @@ $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
                 </table>
             </div>
         </section>
+        <?php endif; ?>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

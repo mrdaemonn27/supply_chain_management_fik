@@ -283,6 +283,12 @@ class Kaur_model extends CI_Model {
         return $this->db->count_all_results();
     }
 
+    private function count_kaprodi_statuses($statuses) {
+        $this->db->from($this->kaprodiTable);
+        $this->db->where_in('status', (array) $statuses);
+        return $this->db->count_all_results();
+    }
+
     public function get_kaprodi_pengajuan($filters = [], $limit = 10, $offset = 0) {
         $this->db->select('kaprodi_pengajuan.*, users.nama_lengkap');
         $this->db->from($this->kaprodiTable);
@@ -293,6 +299,25 @@ class Kaur_model extends CI_Model {
         if ($limit !== null) {
             $this->db->limit((int) $limit, (int) $offset);
         }
+
+        $rows = $this->db->get()->result();
+        foreach ($rows as $row) {
+            $row->items = $this->get_kaprodi_items($row->id_pengajuan);
+            $row->summary = $this->calculate_summary($row->items);
+        }
+
+        return $rows;
+    }
+
+    public function get_kaprodi_pengajuan_acc_report($filters = []) {
+        $allowed_status = ['Pengajuan', 'Revisi', 'Sedang Negosiasi', 'Deal', 'Disetujui', 'Approval'];
+        $this->db->select('kaprodi_pengajuan.*, users.nama_lengkap');
+        $this->db->from($this->kaprodiTable);
+        $this->db->join('users', 'users.id_user = kaprodi_pengajuan.id_user', 'left');
+        $this->db->where_in('kaprodi_pengajuan.status', $allowed_status);
+        $this->apply_kaprodi_filters($filters);
+        $this->db->order_by('kaprodi_pengajuan.updated_at', 'DESC');
+        $this->db->order_by('kaprodi_pengajuan.created_at', 'DESC');
 
         $rows = $this->db->get()->result();
         foreach ($rows as $row) {
@@ -340,6 +365,52 @@ class Kaur_model extends CI_Model {
         $pengajuan->items = $this->get_kaprodi_items($id_pengajuan);
         $pengajuan->summary = $this->calculate_summary($pengajuan->items);
         return $pengajuan;
+    }
+
+    public function get_bast_ready_pengajuan($limit = null) {
+        $this->db->select('kaprodi_pengajuan.*, users.nama_lengkap');
+        $this->db->from($this->kaprodiTable);
+        $this->db->join('users', 'users.id_user = kaprodi_pengajuan.id_user', 'left');
+        $this->db->where_in('kaprodi_pengajuan.status', ['Disetujui', 'Approval']);
+        $this->db->where("kaprodi_pengajuan.id_pengajuan NOT IN (SELECT id_pengajuan FROM `{$this->bastTable}`)", null, false);
+        $this->db->order_by('kaprodi_pengajuan.updated_at', 'DESC');
+        $this->db->order_by('kaprodi_pengajuan.created_at', 'DESC');
+        if ($limit !== null) {
+            $this->db->limit((int) $limit);
+        }
+
+        $rows = $this->db->get()->result();
+        foreach ($rows as $row) {
+            $row->items = $this->get_kaprodi_items($row->id_pengajuan);
+            $row->summary = $this->calculate_summary($row->items);
+        }
+
+        return $rows;
+    }
+
+    public function pengajuan_has_bast($id_pengajuan) {
+        if (!$this->db->table_exists($this->bastTable)) {
+            return false;
+        }
+
+        $this->db->where('id_pengajuan', (int) $id_pengajuan);
+        return $this->db->count_all_results($this->bastTable) > 0;
+    }
+
+    public function kaprodi_all_items_deal($id_pengajuan) {
+        $items = $this->db->where('id_pengajuan', $id_pengajuan)->get($this->kaprodiItemTable)->result();
+        if (empty($items)) {
+            return false;
+        }
+
+        foreach ($items as $item) {
+            $latest = $this->get_latest_negosiasi($item->id_item);
+            if (!$latest || $latest->status !== 'Deal') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function get_kaprodi_items($id_pengajuan) {
@@ -411,6 +482,11 @@ class Kaur_model extends CI_Model {
     }
 
     private function sync_pengajuan_status($id_pengajuan) {
+        $current = $this->db
+            ->select('status')
+            ->where('id_pengajuan', $id_pengajuan)
+            ->get($this->kaprodiTable)
+            ->row();
         $items = $this->db->where('id_pengajuan', $id_pengajuan)->get($this->kaprodiItemTable)->result();
         if (empty($items)) {
             return $this->update_kaprodi_status($id_pengajuan, 'Pengajuan');
@@ -434,6 +510,10 @@ class Kaur_model extends CI_Model {
             if ($latest->status !== 'Ditolak') {
                 $all_rejected = false;
             }
+        }
+
+        if ($current && in_array($current->status, ['Disetujui', 'Approval', 'BAST', 'Inventarisasi', 'Selesai'], true)) {
+            return true;
         }
 
         if ($all_deal) {
@@ -508,6 +588,12 @@ class Kaur_model extends CI_Model {
         $this->db->trans_start();
         $this->db->insert($this->bastTable, $data);
         $id_bast = $this->db->insert_id();
+        $this->db->where('id_pengajuan', $id_pengajuan)->update($this->kaprodiTable, [
+            'bast_nomor' => $data['nomor_bast'] ?? null,
+            'bast_tanggal' => $data['tanggal_bast'] ?? null,
+            'bast_catatan' => $data['catatan'] ?? null,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
         $this->update_kaprodi_status($id_pengajuan, 'BAST');
         $this->process_inventory_from_bast($id_bast, $id_pengajuan);
         $this->db->trans_complete();
@@ -644,7 +730,7 @@ class Kaur_model extends CI_Model {
         return [
             'pengajuan' => $this->count_kaprodi_pengajuan([]),
             'negosiasi' => $this->count_kaprodi_pengajuan(['status' => 'Sedang Negosiasi']),
-            'deal' => $this->count_kaprodi_pengajuan(['status' => 'Deal']),
+            'deal' => $this->count_kaprodi_statuses(['Deal', 'Disetujui', 'Approval']),
             'bast' => count($this->get_bast_list(null)),
             'laporan_deal' => count($this->get_laporan_negosiasi_deal()),
         ];

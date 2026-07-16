@@ -35,10 +35,10 @@ class Dashboard_model extends CI_Model {
         $stok_menipis = 0;
 
         if ($this->db->table_exists('peminjaman')) {
-            $this->db->where('status', 'Dipinjam');
+            $this->db->where_in('status', ['Sedang Dipinjam', 'Dipinjam']);
             $peminjaman_aktif = $this->db->count_all_results('peminjaman');
 
-            $this->db->where('status', 'Menunggu Persetujuan');
+            $this->db->where_in('status', ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu Persetujuan']);
             $menunggu_persetujuan = $this->db->count_all_results('peminjaman');
 
             $this->db->where('status', 'Dikembalikan');

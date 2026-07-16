@@ -172,7 +172,7 @@ class Kaprodi_model extends CI_Model {
                 $stats['pengajuan']++;
             } elseif (strpos($status, 'negosiasi') !== false) {
                 $stats['negosiasi']++;
-            } elseif (in_array($row->status, ['Deal', 'Approval', 'BAST'], true)) {
+            } elseif (in_array($row->status, ['Deal', 'Disetujui', 'Approval', 'BAST'], true)) {
                 $stats['deal']++;
             } elseif ($row->status === 'Selesai') {
                 $stats['selesai']++;
@@ -251,6 +251,7 @@ class Kaprodi_model extends CI_Model {
             'Negosiasi',
             'Sedang Negosiasi',
             'Deal',
+            'Disetujui',
             'Ditolak',
             'Approval',
             'BAST',
