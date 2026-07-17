@@ -198,7 +198,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         .footer-fik h5 { font-weight: 700; margin-bottom: 1.8rem; font-size: 1.15rem; color: #ffffff; }
         .footer-fik ul { list-style: none; padding-left: 0; }
         .footer-fik ul li { margin-bottom: 0.8rem; position: relative; padding-left: 18px; }
-        .footer-fik ul li::before { content: ''; position: absolute; left: 0; top: .55rem; width: 6px; height: 6px; border-radius: 50%; background: #ea5b1a; }
         .footer-fik ul li a { color: #dcdcdc; text-decoration: none; transition: 0.3s; }
         .footer-fik ul li a:hover { color: #ffffff; text-decoration: underline; }
         .footer-fik ul li::before { content: '\2022'; position: absolute; left: 0; top: -2px; color: #ffffff; font-size: 1.2rem; }
