@@ -119,7 +119,7 @@
             margin-bottom: 12px;
         }
 
-        .input-wrap i {
+        .input-wrap > i {
             position: absolute;
             left: 18px;
             top: 50%;
@@ -147,15 +147,53 @@
             transition: box-shadow .2s ease, background .2s ease, transform .2s ease;
         }
 
+        .input-wrap.has-password .form-control {
+            padding-right: 54px;
+        }
+
         .form-control:focus {
             background: #fff;
             box-shadow: 0 0 0 3px rgba(234,91,26,.17), 0 10px 26px rgba(17,24,39,.08);
             transform: translateY(-1px);
         }
 
-        .input-wrap:focus-within i {
+        .input-wrap:focus-within > i {
             color: var(--fik-orange);
             opacity: 1;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            z-index: 4;
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 0;
+            border-radius: 10px;
+            background: transparent;
+            color: #9ca3af;
+            transition: color .2s ease, background .2s ease;
+            transform: translateY(-50%);
+        }
+
+        .password-toggle:hover,
+        .password-toggle:focus-visible {
+            color: var(--fik-orange);
+            background: rgba(234,91,26,.1);
+            outline: none;
+        }
+
+        .password-toggle i {
+            position: static;
+            width: auto;
+            transform: none;
+            color: inherit;
+            pointer-events: none;
         }
 
         .btn-fik {
@@ -222,6 +260,16 @@
             box-shadow: 0 14px 32px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.42);
             backdrop-filter: blur(10px) saturate(1.15);
             -webkit-backdrop-filter: blur(10px) saturate(1.15);
+            text-decoration: none;
+            transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+        }
+
+        .auth-corner-logo:hover,
+        .auth-corner-logo:focus-visible {
+            background: linear-gradient(135deg, rgba(255,255,255,.86), rgba(255,255,255,.56));
+            box-shadow: 0 18px 38px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.52);
+            outline: none;
+            transform: translateY(-1px);
         }
 
         .auth-corner-logo img {
@@ -461,9 +509,9 @@
             </aside>
 
             <div class="auth-form-panel">
-                <div class="auth-corner-logo">
+                <a class="auth-corner-logo" href="<?= site_url('welcome'); ?>" aria-label="Kembali ke landing page">
                     <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Fakultas Industri Kreatif">
-                </div>
+                </a>
                 <div class="auth-form-inner">
                     <h1 class="auth-title">Sign Up</h1>
                     <p class="auth-hint">Isi data akun baru</p>
@@ -490,15 +538,21 @@
                             <i class="bi bi-envelope"></i>
                             <input type="email" name="email" id="email" class="form-control" placeholder="email@domain.com" required>
                         </div>
-                        <div class="input-wrap">
+                        <div class="input-wrap has-password">
                             <label for="password" class="visually-hidden">Password</label>
                             <i class="bi bi-lock"></i>
                             <input type="password" name="password" id="password" class="form-control" placeholder="Buat password" required>
+                            <button type="button" class="password-toggle" aria-label="Tampilkan password" aria-pressed="false">
+                                <i class="bi bi-eye"></i>
+                            </button>
                         </div>
-                        <div class="input-wrap">
+                        <div class="input-wrap has-password">
                             <label for="password_confirm" class="visually-hidden">Konfirmasi Password</label>
                             <i class="bi bi-shield-lock"></i>
                             <input type="password" name="password_confirm" id="password_confirm" class="form-control" placeholder="Ulangi password" required>
+                            <button type="button" class="password-toggle" aria-label="Tampilkan password" aria-pressed="false">
+                                <i class="bi bi-eye"></i>
+                            </button>
                         </div>
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-fik">
@@ -514,6 +568,22 @@
             </div>
         </section>
     </main>
+    <script>
+        document.querySelectorAll('.password-toggle').forEach((button) => {
+            const input = button.closest('.input-wrap')?.querySelector('input');
+            const icon = button.querySelector('i');
+            if (!input || !icon) return;
 
+            button.addEventListener('click', () => {
+                const shouldShow = input.type === 'password';
+                input.type = shouldShow ? 'text' : 'password';
+                button.setAttribute('aria-pressed', shouldShow ? 'true' : 'false');
+                button.setAttribute('aria-label', shouldShow ? 'Sembunyikan password' : 'Tampilkan password');
+                icon.classList.toggle('bi-eye', !shouldShow);
+                icon.classList.toggle('bi-eye-slash', shouldShow);
+                input.focus({ preventScroll: true });
+            });
+        });
+    </script>
 </body>
 </html>

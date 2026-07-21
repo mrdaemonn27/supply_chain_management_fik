@@ -10,6 +10,7 @@ class Peminjaman_model extends CI_Model {
 
     private $table_peminjaman = 'peminjaman';
     private $table_peminjam = 'peminjam';
+    private $table_peminjaman_detail = 'peminjaman_detail';
     private $table_notifikasi = 'notifikasi_progress';
 
     public function __construct() {
@@ -489,7 +490,12 @@ class Peminjaman_model extends CI_Model {
         }
         
         $this->db->trans_start();
-        
+
+        if ($this->db->table_exists($this->table_peminjaman_detail)) {
+            $this->db->where('id_peminjaman', $id);
+            $this->db->delete($this->table_peminjaman_detail);
+        }
+
         $this->db->where('id_peminjaman', $id);
         $this->db->delete($this->table_peminjaman);
         
