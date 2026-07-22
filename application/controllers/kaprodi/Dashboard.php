@@ -32,14 +32,21 @@ class Dashboard extends CI_Controller {
             'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
         ];
         $page = max(1, (int) $this->input->get('page'));
+        $requested_tab = trim((string) $this->input->get('tab', true));
         $limit = 8;
         $offset = ($page - 1) * $limit;
         $id_user = $this->session->userdata('id_user');
+        $has_filter = (bool) array_filter($filters, static function ($value) {
+            return $value !== '' && $value !== null;
+        });
 
         $data['title'] = 'Dashboard Kaprodi';
         $data['filters'] = $filters;
         $data['page'] = $page;
         $data['limit'] = $limit;
+        $data['active_tab'] = in_array($requested_tab, ['ajukan', 'riwayat'], true)
+            ? $requested_tab
+            : (($page > 1 || $has_filter) ? 'riwayat' : 'ajukan');
         $data['total_rows'] = $this->Kaprodi_model->count_filtered_by_user($id_user, $filters);
         $data['total_pages'] = max(1, (int) ceil($data['total_rows'] / $limit));
         $data['pengajuan'] = $this->Kaprodi_model->get_filtered_by_user($id_user, $filters, $limit, $offset);

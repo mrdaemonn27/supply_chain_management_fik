@@ -15,7 +15,7 @@ function status_class_kaprodi($status) {
     ];
     return $map[$status] ?? 'status-pengajuan';
 }
-function query_kaprodi($filters, $page) {
+function query_kaprodi($filters, $page, $tab = 'riwayat') {
     $params = [];
     foreach ((array) $filters as $key => $value) {
         if ($value !== '' && $value !== null) {
@@ -23,6 +23,9 @@ function query_kaprodi($filters, $page) {
         }
     }
     $params['page'] = $page;
+    if ($tab !== '') {
+        $params['tab'] = $tab;
+    }
     return http_build_query($params);
 }
 $filters = $filters ?? [];
@@ -30,6 +33,8 @@ $stats = $stats ?? ['total' => 0, 'pengajuan' => 0, 'negosiasi' => 0, 'deal' => 
 $page = $page ?? 1;
 $total_pages = $total_pages ?? 1;
 $total_rows = $total_rows ?? count($pengajuan ?? []);
+$active_tab = $active_tab ?? 'ajukan';
+$active_tab = in_array($active_tab, ['ajukan', 'riwayat'], true) ? $active_tab : 'ajukan';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -114,12 +119,12 @@ $total_rows = $total_rows ?? count($pengajuan ?? []);
         </div>
 
         <ul class="nav nav-tabs mb-3" id="kaprodiTabs" role="tablist">
-            <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ajukan" type="button"><i class="bi bi-plus-circle me-1"></i> Ajukan</button></li>
-            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-riwayat" type="button"><i class="bi bi-clock-history me-1"></i> Riwayat</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link <?= $active_tab === 'ajukan' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tab-ajukan" type="button" aria-selected="<?= $active_tab === 'ajukan' ? 'true' : 'false' ?>"><i class="bi bi-plus-circle me-1"></i> Ajukan</button></li>
+            <li class="nav-item" role="presentation"><button class="nav-link <?= $active_tab === 'riwayat' ? 'active' : '' ?>" data-bs-toggle="tab" data-bs-target="#tab-riwayat" type="button" aria-selected="<?= $active_tab === 'riwayat' ? 'true' : 'false' ?>"><i class="bi bi-clock-history me-1"></i> Riwayat</button></li>
         </ul>
 
         <div class="tab-content">
-            <section class="tab-pane fade show active" id="tab-ajukan">
+            <section class="tab-pane fade <?= $active_tab === 'ajukan' ? 'show active' : '' ?>" id="tab-ajukan">
                 <form action="<?= base_url('index.php/kaprodi/pengajuan/simpan') ?>" method="post" class="panel-card p-3 p-lg-4 mb-4">
                     <div class="row g-3">
                         <div class="col-md-4">
@@ -183,7 +188,7 @@ $total_rows = $total_rows ?? count($pengajuan ?? []);
                 </form>
             </section>
 
-            <section class="tab-pane fade" id="tab-riwayat">
+            <section class="tab-pane fade <?= $active_tab === 'riwayat' ? 'show active' : '' ?>" id="tab-riwayat">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
                     <div>
                         <h2 class="h5 fw-bold mb-1">Riwayat Pengajuan</h2>
@@ -193,6 +198,7 @@ $total_rows = $total_rows ?? count($pengajuan ?? []);
                 </div>
                 <div class="panel-card p-3 p-lg-4 mb-3">
                     <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="row g-2 align-items-end">
+                        <input type="hidden" name="tab" value="riwayat">
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold">Kata Kunci</label>
                             <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, kebutuhan">
