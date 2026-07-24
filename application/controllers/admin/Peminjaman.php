@@ -50,10 +50,23 @@ class Peminjaman extends CI_Controller {
         $data['rows'] = $this->Peminjaman_model->get_pengajuan_sampai_acc_report($filters);
         $filename = 'laporan_pengajuan_sampai_acc_' . date('Ymd_His') . '.xls';
 
-        $this->output
-            ->set_content_type('application/vnd.ms-excel')
-            ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
-            ->set_header('Cache-Control: max-age=0');
+        if ($this->input->get('download') !== '1' && $this->input->get('inline') !== '1') {
+            $query = $this->input->get();
+            $this->load->view('shared/export_preview', [
+                'title' => 'Preview Laporan Pengajuan Sampai ACC',
+                'download_url' => current_url() . '?' . http_build_query(array_merge($query, ['download' => 1])),
+                'iframe_url' => current_url() . '?' . http_build_query(array_merge($query, ['inline' => 1])),
+                'back_url' => site_url('admin/peminjaman'),
+            ]);
+            return;
+        }
+
+        if ($this->input->get('download') === '1') {
+            $this->output
+                ->set_content_type('application/vnd.ms-excel')
+                ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
+                ->set_header('Cache-Control: max-age=0');
+        }
         $this->load->view('admin/export_pengajuan_acc', $data);
     }
 
@@ -109,8 +122,58 @@ class Peminjaman extends CI_Controller {
         ]);
         $this->db->trans_complete();
 
+        if ($this->db->trans_status() && !empty($peminjaman->id_user)) {
+            $this->Peminjaman_model->create_notifikasi(
+                null,
+                $peminjaman->id_user,
+                'Barang sudah dipinjam',
+                'Serah terima barang sudah dikonfirmasi Laboran. QR pengembalian tersedia di riwayat.',
+                site_url('peminjaman/riwayat')
+            );
+        }
+
         $this->session->set_flashdata($this->db->trans_status() ? 'success' : 'error', $this->db->trans_status() ? 'Barang berhasil diserahkan ke peminjam.' : 'Gagal memproses serah terima.');
         redirect('admin/peminjaman');
+    }
+
+    public function finalkan_qr($id_peminjaman) {
+        $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id_peminjaman);
+        if (!$peminjaman) {
+            $this->session->set_flashdata('error', 'Data peminjaman tidak ditemukan.');
+            redirect('admin/peminjaman');
+        }
+
+        if (($peminjaman->status ?? '') !== 'Disetujui (Menunggu Finalisasi QR)') {
+            $this->session->set_flashdata('error', 'QR hanya bisa difinalkan setelah ACC Kaur dan sebelum serah terima.');
+            redirect('admin/peminjaman');
+        }
+
+        $ok = $this->Peminjaman_model->finalize_qr($peminjaman->group_id, $this->session->userdata('id_user'));
+        if ($ok && !empty($peminjaman->id_user)) {
+            $this->Peminjaman_model->create_notifikasi(
+                null,
+                $peminjaman->id_user,
+                'QR Code peminjaman aktif',
+                'Data peminjaman sudah final. Silakan tampilkan QR kepada Laboran saat pengambilan barang.',
+                site_url('peminjaman/riwayat')
+            );
+        }
+
+        $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'QR peminjaman berhasil difinalkan dan data transaksi dikunci.' : 'Gagal memfinalkan QR.');
+        redirect('admin/peminjaman');
+    }
+
+    public function validasi_pengembalian($group_id) {
+        $group_id = rawurldecode($group_id);
+        $peminjaman = $this->Peminjaman_model->get_peminjaman_by_group_id($group_id);
+        if (!$peminjaman) {
+            $this->session->set_flashdata('error', 'Transaksi dari QR pengembalian tidak ditemukan.');
+            redirect('admin/peminjaman/scanner');
+        }
+
+        $data['title'] = 'Validasi Pengembalian Barang';
+        $data['peminjaman'] = $peminjaman;
+        $this->load->view('admin/validasi_pengembalian', $data);
     }
 
     public function kembalikan($id_peminjaman) {
@@ -127,6 +190,22 @@ class Peminjaman extends CI_Controller {
 
         $items = !empty($peminjaman->detail_barang) ? $peminjaman->detail_barang : [$peminjaman];
         $kondisi_kembali = $this->input->post('kondisi_saat_kembali', true) ?: null;
+        if (!in_array($kondisi_kembali, ['Baik', 'Rusak', 'Hilang'], true)) {
+            $this->session->set_flashdata('error', 'Kondisi pengembalian wajib dipilih dengan benar.');
+            redirect('admin/peminjaman');
+        }
+
+        $catatan_pengembalian = trim((string) $this->input->post('catatan_pengembalian', true));
+        if (in_array($kondisi_kembali, ['Rusak', 'Hilang'], true)) {
+            if ($catatan_pengembalian === '') {
+                $this->session->set_flashdata('error', 'Keterangan wajib diisi jika kondisi barang Rusak atau Hilang.');
+                redirect('admin/peminjaman');
+            }
+            if (empty($_FILES['foto_pengembalian']['name']) && empty($_FILES['foto_pengembalian_camera']['name'])) {
+                $this->session->set_flashdata('error', 'Evidence wajib diupload jika kondisi barang Rusak atau Hilang.');
+                redirect('admin/peminjaman');
+            }
+        }
         $foto_pengembalian = $this->upload_evidence_pengembalian();
         if ($foto_pengembalian === false) {
             redirect('admin/peminjaman');
@@ -135,7 +214,9 @@ class Peminjaman extends CI_Controller {
         $this->db->trans_start();
         foreach ($items as $item) {
             if (!empty($item->id_aset) && !empty($item->jumlah_pinjam)) {
-                $this->Aset_model->kembalikan_jumlah_tersedia($item->id_aset, $item->jumlah_pinjam);
+                if ($kondisi_kembali === 'Baik') {
+                    $this->Aset_model->kembalikan_jumlah_tersedia($item->id_aset, $item->jumlah_pinjam);
+                }
                 if ($kondisi_kembali) {
                     $this->db->where('id_aset', $item->id_aset)->update('aset', [
                         'kondisi' => $kondisi_kembali,
@@ -149,7 +230,7 @@ class Peminjaman extends CI_Controller {
             'status' => 'Dikembalikan',
             'tanggal_kembali_actual' => date('Y-m-d'),
             'kondisi_saat_kembali' => $kondisi_kembali,
-            'catatan' => $this->input->post('catatan_pengembalian', true),
+            'catatan' => $catatan_pengembalian,
             'updated_at' => date('Y-m-d H:i:s')
         ];
         if ($foto_pengembalian) {
@@ -187,7 +268,12 @@ class Peminjaman extends CI_Controller {
     }
 
     private function upload_evidence_pengembalian() {
-        if (empty($_FILES['foto_pengembalian']['name'])) {
+        $field = 'foto_pengembalian';
+        if (empty($_FILES[$field]['name']) && !empty($_FILES['foto_pengembalian_camera']['name'])) {
+            $field = 'foto_pengembalian_camera';
+        }
+
+        if (empty($_FILES[$field]['name'])) {
             return null;
         }
 
@@ -205,7 +291,7 @@ class Peminjaman extends CI_Controller {
 
         $this->load->library('upload');
         $this->upload->initialize($config);
-        if (!$this->upload->do_upload('foto_pengembalian')) {
+        if (!$this->upload->do_upload($field)) {
             $this->session->set_flashdata('error', 'Upload evidence pengembalian gagal: ' . $this->upload->display_errors('', ''));
             return false;
         }

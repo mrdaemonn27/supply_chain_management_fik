@@ -38,6 +38,34 @@ class Peminjaman_model extends CI_Model {
                 $after = $this->db->field_exists('foto_bukti', $this->table_peminjaman) ? ' AFTER `foto_bukti`' : '';
                 $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `foto_pengembalian` varchar(255) DEFAULT NULL{$after}");
             }
+
+            if (!$this->db->field_exists('qr_locked', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `qr_locked` tinyint(1) NOT NULL DEFAULT 0 AFTER `foto_pengembalian`");
+            }
+
+            if (!$this->db->field_exists('qr_finalized_at', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `qr_finalized_at` datetime DEFAULT NULL AFTER `qr_locked`");
+            }
+
+            if (!$this->db->field_exists('qr_finalized_by', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `qr_finalized_by` int(11) DEFAULT NULL AFTER `qr_finalized_at`");
+            }
+
+            if (!$this->db->field_exists('qr_pengembalian_token', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `qr_pengembalian_token` varchar(80) DEFAULT NULL AFTER `qr_finalized_by`");
+            }
+
+            $return_condition = $this->db->query("SHOW COLUMNS FROM `{$this->table_peminjaman}` LIKE 'kondisi_saat_kembali'")->row();
+            if ($return_condition && stripos((string) $return_condition->Type, 'enum') !== false) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` MODIFY `kondisi_saat_kembali` varchar(50) DEFAULT NULL");
+            }
+        }
+
+        if ($this->db->table_exists('aset')) {
+            $aset_condition = $this->db->query("SHOW COLUMNS FROM `aset` LIKE 'kondisi'")->row();
+            if ($aset_condition && stripos((string) $aset_condition->Type, 'enum') !== false) {
+                $this->db->query("ALTER TABLE `aset` MODIFY `kondisi` varchar(50) DEFAULT 'Baik'");
+            }
         }
 
         if (!$this->db->table_exists($this->table_notifikasi)) {
@@ -123,6 +151,9 @@ class Peminjaman_model extends CI_Model {
             MAX(p.status_kaur) as status_kaur,
             MAX(p.keperluan) as keperluan,
             MAX(p.foto_pengembalian) as foto_pengembalian,
+            MAX(p.qr_locked) as qr_locked,
+            MAX(p.qr_finalized_at) as qr_finalized_at,
+            MAX(p.qr_pengembalian_token) as qr_pengembalian_token,
             MAX(p.created_at) as created_at,
             MAX(peminjam.nama_peminjam) as nama_peminjam,
             MAX(peminjam.nim_nip) as nim_nip,
@@ -415,8 +446,23 @@ class Peminjaman_model extends CI_Model {
         return site_url('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
     }
 
-    public function qr_is_visible($status) {
-        return in_array((string) $status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam'], true);
+    public function get_qr_pengembalian_payload($group_id) {
+        return site_url('admin/peminjaman/validasi_pengembalian/' . rawurlencode($group_id));
+    }
+
+    public function qr_is_visible($status, $qr_locked = 0) {
+        return (int) $qr_locked === 1 && in_array((string) $status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam'], true);
+    }
+
+    public function finalize_qr($group_id, $id_user = null) {
+        $token = strtoupper(substr(hash('sha256', $group_id . microtime(true)), 0, 18));
+        return $this->update_group_status($group_id, [
+            'status' => 'Disetujui (Menunggu Pengambilan)',
+            'qr_locked' => 1,
+            'qr_finalized_at' => date('Y-m-d H:i:s'),
+            'qr_finalized_by' => $id_user,
+            'qr_pengembalian_token' => $token,
+        ]);
     }
 
     public function create_notifikasi($recipient_role, $recipient_user_id, $judul, $pesan, $link = null) {
@@ -747,6 +793,7 @@ class Peminjaman_model extends CI_Model {
             MAX(p.status_kaur) as status_kaur,
             MAX(p.catatan_kaur) as catatan_kaur,
             MAX(p.tgl_approve_kaur) as tgl_approve_kaur,
+            MAX(p.kondisi_saat_kembali) as kondisi_saat_kembali,
             MAX(p.keperluan) as keperluan,
             MAX(p.created_at) as created_at,
             MAX(peminjam.nama_peminjam) as nama_peminjam,
@@ -763,7 +810,12 @@ class Peminjaman_model extends CI_Model {
             'Menunggu Verifikasi Laboran',
             'Menunggu Persetujuan',
             'Menunggu ACC Kaur',
+            'Disetujui (Menunggu Finalisasi QR)',
             'Disetujui (Menunggu Pengambilan)',
+            'Sedang Dipinjam',
+            'Dipinjam',
+            'Dikembalikan',
+            'Ditolak',
         ]);
 
         if (!empty($filters['status'])) {

@@ -36,11 +36,14 @@ class Peminjaman extends CI_Controller {
         }
 
         $update = [
-            'status' => 'Disetujui (Menunggu Pengambilan)',
+            'status' => 'Disetujui (Menunggu Finalisasi QR)',
             'status_kaur' => 'Disetujui',
             'catatan_kaur' => $this->input->post('catatan_kaur', true),
             'tgl_approve_kaur' => date('Y-m-d H:i:s'),
             'id_approver_kaur' => $this->session->userdata('id_user'),
+            'qr_locked' => 0,
+            'qr_finalized_at' => null,
+            'qr_finalized_by' => null,
         ];
 
         $ok = $this->Peminjaman_model->update_group_status($peminjaman->group_id, $update);
@@ -49,7 +52,7 @@ class Peminjaman extends CI_Controller {
                 null,
                 $peminjaman->id_user,
                 'Peminjaman disetujui Kaur',
-                'QR Code sudah tersedia. Silakan tunjukkan QR kepada Laboran saat pengambilan barang.',
+                'Peminjaman sudah di-ACC Kaur dan sedang difinalkan Laboran sebelum QR ditampilkan.',
                 site_url('peminjaman/riwayat')
             );
         }
@@ -57,13 +60,13 @@ class Peminjaman extends CI_Controller {
             $this->Peminjaman_model->create_notifikasi(
                 'laboran',
                 null,
-                'QR peminjaman aktif',
-                ($peminjaman->nama_peminjam ?? 'Peminjam') . ' sudah disetujui Kaur. Silakan scan QR saat serah terima barang.',
-                site_url('admin/peminjaman/scanner')
+                'Finalisasi QR peminjaman',
+                ($peminjaman->nama_peminjam ?? 'Peminjam') . ' sudah disetujui Kaur. Cek data lalu finalkan QR sebelum serah terima.',
+                site_url('admin/peminjaman')
             );
         }
 
-        $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Pengajuan disetujui. QR peminjam sudah aktif.' : 'Gagal menyetujui pengajuan.');
+        $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Pengajuan disetujui. Data menunggu finalisasi QR oleh Laboran.' : 'Gagal menyetujui pengajuan.');
         redirect('kaur/dashboard/peminjaman');
     }
 
@@ -78,10 +81,23 @@ class Peminjaman extends CI_Controller {
         $data['rows'] = $this->Peminjaman_model->get_pengajuan_sampai_acc_report($filters);
         $filename = 'laporan_pengajuan_sampai_acc_' . date('Ymd_His') . '.xls';
 
-        $this->output
-            ->set_content_type('application/vnd.ms-excel')
-            ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
-            ->set_header('Cache-Control: max-age=0');
+        if ($this->input->get('download') !== '1' && $this->input->get('inline') !== '1') {
+            $query = $this->input->get();
+            $this->load->view('shared/export_preview', [
+                'title' => 'Preview Laporan Pengajuan Sampai ACC',
+                'download_url' => current_url() . '?' . http_build_query(array_merge($query, ['download' => 1])),
+                'iframe_url' => current_url() . '?' . http_build_query(array_merge($query, ['inline' => 1])),
+                'back_url' => site_url('kaur/dashboard/peminjaman'),
+            ]);
+            return;
+        }
+
+        if ($this->input->get('download') === '1') {
+            $this->output
+                ->set_content_type('application/vnd.ms-excel')
+                ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
+                ->set_header('Cache-Control: max-age=0');
+        }
         $this->load->view('admin/export_pengajuan_acc', $data);
     }
 

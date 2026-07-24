@@ -18,7 +18,7 @@
 <body>
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
-            <div><div class="fw-bold"><i class="bi bi-qr-code-scan me-2 text-warning"></i>Scanner QR Serah Terima</div><div class="small text-white-50">Scan QR dari akun peminjam</div></div>
+            <div><div class="fw-bold"><i class="bi bi-qr-code-scan me-2 text-warning"></i>Scanner QR Peminjaman</div><div class="small text-white-50">Scan QR pengambilan atau pengembalian dari akun peminjam</div></div>
             <a href="<?= base_url('index.php/admin/peminjaman') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3">Data Peminjaman</a>
         </div>
     </header>
@@ -27,7 +27,7 @@
         <?php if($this->session->flashdata('error')): ?><div class="alert alert-danger"><?= html_escape($this->session->flashdata('error')) ?></div><?php endif; ?>
         <section class="panel-card p-3 p-lg-4 text-center">
             <h1 class="h5 fw-bold mb-2">Arahkan kamera ke QR peminjam</h1>
-            <p class="text-muted small mb-3">Setelah QR terbaca, sistem langsung membuka halaman serah terima.</p>
+            <p class="text-muted small mb-3">Setelah QR terbaca, sistem langsung membuka halaman validasi sesuai jenis QR.</p>
             <div id="reader"></div>
             <div id="scanStatus" class="small text-muted mt-3">Menunggu kamera aktif...</div>
         </section>

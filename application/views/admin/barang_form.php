@@ -182,8 +182,8 @@
                                     <label class="form-label fw-semibold">Kondisi Fisik <span class="text-danger">*</span></label>
                                     <select name="kondisi" class="form-select border-warning" required>
                                         <option value="Baik" <?= (isset($aset) && $aset->kondisi == 'Baik') ? 'selected' : '' ?>>Baik & Berfungsi</option>
-                                        <option value="Rusak Ringan" <?= (isset($aset) && $aset->kondisi == 'Rusak Ringan') ? 'selected' : '' ?>>Rusak Ringan (Butuh Servis)</option>
-                                        <option value="Rusak Berat" <?= (isset($aset) && $aset->kondisi == 'Rusak Berat') ? 'selected' : '' ?>>Rusak Berat / Afkir</option>
+                                        <option value="Rusak" <?= (isset($aset) && in_array($aset->kondisi, ['Rusak','Rusak Ringan','Rusak Berat'], true)) ? 'selected' : '' ?>>Rusak (Butuh tindak lanjut)</option>
+                                        <option value="Hilang" <?= (isset($aset) && $aset->kondisi == 'Hilang') ? 'selected' : '' ?>>Hilang</option>
                                     </select>
                                 </div>
                             </div>

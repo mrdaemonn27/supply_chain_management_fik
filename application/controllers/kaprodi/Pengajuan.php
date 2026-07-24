@@ -8,7 +8,13 @@ class Pengajuan extends CI_Controller {
         $this->load->library('session');
         $this->load->helper(['url', 'download']);
         $this->load->model('kaprodi/Kaprodi_model');
+        $this->load->model('Peminjaman_model');
         $this->guard_kaprodi();
+    }
+
+    private function parse_money($value) {
+        $clean = preg_replace('/[^0-9,.-]/', '', (string) $value);
+        return (float) str_replace(['.', ','], ['', '.'], $clean);
     }
 
     private function guard_kaprodi() {
@@ -40,6 +46,7 @@ class Pengajuan extends CI_Controller {
         $uraian = $this->input->post('uraian_barang');
         $vol_input = (array) $this->input->post('vol');
         $satuan_input = (array) $this->input->post('satuan');
+        $harga_input = (array) $this->input->post('harga_penawaran_sat');
         $link_input = (array) $this->input->post('link_penawaran');
         $items = [];
         foreach ((array) $uraian as $i => $value) {
@@ -53,7 +60,7 @@ class Pengajuan extends CI_Controller {
                 'uraian_barang' => $nama_item,
                 'vol' => max(1, $vol),
                 'satuan' => trim($satuan_input[$i] ?? 'unit'),
-                'harga_penawaran_sat' => 0,
+                'harga_penawaran_sat' => max(0, $this->parse_money($harga_input[$i] ?? 0)),
                 'link_penawaran' => trim($link_input[$i] ?? ''),
                 'hasil_negosiasi_vol' => null,
                 'hasil_negosiasi_sat' => null,
@@ -79,8 +86,24 @@ class Pengajuan extends CI_Controller {
         ];
 
         $id = $this->Kaprodi_model->create_pengajuan($header, $items);
+        if ($id) {
+            $this->Peminjaman_model->create_notifikasi(
+                null,
+                $this->session->userdata('id_user'),
+                'Pengajuan berhasil dibuat',
+                'Pengajuan ' . $nama_pengajuan . ' berhasil diinput dan masuk ke riwayat Kaprodi.',
+                site_url('kaprodi/dashboard?tab=riwayat')
+            );
+            $this->Peminjaman_model->create_notifikasi(
+                'kaur',
+                null,
+                'Pengajuan Kaprodi baru',
+                $nama_pengajuan . ' dari ' . $nama_prodi . ' menunggu proses Kaur Laboratorium.',
+                site_url('kaur/dashboard/pengajuan')
+            );
+        }
         $this->session->set_flashdata($id ? 'success' : 'error', $id ? 'Pengajuan kebutuhan prodi berhasil dibuat.' : 'Gagal membuat pengajuan.');
-        redirect('kaprodi/dashboard');
+        redirect('kaprodi/dashboard?tab=riwayat');
     }
 
     public function negosiasi($id_pengajuan) {
@@ -124,10 +147,22 @@ class Pengajuan extends CI_Controller {
         ];
 
         $rows = $this->Kaprodi_model->get_filtered_by_user($this->session->userdata('id_user'), $filters, null, null);
+        if ($this->input->get('download') !== '1' && $this->input->get('inline') !== '1') {
+            $this->load->view('shared/export_preview', [
+                'title' => 'Preview Berita Acara Klarifikasi',
+                'download_url' => current_url() . '?' . http_build_query(array_merge($this->input->get(), ['download' => 1])),
+                'iframe_url' => current_url() . '?' . http_build_query(array_merge($this->input->get(), ['inline' => 1])),
+                'back_url' => site_url('kaprodi/dashboard?tab=riwayat'),
+            ]);
+            return;
+        }
+
         $filename = 'berita_acara_klarifikasi_kaprodi_' . date('Ymd_His') . '.xls';
-        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Cache-Control: max-age=0');
+        if ($this->input->get('download') === '1') {
+            header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+        }
         $this->load->view('kaur/export_ba_klarifikasi', [
             'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
             'pengajuan_list' => $rows,
@@ -142,10 +177,22 @@ class Pengajuan extends CI_Controller {
             show_404();
         }
 
+        if ($this->input->get('download') !== '1' && $this->input->get('inline') !== '1') {
+            $this->load->view('shared/export_preview', [
+                'title' => 'Preview Berita Acara Klarifikasi',
+                'download_url' => current_url() . '?' . http_build_query(['download' => 1]),
+                'iframe_url' => current_url() . '?' . http_build_query(['inline' => 1]),
+                'back_url' => site_url('kaprodi/dashboard?tab=riwayat'),
+            ]);
+            return;
+        }
+
         $filename = 'berita_acara_klarifikasi_' . $pengajuan->kode_pengajuan . '.xls';
-        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Cache-Control: max-age=0');
+        if ($this->input->get('download') === '1') {
+            header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+        }
         $this->load->view('kaur/export_ba_klarifikasi', [
             'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
             'pengajuan' => $pengajuan,

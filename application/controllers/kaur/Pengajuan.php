@@ -8,6 +8,7 @@ class Pengajuan extends CI_Controller {
         $this->load->library('session');
         $this->load->helper(['url', 'download']);
         $this->load->model('kaur/Kaur_model');
+        $this->load->model('Peminjaman_model');
         $this->guard_kaur();
     }
 
@@ -58,6 +59,15 @@ class Pengajuan extends CI_Controller {
         ]);
 
         $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Riwayat negosiasi berhasil disimpan.' : 'Gagal menyimpan negosiasi.');
+        if ($ok && $status === 'Deal') {
+            $this->Peminjaman_model->create_notifikasi(
+                null,
+                $pengajuan->id_user,
+                'Negosiasi selesai',
+                'Negosiasi pengajuan ' . $pengajuan->nama_pengajuan . ' sudah berstatus Deal.',
+                site_url('kaprodi/dashboard?tab=riwayat')
+            );
+        }
         redirect('kaur/dashboard/negosiasi');
     }
 
@@ -81,6 +91,15 @@ class Pengajuan extends CI_Controller {
         $status = $map[$aksi] ?? 'Disetujui';
         $catatan = trim($this->input->post('catatan_approval', true));
         $ok = $this->Kaur_model->update_kaprodi_status($id_pengajuan, $status, $catatan);
+        if ($ok) {
+            $this->Peminjaman_model->create_notifikasi(
+                null,
+                $pengajuan->id_user,
+                'Approval pengadaan diperbarui',
+                'Pengajuan ' . $pengajuan->nama_pengajuan . ' berstatus ' . $status . '.',
+                site_url('kaprodi/dashboard?tab=riwayat')
+            );
+        }
 
         $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Status pengajuan berhasil diperbarui.' : 'Gagal memperbarui status.');
         redirect('kaur/dashboard/approval');
@@ -157,6 +176,15 @@ class Pengajuan extends CI_Controller {
         ]);
 
         $this->session->set_flashdata($id ? 'success' : 'error', $id ? 'BAST berhasil disimpan dan barang diproses ke inventory bila jenisnya Barang.' : 'Gagal menyimpan BAST.');
+        if ($id) {
+            $this->Peminjaman_model->create_notifikasi(
+                null,
+                $pengajuan->id_user,
+                'Barang masuk Inventory',
+                'BAST pengajuan ' . $pengajuan->nama_pengajuan . ' sudah diinput dan diproses ke inventory.',
+                site_url('kaprodi/dashboard?tab=riwayat')
+            );
+        }
         redirect('kaur/dashboard/bast');
     }
 
@@ -314,6 +342,8 @@ class Pengajuan extends CI_Controller {
             'q' => trim((string) $this->input->get('q', true)),
             'status' => trim((string) $this->input->get('status', true)),
             'jenis_pengajuan' => trim((string) $this->input->get('jenis_pengajuan', true)),
+            'vendor' => trim((string) $this->input->get('vendor', true)),
+            'status_negosiasi' => trim((string) $this->input->get('status_negosiasi', true)),
             'tanggal_dari' => trim((string) $this->input->get('tanggal_dari', true)),
             'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
         ];
@@ -325,10 +355,23 @@ class Pengajuan extends CI_Controller {
         $data['role_label'] = 'Kaur Laboratorium';
         $filename = 'laporan_pengajuan_barang_jasa_sampai_acc_' . date('Ymd_His') . '.xls';
 
-        $this->output
-            ->set_content_type('application/vnd.ms-excel')
-            ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
-            ->set_header('Cache-Control: max-age=0');
+        if ($this->input->get('download') !== '1' && $this->input->get('inline') !== '1') {
+            $query = $this->input->get();
+            $this->load->view('shared/export_preview', [
+                'title' => 'Preview Berita Acara Klarifikasi',
+                'download_url' => current_url() . '?' . http_build_query(array_merge($query, ['download' => 1])),
+                'iframe_url' => current_url() . '?' . http_build_query(array_merge($query, ['inline' => 1])),
+                'back_url' => site_url('kaur/dashboard/pengajuan'),
+            ]);
+            return;
+        }
+
+        if ($this->input->get('download') === '1') {
+            $this->output
+                ->set_content_type('application/vnd.ms-excel')
+                ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
+                ->set_header('Cache-Control: max-age=0');
+        }
         $this->load->view('kaur/export_ba_klarifikasi', $data);
     }
 
@@ -341,10 +384,22 @@ class Pengajuan extends CI_Controller {
             show_404();
         }
 
+        if ($this->input->get('download') !== '1' && $this->input->get('inline') !== '1') {
+            $this->load->view('shared/export_preview', [
+                'title' => 'Preview Berita Acara Klarifikasi',
+                'download_url' => current_url() . '?' . http_build_query(['download' => 1]),
+                'iframe_url' => current_url() . '?' . http_build_query(['inline' => 1]),
+                'back_url' => site_url('kaur/dashboard/pengajuan'),
+            ]);
+            return;
+        }
+
         $filename = 'berita_acara_klarifikasi_' . $pengajuan->kode_pengajuan . '.xls';
-        header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Cache-Control: max-age=0');
+        if ($this->input->get('download') === '1') {
+            header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+            header('Cache-Control: max-age=0');
+        }
         $this->load->view('kaur/export_ba_klarifikasi', [
             'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
             'pengajuan' => $pengajuan,

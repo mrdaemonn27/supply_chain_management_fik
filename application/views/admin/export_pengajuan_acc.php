@@ -22,10 +22,10 @@ function excel_cell($value) {
 <body>
     <table>
         <tr>
-            <td colspan="16" class="title"><?= excel_cell($title ?? 'Laporan Pengajuan Sampai Tahap ACC') ?></td>
+            <td colspan="17" class="title"><?= excel_cell($title ?? 'Laporan Pengajuan Sampai Tahap ACC') ?></td>
         </tr>
         <tr>
-            <td colspan="16" class="meta">Dicetak: <?= date('d/m/Y H:i') ?> WIB</td>
+            <td colspan="17" class="meta">Dicetak: <?= date('d/m/Y H:i') ?> WIB</td>
         </tr>
         <tr>
             <th>No</th>
@@ -43,11 +43,12 @@ function excel_cell($value) {
             <th>Tanggal Cek Laboran</th>
             <th>Status Kaur</th>
             <th>Tanggal ACC Kaur</th>
+            <th>Kondisi Akhir</th>
             <th>Catatan</th>
         </tr>
         <?php if (empty($rows)): ?>
             <tr>
-                <td colspan="16" style="text-align:center;">Tidak ada data.</td>
+                <td colspan="17" style="text-align:center;">Tidak ada data.</td>
             </tr>
         <?php else: foreach ($rows as $index => $row): ?>
             <tr>
@@ -66,6 +67,7 @@ function excel_cell($value) {
                 <td><?= excel_cell($row->tgl_approve_laboran) ?></td>
                 <td><?= excel_cell($row->status_kaur) ?></td>
                 <td><?= excel_cell($row->tgl_approve_kaur) ?></td>
+                <td><?= excel_cell($row->kondisi_saat_kembali) ?></td>
                 <td>
                     Laboran: <?= excel_cell($row->catatan_laboran) ?><br>
                     Kaur: <?= excel_cell($row->catatan_kaur) ?>

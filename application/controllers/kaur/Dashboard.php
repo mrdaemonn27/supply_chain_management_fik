@@ -62,6 +62,8 @@ class Dashboard extends CI_Controller {
             'q' => trim((string) $this->input->get('q', true)),
             'status' => trim((string) $this->input->get('status', true)),
             'jenis_pengajuan' => trim((string) $this->input->get('jenis_pengajuan', true)),
+            'vendor' => trim((string) $this->input->get('vendor', true)),
+            'status_negosiasi' => trim((string) $this->input->get('status_negosiasi', true)),
             'tanggal_dari' => trim((string) $this->input->get('tanggal_dari', true)),
             'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
         ];
@@ -90,7 +92,7 @@ class Dashboard extends CI_Controller {
         $data['pengajuan_kaprodi'] = $this->Kaur_model->get_kaprodi_pengajuan($filters, $limit, $offset);
         $data['stats'] = $this->Kaur_model->get_dashboard_stats();
         $data['anggaran'] = $this->Kaur_model->get_anggaran_summary((int) date('Y'));
-        $data['laporan_negosiasi'] = $this->Kaur_model->get_laporan_negosiasi_deal([], 20);
+        $data['laporan_negosiasi'] = $this->Kaur_model->get_laporan_negosiasi_deal($filters, 20);
         $data['bast_ready'] = $this->Kaur_model->get_bast_ready_pengajuan(12);
         $data['bast_list'] = $this->Kaur_model->get_bast_list(12);
         $data['peminjaman_pending_kaur'] = $this->Peminjaman_model->get_pending_kaur();

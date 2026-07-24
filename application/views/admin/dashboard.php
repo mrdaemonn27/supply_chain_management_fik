@@ -138,7 +138,7 @@ $menus = [
                         </div>
                     </div>
                     <span class="d-none d-lg-inline small text-white-50 me-2">Role: <strong class="text-white"><?= isset($user_role) ? $user_role : 'Laboran' ?></strong></span>
-                    <a href="<?= base_url('index.php/admin/peminjaman/export_pengajuan_acc') ?>" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel ACC</a>
+                    <a href="<?= base_url('index.php/admin/peminjaman/export_pengajuan_acc') ?>" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Preview ACC</a>
                     <a href="<?= base_url('index.php/dashboard') ?>" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-globe me-1"></i> Web User</a>
                     <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm rounded-pill px-3 text-white" style="background:#ea5b1a;"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
                 </div>

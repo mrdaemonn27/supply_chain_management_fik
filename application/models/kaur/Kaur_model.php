@@ -336,6 +336,11 @@ class Kaur_model extends CI_Model {
             $this->db->or_like('kaprodi_pengajuan.nama_pengajuan', $keyword);
             $this->db->or_like('kaprodi_pengajuan.nama_prodi', $keyword);
             $this->db->or_like('kaprodi_pengajuan.kebutuhan_lab', $keyword);
+            $this->db->or_where("kaprodi_pengajuan.id_pengajuan IN (
+                SELECT i.id_pengajuan
+                FROM `{$this->kaprodiItemTable}` i
+                WHERE i.uraian_barang LIKE " . $this->db->escape('%' . $keyword . '%') . "
+            )", null, false);
             $this->db->group_end();
         }
 
@@ -353,6 +358,28 @@ class Kaur_model extends CI_Model {
 
         if (!empty($filters['tanggal_sampai'])) {
             $this->db->where('DATE(kaprodi_pengajuan.created_at) <=', $filters['tanggal_sampai']);
+        }
+
+        if (!empty($filters['vendor'])) {
+            $vendor = trim($filters['vendor']);
+            $this->db->where("kaprodi_pengajuan.id_pengajuan IN (
+                SELECT n.id_pengajuan
+                FROM `{$this->negosiasiTable}` n
+                WHERE n.vendor LIKE " . $this->db->escape('%' . $vendor . '%') . "
+            )", null, false);
+        }
+
+        if (!empty($filters['status_negosiasi'])) {
+            $this->db->where("kaprodi_pengajuan.id_pengajuan IN (
+                SELECT n.id_pengajuan
+                FROM `{$this->negosiasiTable}` n
+                INNER JOIN (
+                    SELECT id_item, MAX(id_negosiasi) AS max_id
+                    FROM `{$this->negosiasiTable}`
+                    GROUP BY id_item
+                ) latest ON latest.max_id = n.id_negosiasi
+                WHERE n.status = " . $this->db->escape($filters['status_negosiasi']) . "
+            )", null, false);
         }
     }
 
@@ -555,22 +582,28 @@ class Kaur_model extends CI_Model {
             ->row();
 
         $total = $anggaran ? (float) $anggaran->total_anggaran : 0;
-        $pengeluaran = $this->get_total_pengeluaran_deal();
+        $deal = $this->get_total_deal_summary();
+        $pengeluaran = (float) $deal['total_negosiasi'];
         $sisa = max(0, $total - $pengeluaran);
         $persen = $total > 0 ? min(100, ($pengeluaran / $total) * 100) : 0;
 
         return [
             'tahun' => $tahun,
             'total_anggaran' => $total,
+            'total_pengadaan_deal' => (float) $deal['total_awal'],
             'total_pengeluaran' => $pengeluaran,
             'sisa_anggaran' => $sisa,
+            'penghematan_capex' => max(0, (float) $deal['total_awal'] - $pengeluaran),
+            'belum_terealisasi' => $this->count_kaprodi_pengajuan(['status' => 'Pengajuan']) + $this->count_kaprodi_pengajuan(['status' => 'Revisi']) + $this->count_kaprodi_pengajuan(['status' => 'Sedang Negosiasi']),
             'persentase_penggunaan' => $persen,
             'catatan' => $anggaran ? $anggaran->catatan : null,
         ];
     }
 
-    private function get_total_pengeluaran_deal() {
-        $sql = "SELECT COALESCE(SUM(n.harga_negosiasi * n.volume_negosiasi), 0) AS total
+    private function get_total_deal_summary() {
+        $sql = "SELECT
+                COALESCE(SUM(n.harga_awal * n.volume_negosiasi), 0) AS total_awal,
+                COALESCE(SUM(n.harga_negosiasi * n.volume_negosiasi), 0) AS total_negosiasi
             FROM `{$this->negosiasiTable}` n
             INNER JOIN (
                 SELECT id_item, MAX(id_negosiasi) AS max_id
@@ -579,7 +612,10 @@ class Kaur_model extends CI_Model {
             ) latest ON latest.max_id = n.id_negosiasi
             WHERE n.status = 'Deal'";
         $row = $this->db->query($sql)->row();
-        return $row ? (float) $row->total : 0;
+        return [
+            'total_awal' => $row ? (float) $row->total_awal : 0,
+            'total_negosiasi' => $row ? (float) $row->total_negosiasi : 0,
+        ];
     }
 
     public function save_bast($id_pengajuan, $data) {
@@ -717,6 +753,18 @@ class Kaur_model extends CI_Model {
             $params[] = $like;
             $params[] = $like;
         }
+        if (!empty($filters['status_negosiasi'])) {
+            $sql .= " AND n.status = ?";
+            $params[] = $filters['status_negosiasi'];
+        }
+        if (!empty($filters['tanggal_dari'])) {
+            $sql .= " AND DATE(n.created_at) >= ?";
+            $params[] = $filters['tanggal_dari'];
+        }
+        if (!empty($filters['tanggal_sampai'])) {
+            $sql .= " AND DATE(n.created_at) <= ?";
+            $params[] = $filters['tanggal_sampai'];
+        }
 
         $sql .= " ORDER BY n.created_at DESC";
         if ($limit !== null) {
@@ -821,9 +869,13 @@ class Kaur_model extends CI_Model {
         $ppn_negosiasi = $subtotal_negosiasi * 0.11;
         $total_penawaran = $subtotal_markup + $ppn_penawaran;
         $total_negosiasi = $subtotal_negosiasi + $ppn_negosiasi;
+        $pajak_20 = $subtotal_penawaran * 0.20;
+        $total_setelah_pajak = $subtotal_penawaran + $pajak_20;
 
         return [
             'subtotal_penawaran' => $subtotal_penawaran,
+            'pajak_20' => $pajak_20,
+            'total_setelah_pajak' => $total_setelah_pajak,
             'subtotal_markup' => $subtotal_markup,
             'ppn_penawaran' => $ppn_penawaran,
             'total_penawaran' => $total_penawaran,

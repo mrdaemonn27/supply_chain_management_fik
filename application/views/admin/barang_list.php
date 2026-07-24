@@ -38,9 +38,14 @@
                 <p class="text-muted small m-0">Tambah, Edit, dan Hapus data barang secara global.</p>
             </div>
             <!-- Perhatikan penambahan 'admin/' pada URL di bawah ini -->
-            <a href="<?= base_url('index.php/admin/barang/tambah') ?>" class="btn btn-fik-orange fw-bold px-4 rounded-pill shadow-sm">
-                <i class="bi bi-plus-circle me-1"></i> Tambah Barang Baru
-            </a>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="<?= base_url('index.php/admin/barang/import') ?>" class="btn btn-outline-success fw-bold px-4 rounded-pill shadow-sm">
+                    <i class="bi bi-upload me-1"></i> Import Inventory
+                </a>
+                <a href="<?= base_url('index.php/admin/barang/tambah') ?>" class="btn btn-fik-orange fw-bold px-4 rounded-pill shadow-sm">
+                    <i class="bi bi-plus-circle me-1"></i> Tambah Barang Baru
+                </a>
+            </div>
         </div>
 
         <?php if($this->session->flashdata('success')): ?>
@@ -92,7 +97,7 @@
                                     <td class="text-muted small"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i><?= $b->nama_ruangan ?></td>
                                     <td><b class="text-primary"><?= $b->jumlah_total ?></b> Unit</td>
                                     <td>
-                                        <span class="badge <?= ($b->kondisi == 'Baik') ? 'bg-success' : (($b->kondisi == 'Rusak Ringan') ? 'bg-warning text-dark' : 'bg-danger') ?>">
+                                        <span class="badge <?= ($b->kondisi == 'Baik') ? 'bg-success' : (($b->kondisi == 'Rusak') ? 'bg-warning text-dark' : 'bg-danger') ?>">
                                             <?= $b->kondisi ?>
                                         </span>
                                     </td>

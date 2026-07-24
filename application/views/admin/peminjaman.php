@@ -1,5 +1,5 @@
 <?php
-$status_options = ['', 'Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur', 'Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dikembalikan', 'Ditolak', 'Terlambat'];
+$status_options = ['', 'Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur', 'Disetujui (Menunggu Finalisasi QR)', 'Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dikembalikan', 'Ditolak', 'Terlambat'];
 $status_class = function ($status) { return 'status-' . preg_replace('/[^A-Za-z0-9]+/', '-', trim($status ?: 'Menunggu Verifikasi Laboran')); };
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
@@ -33,6 +33,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         .status-Menunggu-Verifikasi-Laboran { background: rgba(245,158,11,.14); color: #a16207; }
         .status-Menunggu-Pengecekan-Laboran { background: rgba(245,158,11,.14); color: #a16207; }
         .status-Menunggu-ACC-Kaur { background: rgba(13,110,253,.12); color: #0d6efd; }
+        .status-Disetujui-Menunggu-Finalisasi-QR- { background: rgba(13,110,253,.12); color: #0d6efd; }
         .status-Disetujui-Menunggu-Pengambilan- { background: rgba(25,135,84,.12); color: #198754; }
         .status-Sedang-Dipinjam { background: rgba(13,110,253,.12); color: #0d6efd; }
         .status-Dipinjam { background: rgba(13,110,253,.12); color: #0d6efd; }
@@ -55,7 +56,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                 <div class="col-md-4"><label class="form-label small fw-semibold text-muted">Pencarian</label><input type="text" name="q" class="form-control" value="<?= html_escape($filters['pencarian'] ?? '') ?>" placeholder="Nama, NIM/NIP, atau keperluan"></div>
                 <div class="col-md-3"><label class="form-label small fw-semibold text-muted">Status</label><select name="status" class="form-select"><?php foreach($status_options as $status): ?><option value="<?= $status ?>" <?= (($filters['status'] ?? '') === $status) ? 'selected' : '' ?>><?= $status ?: 'Semua Status' ?></option><?php endforeach; ?></select></div>
                 <div class="col-md-3"><label class="form-label small fw-semibold text-muted">Tanggal Pinjam</label><input type="date" name="tanggal" class="form-control" value="<?= html_escape($filters['tanggal'] ?? '') ?>"></div>
-                <div class="col-md-2 d-grid gap-2"><button class="btn btn-fik"><i class="bi bi-search me-1"></i> Filter</button><a href="<?= $export_url ?>" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i> Excel ACC</a></div>
+                <div class="col-md-2 d-grid gap-2"><button class="btn btn-fik"><i class="bi bi-search me-1"></i> Filter</button><a href="<?= $export_url ?>" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i> Preview Excel</a></div>
             </form>
         </section>
 
@@ -72,7 +73,15 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                             <td><div class="fw-semibold"><?= (int)($p->total_jenis ?? 1) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?><?= html_escape($d->nama_aset) ?> (<?= (int)$d->jumlah_pinjam ?>), <?php endforeach; else: ?>- <?php endif; ?></div></td>
                             <td><div><?= html_escape($p->tanggal_pinjam ?? '-') ?></div><div class="small text-muted">s.d. <?= html_escape($p->tanggal_kembali_rencana ?? '-') ?></div></td>
                             <td><span class="soft-badge <?= $status_class($p->status ?? '') ?>"><?= html_escape($p->status ?? '-') ?></span><?php if(!empty($p->foto_pengembalian)): ?><div class="small mt-1"><a href="<?= base_url($p->foto_pengembalian) ?>" target="_blank">Evidence kembali</a></div><?php endif; ?></td>
-                            <td class="text-end pe-3"><?php if(in_array(($p->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true)): ?><button class="btn btn-sm btn-outline-success rounded-pill" data-bs-toggle="modal" data-bs-target="#returnModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-arrow-counterclockwise me-1"></i> Terima Pengembalian</button><?php else: ?><span class="text-muted small">-</span><?php endif; ?></td>
+                            <td class="text-end pe-3">
+                                <?php if(($p->status ?? '') === 'Disetujui (Menunggu Finalisasi QR)'): ?>
+                                    <a class="btn btn-sm btn-outline-primary rounded-pill" href="<?= base_url('index.php/admin/peminjaman/finalkan_qr/'.$p->id_peminjaman) ?>" onclick="return confirm('Finalkan QR dan kunci data transaksi ini?')"><i class="bi bi-qr-code me-1"></i> Finalkan QR</a>
+                                <?php elseif(in_array(($p->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true)): ?>
+                                    <button class="btn btn-sm btn-outline-success rounded-pill" data-bs-toggle="modal" data-bs-target="#returnModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-arrow-counterclockwise me-1"></i> Terima Pengembalian</button>
+                                <?php else: ?>
+                                    <span class="text-muted small">-</span>
+                                <?php endif; ?>
+                            </td>
                         </tr>
                     <?php endforeach; endif; ?>
                     </tbody>
@@ -88,16 +97,18 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                     <div class="modal-body">
                         <div class="mb-2"><div class="small text-muted">Peminjam</div><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div></div>
                         <label class="form-label small fw-semibold">Kondisi Saat Kembali</label>
-                        <select name="kondisi_saat_kembali" class="form-select mb-3" required>
+                        <select name="kondisi_saat_kembali" class="form-select mb-3 return-condition" required>
                             <option value="Baik">Baik</option>
-                            <option value="Rusak Ringan">Rusak Ringan</option>
-                            <option value="Rusak Berat">Rusak Berat</option>
+                            <option value="Rusak">Rusak</option>
+                            <option value="Hilang">Hilang</option>
                         </select>
                         <label class="form-label small fw-semibold">Catatan Pengembalian</label>
-                        <textarea name="catatan_pengembalian" class="form-control" rows="3" placeholder="Catatan kondisi barang atau kelengkapan."></textarea>
+                        <textarea name="catatan_pengembalian" class="form-control return-note" rows="3" placeholder="Catatan kondisi barang atau kelengkapan. Wajib untuk Rusak/Hilang."></textarea>
                         <label class="form-label small fw-semibold mt-3">Evidence Pengembalian</label>
-                        <input type="file" name="foto_pengembalian" class="form-control" accept=".jpg,.jpeg,.png,.pdf">
-                        <div class="small text-muted mt-1">Foto kondisi barang atau dokumen PDF. Maksimal 5MB.</div>
+                        <input type="file" name="foto_pengembalian" class="form-control return-file" accept=".jpg,.jpeg,.png,.pdf,image/*">
+                        <label class="form-label small fw-semibold mt-2">Ambil Foto Kamera HP</label>
+                        <input type="file" name="foto_pengembalian_camera" class="form-control return-file" accept="image/*" capture="environment">
+                        <div class="small text-muted mt-1">Pilih dari galeri/dokumen atau ambil foto langsung. Evidence wajib untuk Rusak/Hilang. Maksimal 5MB.</div>
                     </div>
                     <div class="modal-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button class="btn btn-success rounded-pill px-4" onclick="return confirm('Konfirmasi barang sudah diterima kembali?')">Terima Pengembalian</button></div>
                 </form>
@@ -105,5 +116,18 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         </div>
     <?php endif; endforeach; endif; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.querySelectorAll('.modal form').forEach((form) => {
+            form.addEventListener('submit', (event) => {
+                const condition = form.querySelector('.return-condition')?.value;
+                const note = form.querySelector('.return-note')?.value.trim();
+                const hasFile = Array.from(form.querySelectorAll('.return-file')).some((input) => input.files && input.files.length);
+                if ((condition === 'Rusak' || condition === 'Hilang') && (!note || !hasFile)) {
+                    event.preventDefault();
+                    alert('Untuk kondisi Rusak atau Hilang, catatan dan evidence wajib diisi.');
+                }
+            });
+        });
+    </script>
 </body>
 </html>
