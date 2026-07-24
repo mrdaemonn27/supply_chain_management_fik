@@ -12,6 +12,7 @@ class Peminjaman_model extends CI_Model {
     private $table_peminjam = 'peminjam';
     private $table_peminjaman_detail = 'peminjaman_detail';
     private $table_notifikasi = 'notifikasi_progress';
+    private $table_blokir = 'blokir_pengguna';
 
     public function __construct() {
         parent::__construct();
@@ -51,10 +52,6 @@ class Peminjaman_model extends CI_Model {
                 $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `qr_finalized_by` int(11) DEFAULT NULL AFTER `qr_finalized_at`");
             }
 
-            if (!$this->db->field_exists('qr_pengembalian_token', $this->table_peminjaman)) {
-                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `qr_pengembalian_token` varchar(80) DEFAULT NULL AFTER `qr_finalized_by`");
-            }
-
             $return_condition = $this->db->query("SHOW COLUMNS FROM `{$this->table_peminjaman}` LIKE 'kondisi_saat_kembali'")->row();
             if ($return_condition && stripos((string) $return_condition->Type, 'enum') !== false) {
                 $this->db->query("ALTER TABLE `{$this->table_peminjaman}` MODIFY `kondisi_saat_kembali` varchar(50) DEFAULT NULL");
@@ -82,6 +79,31 @@ class Peminjaman_model extends CI_Model {
                 KEY `idx_notif_role` (`recipient_role`),
                 KEY `idx_notif_user` (`recipient_user_id`),
                 KEY `idx_notif_read` (`is_read`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        }
+
+        if (!$this->db->table_exists($this->table_blokir)) {
+            $this->db->query("CREATE TABLE `blokir_pengguna` (
+                `id_blokir` int(11) NOT NULL AUTO_INCREMENT,
+                `id_user` int(11) DEFAULT NULL,
+                `id_peminjam` int(11) DEFAULT NULL,
+                `nim_nip` varchar(50) NOT NULL,
+                `nama_peminjam` varchar(150) DEFAULT NULL,
+                `alasan` text NOT NULL,
+                `tanggal_blokir` date NOT NULL,
+                `batas_blokir` date DEFAULT NULL,
+                `status` varchar(20) NOT NULL DEFAULT 'Aktif',
+                `dibuka_pada` datetime DEFAULT NULL,
+                `dibuka_oleh` int(11) DEFAULT NULL,
+                `catatan_buka` text DEFAULT NULL,
+                `dibuat_oleh` int(11) DEFAULT NULL,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                `updated_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id_blokir`),
+                KEY `idx_blokir_user` (`id_user`),
+                KEY `idx_blokir_peminjam` (`id_peminjam`),
+                KEY `idx_blokir_nim` (`nim_nip`),
+                KEY `idx_blokir_status` (`status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         }
     }
@@ -153,7 +175,6 @@ class Peminjaman_model extends CI_Model {
             MAX(p.foto_pengembalian) as foto_pengembalian,
             MAX(p.qr_locked) as qr_locked,
             MAX(p.qr_finalized_at) as qr_finalized_at,
-            MAX(p.qr_pengembalian_token) as qr_pengembalian_token,
             MAX(p.created_at) as created_at,
             MAX(peminjam.nama_peminjam) as nama_peminjam,
             MAX(peminjam.nim_nip) as nim_nip,
@@ -172,6 +193,12 @@ class Peminjaman_model extends CI_Model {
             } else {
                 $this->db->where('p.status', $filters['status']);
             }
+        } elseif (!empty($filters['status_in']) && is_array($filters['status_in'])) {
+            $this->db->where_in('p.status', $filters['status_in']);
+        }
+
+        if (!empty($filters['exclude_status']) && is_array($filters['exclude_status'])) {
+            $this->db->where_not_in('p.status', $filters['exclude_status']);
         }
         
         // Filter pencarian
@@ -446,22 +473,16 @@ class Peminjaman_model extends CI_Model {
         return site_url('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
     }
 
-    public function get_qr_pengembalian_payload($group_id) {
-        return site_url('admin/peminjaman/validasi_pengembalian/' . rawurlencode($group_id));
-    }
-
     public function qr_is_visible($status, $qr_locked = 0) {
-        return (int) $qr_locked === 1 && in_array((string) $status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam'], true);
+        return (int) $qr_locked === 1 && in_array((string) $status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dipinjam'], true);
     }
 
     public function finalize_qr($group_id, $id_user = null) {
-        $token = strtoupper(substr(hash('sha256', $group_id . microtime(true)), 0, 18));
         return $this->update_group_status($group_id, [
             'status' => 'Disetujui (Menunggu Pengambilan)',
             'qr_locked' => 1,
             'qr_finalized_at' => date('Y-m-d H:i:s'),
             'qr_finalized_by' => $id_user,
-            'qr_pengembalian_token' => $token,
         ]);
     }
 
@@ -526,6 +547,123 @@ class Peminjaman_model extends CI_Model {
         }
         $this->db->group_end();
         return $this->db->count_all_results();
+    }
+
+    public function get_active_block_by_user($id_user = null, $nim_nip = null) {
+        if (!$this->db->table_exists($this->table_blokir)) {
+            return null;
+        }
+
+        $this->db->from($this->table_blokir);
+        $this->db->where('status', 'Aktif');
+        $this->db->group_start();
+        $this->db->where('batas_blokir IS NULL', null, false);
+        $this->db->or_where('batas_blokir >=', date('Y-m-d'));
+        $this->db->group_end();
+        $this->db->group_start();
+        if ($id_user) {
+            $this->db->where('id_user', (int) $id_user);
+        }
+        if ($nim_nip) {
+            if ($id_user) {
+                $this->db->or_where('nim_nip', $nim_nip);
+            } else {
+                $this->db->where('nim_nip', $nim_nip);
+            }
+        }
+        $this->db->group_end();
+        $this->db->order_by('created_at', 'DESC');
+        return $this->db->get()->row();
+    }
+
+    public function create_blokir_pengguna($data) {
+        if (!$this->db->table_exists($this->table_blokir)) {
+            return false;
+        }
+
+        $nim_nip = trim((string) ($data['nim_nip'] ?? ''));
+        if ($nim_nip === '') {
+            return false;
+        }
+
+        $user = $this->db->where('nim_nip', $nim_nip)->get('users')->row();
+        $peminjam = $this->get_peminjam_by_nim_nip($nim_nip);
+
+        $payload = [
+            'id_user' => $user->id_user ?? ($data['id_user'] ?? null),
+            'id_peminjam' => $peminjam->id_peminjam ?? ($data['id_peminjam'] ?? null),
+            'nim_nip' => $nim_nip,
+            'nama_peminjam' => trim((string) ($data['nama_peminjam'] ?? ($user->nama_lengkap ?? ($peminjam->nama_peminjam ?? '')))),
+            'alasan' => trim((string) ($data['alasan'] ?? '')),
+            'tanggal_blokir' => $data['tanggal_blokir'] ?? date('Y-m-d'),
+            'batas_blokir' => !empty($data['batas_blokir']) ? $data['batas_blokir'] : null,
+            'status' => 'Aktif',
+            'dibuat_oleh' => $data['dibuat_oleh'] ?? null,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        if ($payload['alasan'] === '') {
+            return false;
+        }
+
+        $this->db->insert($this->table_blokir, $payload);
+        return $this->db->insert_id();
+    }
+
+    public function buka_blokir_pengguna($id_blokir, $id_user = null, $catatan = null) {
+        if (!$this->db->table_exists($this->table_blokir)) {
+            return false;
+        }
+
+        $this->db->where('id_blokir', (int) $id_blokir);
+        return $this->db->update($this->table_blokir, [
+            'status' => 'Dibuka',
+            'dibuka_pada' => date('Y-m-d H:i:s'),
+            'dibuka_oleh' => $id_user,
+            'catatan_buka' => $catatan,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    public function get_blokir_pengguna($filters = []) {
+        if (!$this->db->table_exists($this->table_blokir)) {
+            return [];
+        }
+
+        $this->db->from($this->table_blokir);
+
+        if (!empty($filters['status'])) {
+            $this->db->where('status', $filters['status']);
+        }
+        if (!empty($filters['tanggal'])) {
+            $this->db->where('tanggal_blokir', $filters['tanggal']);
+        }
+        if (!empty($filters['pencarian'])) {
+            $search = trim((string) $filters['pencarian']);
+            $this->db->group_start();
+            $this->db->like('nama_peminjam', $search);
+            $this->db->or_like('nim_nip', $search);
+            $this->db->or_like('alasan', $search);
+            $this->db->group_end();
+        }
+
+        $this->db->order_by("FIELD(status, 'Aktif', 'Dibuka')", '', false);
+        $this->db->order_by('created_at', 'DESC');
+        return $this->db->get()->result();
+    }
+
+    public function count_blokir_aktif() {
+        if (!$this->db->table_exists($this->table_blokir)) {
+            return 0;
+        }
+
+        $this->db->where('status', 'Aktif');
+        $this->db->group_start();
+        $this->db->where('batas_blokir IS NULL', null, false);
+        $this->db->or_where('batas_blokir >=', date('Y-m-d'));
+        $this->db->group_end();
+        return $this->db->count_all_results($this->table_blokir);
     }
 
     public function delete_peminjaman($id) {

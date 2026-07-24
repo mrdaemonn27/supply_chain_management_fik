@@ -17,11 +17,19 @@ $menus = [
     ],
     [
         'title' => 'Peminjaman',
-        'desc' => 'Pantau transaksi peminjaman aktif, riwayat, dan pengembalian.',
+        'desc' => 'Pantau pengajuan, finalisasi QR, dan proses serah barang.',
         'url' => base_url('index.php/admin/peminjaman'),
         'icon' => 'bi-clipboard-data',
         'class' => 'tone-green',
-        'metric' => $get_stat('peminjaman_aktif') . ' aktif',
+        'metric' => $get_stat('peminjaman_proses') . ' proses',
+    ],
+    [
+        'title' => 'Pengembalian',
+        'desc' => 'Scan QR transaksi dan validasi barang yang kembali.',
+        'url' => base_url('index.php/admin/pengembalian'),
+        'icon' => 'bi-arrow-counterclockwise',
+        'class' => 'tone-teal',
+        'metric' => $get_stat('pengembalian_aktif') . ' aktif',
     ],
     [
         'title' => 'Approval',
@@ -64,6 +72,14 @@ $menus = [
         'class' => 'tone-cyan',
         'metric' => $get_stat('total_distribusi') . ' distribusi',
     ],
+    [
+        'title' => 'Blokir Pengguna',
+        'desc' => 'Batasi peminjam bermasalah dan simpan histori blokir.',
+        'url' => base_url('index.php/admin/blokir'),
+        'icon' => 'bi-shield-lock',
+        'class' => 'tone-red',
+        'metric' => $get_stat('blokir_aktif') . ' aktif',
+    ],
 ];
 ?>
 <!DOCTYPE html>
@@ -97,6 +113,7 @@ $menus = [
         .tone-blue { background: rgba(13, 110, 253, .12); color: #0d6efd; }
         .tone-yellow { background: rgba(245, 158, 11, .16); color: #a16207; }
         .tone-cyan { background: rgba(13, 202, 240, .14); color: #087990; }
+        .tone-teal { background: rgba(20, 184, 166, .13); color: #0f766e; }
         .notify-badge { position: absolute; top: 16px; right: 16px; border-radius: 999px; padding: 5px 10px; background: #dc3545; color: #fff; font-size: .75rem; font-weight: 700; }
         .notif-bell { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 38px; }
         .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }

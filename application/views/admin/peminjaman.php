@@ -1,8 +1,9 @@
 <?php
-$status_options = ['', 'Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur', 'Disetujui (Menunggu Finalisasi QR)', 'Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dikembalikan', 'Ditolak', 'Terlambat'];
+$status_options = isset($status_options) && is_array($status_options) ? $status_options : ['', 'Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur', 'Disetujui (Menunggu Finalisasi QR)', 'Disetujui (Menunggu Pengambilan)', 'Ditolak'];
 $status_class = function ($status) { return 'status-' . preg_replace('/[^A-Za-z0-9]+/', '-', trim($status ?: 'Menunggu Verifikasi Laboran')); };
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
+$pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'total_pages' => 1, 'total' => count($peminjaman ?? []), 'per_page' => 10];
 $export_query = http_build_query([
     'status' => $filters['status'] ?? '',
     'q' => $filters['pencarian'] ?? '',
@@ -45,7 +46,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
     </style>
 </head>
 <body>
-    <header class="topbar sticky-top"><div class="container-fluid px-3 px-lg-4 py-3"><div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2"><div><div class="fw-bold"><i class="bi bi-clipboard-data me-2 text-warning"></i>Data Peminjaman</div><div class="small text-white-50">Monitoring transaksi, scanner, dan pengembalian barang</div></div><div class="topbar-actions d-flex gap-2"><div class="dropdown"><button class="btn btn-outline-light btn-sm rounded-circle notif-bell position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi"><i class="bi bi-bell"></i><?php if ($notif_count > 0): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $notif_count ?></span><?php endif; ?></button><div class="dropdown-menu dropdown-menu-end shadow border-0 p-2 notif-menu"><div class="fw-bold px-2 py-1">Notifikasi</div><?php if (empty($notif_items)): ?><div class="small text-muted px-2 py-3">Belum ada notifikasi.</div><?php else: foreach ($notif_items as $n): ?><a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>"><div class="fw-semibold small"><?= html_escape($n->judul) ?></div><div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div></a><?php endforeach; endif; ?></div></div><a href="<?= base_url('index.php/admin/peminjaman/scanner') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-qr-code-scan me-1"></i> Scanner</a><a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a><a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3"><i class="bi bi-box-arrow-right me-1"></i> Logout</a></div></div></div></header>
+    <header class="topbar sticky-top"><div class="container-fluid px-3 px-lg-4 py-3"><div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2"><div><div class="fw-bold"><i class="bi bi-clipboard-data me-2 text-warning"></i>Data Peminjaman</div><div class="small text-white-50">Monitoring pengajuan, finalisasi QR, dan serah barang</div></div><div class="topbar-actions d-flex gap-2"><div class="dropdown"><button class="btn btn-outline-light btn-sm rounded-circle notif-bell position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi"><i class="bi bi-bell"></i><?php if ($notif_count > 0): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $notif_count ?></span><?php endif; ?></button><div class="dropdown-menu dropdown-menu-end shadow border-0 p-2 notif-menu"><div class="fw-bold px-2 py-1">Notifikasi</div><?php if (empty($notif_items)): ?><div class="small text-muted px-2 py-3">Belum ada notifikasi.</div><?php else: foreach ($notif_items as $n): ?><a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>"><div class="fw-semibold small"><?= html_escape($n->judul) ?></div><div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div></a><?php endforeach; endif; ?></div></div><a href="<?= base_url('index.php/admin/pengembalian') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-arrow-counterclockwise me-1"></i> Pengembalian</a><a href="<?= base_url('index.php/admin/peminjaman/scanner') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-qr-code-scan me-1"></i> Scanner</a><a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a><a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3"><i class="bi bi-box-arrow-right me-1"></i> Logout</a></div></div></div></header>
 
     <main class="container-fluid px-3 px-lg-4 py-4">
         <?php if($this->session->flashdata('success')): ?><div class="alert alert-success border-0 shadow-sm"><?= $this->session->flashdata('success'); ?></div><?php endif; ?>
@@ -76,8 +77,8 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                             <td class="text-end pe-3">
                                 <?php if(($p->status ?? '') === 'Disetujui (Menunggu Finalisasi QR)'): ?>
                                     <a class="btn btn-sm btn-outline-primary rounded-pill" href="<?= base_url('index.php/admin/peminjaman/finalkan_qr/'.$p->id_peminjaman) ?>" onclick="return confirm('Finalkan QR dan kunci data transaksi ini?')"><i class="bi bi-qr-code me-1"></i> Finalkan QR</a>
-                                <?php elseif(in_array(($p->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true)): ?>
-                                    <button class="btn btn-sm btn-outline-success rounded-pill" data-bs-toggle="modal" data-bs-target="#returnModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-arrow-counterclockwise me-1"></i> Terima Pengembalian</button>
+                                <?php elseif(($p->status ?? '') === 'Disetujui (Menunggu Pengambilan)'): ?>
+                                    <a class="btn btn-sm btn-outline-success rounded-pill" href="<?= base_url('index.php/admin/peminjaman/serah_terima/'.rawurlencode($p->group_id)) ?>"><i class="bi bi-box-arrow-up-right me-1"></i> Serah Barang</a>
                                 <?php else: ?>
                                     <span class="text-muted small">-</span>
                                 <?php endif; ?>
@@ -87,47 +88,33 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                     </tbody>
                 </table>
             </div>
+            <?php
+                $base_query = [
+                    'status' => $filters['status'] ?? '',
+                    'q' => $filters['pencarian'] ?? '',
+                    'tanggal' => $filters['tanggal'] ?? '',
+                ];
+                $page = (int) ($pagination['page'] ?? 1);
+                $total_pages = (int) ($pagination['total_pages'] ?? 1);
+            ?>
+            <?php if($total_pages > 1): ?>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 px-3 py-3 border-top">
+                    <div class="small text-muted">Menampilkan <?= count($peminjaman) ?> dari <?= (int)($pagination['total'] ?? 0) ?> data</div>
+                    <nav aria-label="Pagination peminjaman">
+                        <ul class="pagination pagination-sm mb-0">
+                            <?php $prev_query = http_build_query(array_merge($base_query, ['page' => max(1, $page - 1)])); ?>
+                            <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman'.($prev_query ? '?'.$prev_query : '')) ?>">Prev</a></li>
+                            <?php for($i = 1; $i <= $total_pages; $i++): $page_query = http_build_query(array_merge($base_query, ['page' => $i])); ?>
+                                <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman'.($page_query ? '?'.$page_query : '')) ?>"><?= $i ?></a></li>
+                            <?php endfor; ?>
+                            <?php $next_query = http_build_query(array_merge($base_query, ['page' => min($total_pages, $page + 1)])); ?>
+                            <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman'.($next_query ? '?'.$next_query : '')) ?>">Next</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            <?php endif; ?>
         </section>
     </main>
-    <?php if(!empty($peminjaman)): foreach($peminjaman as $p): if(in_array(($p->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true)): ?>
-        <div class="modal fade" id="returnModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <form class="modal-content" method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/kembalikan/'.$p->id_peminjaman) ?>">
-                    <div class="modal-header"><h5 class="modal-title fw-bold">Terima Pengembalian</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                    <div class="modal-body">
-                        <div class="mb-2"><div class="small text-muted">Peminjam</div><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div></div>
-                        <label class="form-label small fw-semibold">Kondisi Saat Kembali</label>
-                        <select name="kondisi_saat_kembali" class="form-select mb-3 return-condition" required>
-                            <option value="Baik">Baik</option>
-                            <option value="Rusak">Rusak</option>
-                            <option value="Hilang">Hilang</option>
-                        </select>
-                        <label class="form-label small fw-semibold">Catatan Pengembalian</label>
-                        <textarea name="catatan_pengembalian" class="form-control return-note" rows="3" placeholder="Catatan kondisi barang atau kelengkapan. Wajib untuk Rusak/Hilang."></textarea>
-                        <label class="form-label small fw-semibold mt-3">Evidence Pengembalian</label>
-                        <input type="file" name="foto_pengembalian" class="form-control return-file" accept=".jpg,.jpeg,.png,.pdf,image/*">
-                        <label class="form-label small fw-semibold mt-2">Ambil Foto Kamera HP</label>
-                        <input type="file" name="foto_pengembalian_camera" class="form-control return-file" accept="image/*" capture="environment">
-                        <div class="small text-muted mt-1">Pilih dari galeri/dokumen atau ambil foto langsung. Evidence wajib untuk Rusak/Hilang. Maksimal 5MB.</div>
-                    </div>
-                    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button class="btn btn-success rounded-pill px-4" onclick="return confirm('Konfirmasi barang sudah diterima kembali?')">Terima Pengembalian</button></div>
-                </form>
-            </div>
-        </div>
-    <?php endif; endforeach; endif; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        document.querySelectorAll('.modal form').forEach((form) => {
-            form.addEventListener('submit', (event) => {
-                const condition = form.querySelector('.return-condition')?.value;
-                const note = form.querySelector('.return-note')?.value.trim();
-                const hasFile = Array.from(form.querySelectorAll('.return-file')).some((input) => input.files && input.files.length);
-                if ((condition === 'Rusak' || condition === 'Hilang') && (!note || !hasFile)) {
-                    event.preventDefault();
-                    alert('Untuk kondisi Rusak atau Hilang, catatan dan evidence wajib diisi.');
-                }
-            });
-        });
-    </script>
 </body>
 </html>

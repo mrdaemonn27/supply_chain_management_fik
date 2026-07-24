@@ -22,9 +22,9 @@ $boleh_kembali = in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipi
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
             <div>
                 <div class="fw-bold"><i class="bi bi-arrow-counterclockwise me-2 text-warning"></i>Validasi Pengembalian</div>
-                <div class="small text-white-50">Scan QR pengembalian dari akun peminjam</div>
+                <div class="small text-white-50">Scan QR transaksi yang sama dari akun peminjam</div>
             </div>
-            <a href="<?= base_url('index.php/admin/peminjaman') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3">Data Peminjaman</a>
+            <a href="<?= base_url('index.php/admin/pengembalian') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3">Data Pengembalian</a>
         </div>
     </header>
 
@@ -58,6 +58,7 @@ $boleh_kembali = in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipi
 
             <?php if($boleh_kembali): ?>
                 <form method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/kembalikan/'.$peminjaman->id_peminjaman) ?>">
+                    <input type="hidden" name="return_to" value="admin/pengembalian">
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Kondisi Akhir</label>

@@ -293,6 +293,16 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
     <!-- KONTEN UTAMA (ETALASE BARANG) -->
     <div class="container py-5">
+        <?php if($this->session->flashdata('success')): ?>
+            <div class="alert alert-success border-0 shadow-sm rounded-3 mb-4">
+                <i class="bi bi-check-circle-fill me-2"></i><?= $this->session->flashdata('success'); ?>
+            </div>
+        <?php endif; ?>
+        <?php if($this->session->flashdata('error')): ?>
+            <div class="alert alert-danger border-0 shadow-sm rounded-3 mb-4">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i><?= $this->session->flashdata('error'); ?>
+            </div>
+        <?php endif; ?>
         
         <!-- Info & Filter Sederhana -->
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4 pb-3 border-bottom">

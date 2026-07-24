@@ -42,6 +42,22 @@ class Peminjaman extends CI_Controller {
         }
     }
 
+    private function get_active_block() {
+        if (strtolower((string) $this->session->userdata('role')) !== 'user') {
+            return null;
+        }
+
+        return $this->Peminjaman_model->get_active_block_by_user(
+            $this->session->userdata('id_user'),
+            $this->session->userdata('username')
+        );
+    }
+
+    private function flash_block_message($block) {
+        $until = !empty($block->batas_blokir) ? ' sampai ' . date('d/m/Y', strtotime($block->batas_blokir)) : ' tanpa batas waktu';
+        $this->session->set_flashdata('error', 'Akun Anda sedang diblokir' . $until . '. Alasan: ' . ($block->alasan ?? '-'));
+    }
+
     /**
      * Halaman Default (Katalog Barang)
      * URL: http://localhost/supply_chain_management_fik/index.php/peminjaman
@@ -73,6 +89,12 @@ class Peminjaman extends CI_Controller {
      * URL: http://localhost/supply_chain_management_fik/index.php/peminjaman/ajukan/1
      */
     public function ajukan($id_aset) {
+        $block = $this->get_active_block();
+        if ($block) {
+            $this->flash_block_message($block);
+            redirect('peminjaman');
+        }
+
         $data['aset'] = $this->Peminjaman_model->get_aset_by_id($id_aset);
         
         // Validasi jika ID aset tidak ditemukan
@@ -90,12 +112,22 @@ class Peminjaman extends CI_Controller {
      * Memproses Data Pengajuan & Upload Foto Kondisi Awal
      */
     public function proses_pengajuan() {
+        $block = $this->get_active_block();
+        if ($block) {
+            $this->flash_block_message($block);
+            redirect('peminjaman');
+        }
+
         $id_aset = $this->input->post('id_aset');
         $jumlah_pinjam = $this->input->post('jumlah_pinjam');
         $tanggal_pinjam = $this->input->post('tanggal_pinjam');
         $tanggal_kembali = $this->input->post('tanggal_kembali_rencana');
         
         $aset = $this->Peminjaman_model->get_aset_by_id($id_aset);
+        if (!$aset) {
+            $this->session->set_flashdata('error', 'Aset tidak ditemukan.');
+            redirect('peminjaman');
+        }
 
         // 1. Validasi Keamanan: Stok tidak boleh kurang
         if ($jumlah_pinjam > $aset->jumlah_tersedia) {

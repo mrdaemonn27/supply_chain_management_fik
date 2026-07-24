@@ -166,7 +166,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                 ?>
                                 <?php if($show_pickup_qr || $show_return_qr): ?>
                                     <button class="btn btn-sm btn-outline-dark fw-semibold px-3" data-bs-toggle="modal" data-bs-target="#qrModal<?= $r->id_peminjaman ?>">
-                                        <i class="bi bi-qr-code-scan me-1"></i> <?= $show_return_qr ? 'QR Pengembalian' : 'QR Pengambilan' ?>
+                                        <i class="bi bi-qr-code-scan me-1"></i> QR Transaksi
                                     </button>
                                 <?php else: ?>
                                     <span class="small text-muted">QR belum aktif</span>
@@ -188,17 +188,15 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             $show_pickup_qr = $qr_locked && $r->status === 'Disetujui (Menunggu Pengambilan)';
             $show_return_qr = $qr_locked && in_array($r->status, ['Sedang Dipinjam', 'Dipinjam'], true);
             if(!$show_pickup_qr && !$show_return_qr) { continue; }
-            $qr_url = $show_return_qr
-                ? site_url('admin/peminjaman/validasi_pengembalian/'.rawurlencode($r->group_id))
-                : site_url('admin/peminjaman/serah_terima/'.rawurlencode($r->group_id));
+            $qr_url = site_url('admin/peminjaman/serah_terima/'.rawurlencode($r->group_id));
         ?>
         <div class="modal fade" id="qrModal<?= $r->id_peminjaman ?>" tabindex="-1" aria-labelledby="qrModalLabel<?= $r->id_peminjaman ?>" aria-hidden="true">
             <div class="modal-dialog modal-sm modal-dialog-centered">
                 <div class="modal-content text-center p-4 border-0 shadow-lg" style="border-radius: 20px;">
-                    <h5 class="fw-bold text-fik-orange mb-1" id="qrModalLabel<?= $r->id_peminjaman ?>"><?= $show_return_qr ? 'QR Pengembalian' : 'E-Ticket Laboratorium' ?></h5>
-                    <p class="small text-muted mb-4"><?= $show_return_qr ? 'Tunjukkan kode ini kepada Laboran saat mengembalikan barang.' : 'Tunjukkan kode ini kepada Laboran saat serah terima barang.' ?></p>
+                    <h5 class="fw-bold text-fik-orange mb-1" id="qrModalLabel<?= $r->id_peminjaman ?>">QR Transaksi Laboratorium</h5>
+                    <p class="small text-muted mb-4"><?= $show_return_qr ? 'Tunjukkan QR yang sama kepada Laboran saat mengembalikan barang.' : 'Tunjukkan QR ini kepada Laboran saat serah terima barang. QR yang sama dipakai kembali saat pengembalian.' ?></p>
                     
-                    <!-- QR berisi link serah terima untuk scanner Laboran -->
+                    <!-- QR transaksi tunggal: dipakai untuk serah barang dan pengembalian -->
                     <div class="bg-white p-3 rounded-4 mb-3 mx-auto shadow-sm border" style="display: inline-block;">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=<?= rawurlencode($qr_url) ?>" alt="QR Code" class="img-fluid">
                     </div>

@@ -52,7 +52,7 @@ class Peminjaman extends CI_Controller {
                 null,
                 $peminjaman->id_user,
                 'Peminjaman disetujui Kaur',
-                'Peminjaman sudah di-ACC Kaur dan sedang difinalkan Laboran sebelum QR ditampilkan.',
+                'Peminjaman sudah di-ACC Kaur dan sedang difinalkan Laboran sebelum QR transaksi ditampilkan.',
                 site_url('peminjaman/riwayat')
             );
         }
@@ -60,8 +60,8 @@ class Peminjaman extends CI_Controller {
             $this->Peminjaman_model->create_notifikasi(
                 'laboran',
                 null,
-                'Finalisasi QR peminjaman',
-                ($peminjaman->nama_peminjam ?? 'Peminjam') . ' sudah disetujui Kaur. Cek data lalu finalkan QR sebelum serah terima.',
+                'Finalisasi QR transaksi',
+                ($peminjaman->nama_peminjam ?? 'Peminjam') . ' sudah disetujui Kaur. Cek data lalu finalkan QR transaksi sebelum serah terima.',
                 site_url('admin/peminjaman')
             );
         }
