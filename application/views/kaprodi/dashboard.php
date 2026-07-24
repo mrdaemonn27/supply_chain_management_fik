@@ -71,6 +71,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         .summary-card .label { color: #6c757d; font-size: .82rem; margin-top: 8px; }
         .table-clean thead th { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; color: #5f6368; background: #f8f9fa; border-bottom: 1px solid #e8eaed; white-space: nowrap; }
         .table-clean td { vertical-align: middle; }
+        .jenis-badge { width: 78px; min-height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; line-height: 1; text-align: center; }
         .status-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 152px; border-radius: 999px; padding: 6px 10px; font-size: .74rem; font-weight: 700; white-space: nowrap; }
         .status-pengajuan { background: rgba(13, 110, 253, .12); color: #0d6efd; }
         .status-revisi { background: rgba(245, 158, 11, .16); color: #a16207; }
@@ -339,7 +340,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                             <div class="fw-semibold"><?= html_escape($p->nama_pengajuan) ?></div>
                                             <div class="small text-muted"><?= html_escape($p->nama_prodi) ?></div>
                                         </td>
-                                        <td><span class="badge text-bg-light border"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
+                                        <td><span class="badge text-bg-light border jenis-badge"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
                                         <td style="min-width: 300px;">
                                             <div class="small text-muted mb-1"><?= html_escape($p->kebutuhan_lab ?: '-') ?></div>
                                             <?php foreach (($p->items ?? []) as $item): ?>
