@@ -32,6 +32,37 @@ function query_kaur($filters, $page) {
     $params['page'] = $page;
     return http_build_query($params);
 }
+function terbilang_kaur($number) {
+    $number = (int) $number;
+    $words = ['', 'SATU', 'DUA', 'TIGA', 'EMPAT', 'LIMA', 'ENAM', 'TUJUH', 'DELAPAN', 'SEMBILAN', 'SEPULUH', 'SEBELAS'];
+    if ($number < 12) return $words[$number];
+    if ($number < 20) return terbilang_kaur($number - 10) . ' BELAS';
+    if ($number < 100) return trim(terbilang_kaur((int) ($number / 10)) . ' PULUH ' . terbilang_kaur($number % 10));
+    if ($number < 200) return trim('SERATUS ' . terbilang_kaur($number - 100));
+    if ($number < 1000) return trim(terbilang_kaur((int) ($number / 100)) . ' RATUS ' . terbilang_kaur($number % 100));
+    if ($number < 2000) return trim('SERIBU ' . terbilang_kaur($number - 1000));
+    if ($number < 1000000) return trim(terbilang_kaur((int) ($number / 1000)) . ' RIBU ' . terbilang_kaur($number % 1000));
+    return (string) $number;
+}
+function tanggal_terbilang_kaur($date_string) {
+    if (empty($date_string)) return ['hari' => '-', 'tanggal' => '-', 'bulan' => '-', 'tahun' => '-', 'label' => '-'];
+    $timestamp = strtotime($date_string);
+    if (!$timestamp) return ['hari' => '-', 'tanggal' => '-', 'bulan' => '-', 'tahun' => '-', 'label' => '-'];
+    $hari_list = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+    $bulan_list = ['', 'JANUARI', 'FEBRUARI', 'MARET', 'APRIL', 'MEI', 'JUNI', 'JULI', 'AGUSTUS', 'SEPTEMBER', 'OKTOBER', 'NOVEMBER', 'DESEMBER'];
+    $hari = strtoupper($hari_list[(int) date('w', $timestamp)]);
+    $tanggal_angka = (int) date('j', $timestamp);
+    $bulan_angka = (int) date('n', $timestamp);
+    $tahun_angka = (int) date('Y', $timestamp);
+    $result = [
+        'hari' => $hari,
+        'tanggal' => terbilang_kaur($tanggal_angka),
+        'bulan' => $bulan_list[$bulan_angka],
+        'tahun' => terbilang_kaur($tahun_angka),
+    ];
+    $result['label'] = "Pada hari {$result['hari']} tanggal {$result['tanggal']} Bulan {$result['bulan']} Tahun {$result['tahun']}";
+    return $result;
+}
 $filters = $filters ?? [];
 $stats = $stats ?? ['pengajuan' => 0, 'total_pengajuan' => 0, 'negosiasi' => 0, 'sedang_negosiasi' => 0, 'deal' => 0, 'deal_approval' => 0, 'menunggu_approval' => 0, 'bast' => 0, 'total_bast' => 0, 'laporan_deal' => 0];
 $anggaran = $anggaran ?? ['tahun' => date('Y'), 'total_anggaran' => 0, 'total_pengeluaran' => 0, 'sisa_anggaran' => 0, 'persentase_penggunaan' => 0, 'catatan' => null];
@@ -826,57 +857,199 @@ function kaur_module_url($module) {
         <?php endif; ?>
 
         <?php if ($active_module === 'bast'): ?>
-        <section id="bast" class="section-anchor mb-4">
-            <h2 class="h5 fw-bold mb-3">Input BAST dari Logistik</h2>
-            <div class="alert alert-warning border-0 rounded-3 small mb-3"><i class="bi bi-hourglass-split me-1"></i> Template resmi BAST berstatus <strong>Hold</strong>. Struktur modul sudah siap, sementara Laboran/Kaur tetap dapat mengunggah PDF atau hasil scan dari Logistik.</div>
-            <div class="row g-3">
-                <div class="col-xl-7">
-                    <div class="panel-card p-3 p-lg-4 h-100">
-                        <div class="accordion" id="bastAccordion">
-                            <?php $bast_rows = $bast_ready ?? []; ?>
-                            <?php if (empty($bast_rows)): ?>
-                                <div class="text-muted small p-3">Belum ada pengajuan yang siap BAST. BAST baru tersedia setelah pengajuan disetujui Kaur.</div>
-                            <?php endif; ?>
-                            <?php foreach ($bast_rows as $index => $p): ?>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button <?= $index > 0 ? 'collapsed' : '' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#bastForm<?= (int) $p->id_pengajuan ?>">
-                                            <?= html_escape($p->kode_pengajuan) ?> - <?= html_escape($p->nama_pengajuan) ?> <span class="badge text-bg-success ms-2"><?= html_escape($p->status) ?></span>
-                                        </button>
-                                    </h2>
-                                    <div id="bastForm<?= (int) $p->id_pengajuan ?>" class="accordion-collapse collapse <?= $index === 0 ? 'show' : '' ?>" data-bs-parent="#bastAccordion">
-                                        <form class="accordion-body row g-2" method="post" enctype="multipart/form-data" action="<?= base_url('index.php/kaur/pengajuan/simpan_bast/'.$p->id_pengajuan) ?>">
-                                            <div class="col-md-4"><label class="form-label small fw-semibold">Nomor BAST</label><input type="text" name="nomor_bast" class="form-control" required></div>
-                                            <div class="col-md-4"><label class="form-label small fw-semibold">Tanggal</label><input type="date" name="tanggal_bast" class="form-control" required></div>
-                                            <div class="col-md-4"><label class="form-label small fw-semibold">Jenis</label><select name="jenis_bast" class="form-select"><option value="Barang" <?= (($p->jenis_pengajuan ?? 'Barang') === 'Barang') ? 'selected' : '' ?>>Barang</option><option value="Jasa" <?= (($p->jenis_pengajuan ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option><option value="Barang dan Jasa" <?= (($p->jenis_pengajuan ?? '') === 'Barang dan Jasa') ? 'selected' : '' ?>>Barang dan Jasa</option></select></div>
-                                            <div class="col-md-7"><label class="form-label small fw-semibold">File PDF/Scan</label><input type="file" name="file_bast" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required></div>
-                                            <div class="col-md-5"><label class="form-label small fw-semibold">Catatan</label><input type="text" name="catatan" class="form-control"></div>
-                                            <div class="col-12 d-grid d-md-flex justify-content-md-end"><button class="btn btn-fik rounded-pill px-4"><i class="bi bi-upload me-1"></i> Simpan BAST</button></div>
-                                        </form>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
+        <?php
+            // Merge "siap BAST" (belum upload) dengan "sudah BAST" (sudah upload) jadi satu daftar tabel.
+            // Catatan implementasi: idealnya controller Kaur_pengajuan/bast() sudah menyatukan kedua sumber ini
+            // (dan menerapkan filter q/tahun/status_bast/tanggal_dari/tanggal_sampai di level query) lalu mengirim
+            // variabel $bast_rows langsung. Blok di bawah tetap kompatibel dengan variabel lama ($bast_ready,
+            // $bast_list) apabila controller belum diubah.
+            if (!isset($bast_rows)) {
+                $bast_rows = [];
+                $bast_by_id = [];
+                foreach (($bast_list ?? []) as $b) {
+                    if (!empty($b->id_pengajuan)) { $bast_by_id[$b->id_pengajuan] = $b; }
+                }
+                foreach (($bast_ready ?? []) as $p) {
+                    $match = $bast_by_id[$p->id_pengajuan] ?? null;
+                    $p->nomor_bast = $match->nomor_bast ?? null;
+                    $p->tanggal_bast = $match->tanggal_bast ?? null;
+                    $p->file_bast = $match->file_bast ?? null;
+                    $p->catatan_bast = $match->catatan ?? null;
+                    unset($bast_by_id[$p->id_pengajuan]);
+                    $bast_rows[] = $p;
+                }
+                foreach ($bast_by_id as $b) {
+                    $b->kode_pengajuan = $b->kode_pengajuan ?? ($b->nomor_bast ?? '-');
+                    $bast_rows[] = $b;
+                }
+            }
+            $bast_years = $bast_years ?? [(int) date('Y')];
+            $bast_signer_nama = $bast_signer_nama ?? (($this->session->userdata('nama') ?? null) ?: 'Kaur. Pencatatan & Pengelolaan Aset');
+            $bast_signer_jabatan = $bast_signer_jabatan ?? 'Kaur. Pencatatan & Pengelolaan Aset';
+        ?>
+        <section id="bast" class="section-anchor panel-card p-3 p-lg-4 mb-4">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
+                <div>
+                    <h2 class="h5 fw-bold mb-1">BAST (Berita Acara Serah Terima)</h2>
+                    <div class="text-muted small">Cari, unggah dokumen BAST dari Logistik, atau langsung buat/cetak BAST dari data pengajuan.</div>
                 </div>
-                <div class="col-xl-5">
-                    <div class="panel-card p-3 p-lg-4 h-100">
-                        <h3 class="h6 fw-bold mb-3">BAST Terakhir</h3>
-                        <div class="vstack gap-2">
-                            <?php if (empty($bast_list)): ?>
-                                <div class="text-muted small">Belum ada dokumen BAST.</div>
-                            <?php else: foreach ($bast_list as $b): ?>
-                                <div class="border rounded-3 p-2">
-                                    <div class="fw-semibold"><?= html_escape($b->nomor_bast) ?></div>
-                                    <div class="small text-muted"><?= html_escape($b->nama_pengajuan ?? '-') ?> - <?= date('d/m/Y', strtotime($b->tanggal_bast)) ?></div>
-                                    <?php if (!empty($b->file_bast)): ?><a class="small" href="<?= base_url($b->file_bast) ?>" target="_blank">Lihat file</a><?php endif; ?>
-                                </div>
-                            <?php endforeach; endif; ?>
+                <span class="badge text-bg-warning align-self-start"><?= count(array_filter($bast_rows, fn($r) => empty($r->nomor_bast))) ?> menunggu BAST</span>
+            </div>
+
+            <form method="get" action="<?= kaur_module_url('bast') ?>" class="row g-2 align-items-end mb-3">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Kata Kunci</label>
+                    <input type="text" name="q" class="form-control" list="bastAutocompleteList" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, nomor BAST" autocomplete="off">
+                    <datalist id="bastAutocompleteList">
+                        <?php
+                            $bast_suggestions = [];
+                            foreach ($bast_rows as $sugg) {
+                                if (!empty($sugg->kode_pengajuan)) { $bast_suggestions[$sugg->kode_pengajuan] = true; }
+                                if (!empty($sugg->nama_prodi)) { $bast_suggestions[$sugg->nama_prodi] = true; }
+                                if (!empty($sugg->nomor_bast)) { $bast_suggestions[$sugg->nomor_bast] = true; }
+                            }
+                        ?>
+                        <?php foreach (array_keys($bast_suggestions) as $sugg_value): ?>
+                            <option value="<?= html_escape($sugg_value) ?>">
+                        <?php endforeach; ?>
+                    </datalist>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Tahun</label>
+                    <select name="tahun" class="form-select">
+                        <option value="">Semua</option>
+                        <?php foreach ($bast_years as $year_opt): ?>
+                            <option value="<?= (int) $year_opt ?>" <?= ((string) ($filters['tahun'] ?? '') === (string) $year_opt) ? 'selected' : '' ?>><?= (int) $year_opt ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Status</label>
+                    <select name="status_bast" class="form-select">
+                        <option value="">Semua</option>
+                        <option value="menunggu" <?= (($filters['status_bast'] ?? '') === 'menunggu') ? 'selected' : '' ?>>Menunggu BAST</option>
+                        <option value="selesai" <?= (($filters['status_bast'] ?? '') === 'selesai') ? 'selected' : '' ?>>Sudah BAST</option>
+                    </select>
+                </div>
+                <div class="col-md-2"><label class="form-label small fw-semibold">Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
+                <div class="col-md-2"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
+                <div class="col-md-1 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
+            </form>
+
+            <div class="table-responsive">
+                <table class="table table-clean align-middle">
+                    <thead><tr><th>Kode Pengajuan</th><th>Prodi / Kegiatan</th><th>Jenis</th><th>Nomor BAST</th><th>Tanggal BAST</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+                    <tbody>
+                        <?php if (empty($bast_rows)): ?>
+                            <tr><td colspan="7" class="text-center text-muted py-5">Belum ada pengajuan yang siap BAST sesuai filter.</td></tr>
+                        <?php else: foreach ($bast_rows as $b): ?>
+                            <?php
+                                $has_bast = !empty($b->nomor_bast);
+                                $b_items = [];
+                                foreach (($b->items ?? []) as $bi) {
+                                    $b_items[] = [
+                                        'uraian' => $bi->uraian_barang ?? '-',
+                                        'vol' => (float) ($bi->volume_awal_referensi ?? $bi->vol ?? 0),
+                                        'satuan' => $bi->satuan ?? 'Unit',
+                                    ];
+                                }
+                                $terbilang = tanggal_terbilang_kaur($b->tanggal_bast ?? date('Y-m-d'));
+                            ?>
+                            <tr>
+                                <td class="fw-semibold"><?= html_escape($b->kode_pengajuan ?? '-') ?></td>
+                                <td><div class="fw-semibold"><?= html_escape($b->nama_prodi ?? '-') ?></div><div class="small text-muted"><?= html_escape($b->nama_pengajuan ?? '-') ?></div></td>
+                                <td><span class="badge text-bg-light border"><?= html_escape($b->jenis_pengajuan ?? 'Barang') ?></span></td>
+                                <td><?= html_escape($b->nomor_bast ?? '-') ?></td>
+                                <td class="small text-muted"><?= !empty($b->tanggal_bast) ? date('d/m/Y', strtotime($b->tanggal_bast)) : '-' ?></td>
+                                <td><span class="status-pill <?= $has_bast ? 'status-bast' : 'status-pengajuan' ?>"><?= $has_bast ? 'Sudah BAST' : 'Menunggu BAST' ?></span></td>
+                                <td class="text-end">
+                                    <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                                        <?php if (!empty($b->file_bast)): ?>
+                                            <a href="<?= base_url($b->file_bast) ?>" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-file-earmark-text me-1"></i> File</a>
+                                        <?php endif; ?>
+                                        <?php if (!empty($b->id_pengajuan)): ?>
+                                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#bastUploadModal<?= (int) $b->id_pengajuan ?>"><i class="bi bi-upload me-1"></i> <?= $has_bast ? 'Ganti File' : 'Upload' ?></button>
+                                        <?php endif; ?>
+                                        <button type="button" class="btn btn-sm btn-fik rounded-pill px-3 btn-generate-bast"
+                                            data-nomor="<?= html_escape($b->nomor_bast ?: 'FIK/' . date('y') . '/---') ?>"
+                                            data-spk="<?= html_escape($b->spk_no ?? $b->kode_pengajuan ?? '-') ?>"
+                                            data-hari="<?= html_escape($terbilang['hari']) ?>"
+                                            data-tanggal-kata="<?= html_escape($terbilang['tanggal']) ?>"
+                                            data-bulan-kata="<?= html_escape($terbilang['bulan']) ?>"
+                                            data-tahun-kata="<?= html_escape($terbilang['tahun']) ?>"
+                                            data-ruangan="<?= html_escape($b->ruangan ?? '-') ?>"
+                                            data-prodi="<?= html_escape($b->nama_prodi ?? '-') ?>"
+                                            data-kegiatan="<?= html_escape($b->nama_pengajuan ?? '-') ?>"
+                                            data-kaur-nama="<?= html_escape($bast_signer_nama) ?>"
+                                            data-kaur-jabatan="<?= html_escape($bast_signer_jabatan) ?>"
+                                            data-kaprodi-nama="<?= html_escape($b->kaprodi_nama ?? '') ?>"
+                                            data-items="<?= html_escape(json_encode($b_items, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)) ?>">
+                                            <i class="bi bi-file-earmark-richtext me-1"></i> Generate BAST
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 pt-2 border-top">
+                <div class="small text-muted">Menampilkan <?= count($bast_rows) ?> dari <?= (int) ($total_rows_bast ?? count($bast_rows)) ?> data</div>
+                <?php if (!empty($total_pages_bast) && $total_pages_bast > 1): ?>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        <li class="page-item <?= ($page ?? 1) <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, max(1, ($page ?? 1) - 1)) ?>">Prev</a></li>
+                        <?php for ($i = 1; $i <= $total_pages_bast; $i++): ?>
+                            <li class="page-item <?= $i === (int) ($page ?? 1) ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, $i) ?>"><?= $i ?></a></li>
+                        <?php endfor; ?>
+                        <li class="page-item <?= ($page ?? 1) >= $total_pages_bast ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, min($total_pages_bast, ($page ?? 1) + 1)) ?>">Next</a></li>
+                    </ul>
+                </nav>
+                <?php endif; ?>
+            </div>
+        </section>
+
+        <?php foreach ($bast_rows as $b): if (empty($b->id_pengajuan)) continue; ?>
+            <div class="modal fade" id="bastUploadModal<?= (int) $b->id_pengajuan ?>" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <form class="modal-content" method="post" enctype="multipart/form-data" action="<?= base_url('index.php/kaur/pengajuan/simpan_bast/'.$b->id_pengajuan) ?>">
+                        <div class="modal-header">
+                            <h5 class="modal-title fw-bold"><?= html_escape($b->kode_pengajuan ?? '-') ?> - <?= html_escape($b->nama_pengajuan ?? '-') ?></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
+                        <div class="modal-body row g-2">
+                            <div class="col-md-6"><label class="form-label small fw-semibold">Nomor BAST</label><input type="text" name="nomor_bast" class="form-control" value="<?= html_escape($b->nomor_bast ?? '') ?>" required></div>
+                            <div class="col-md-6"><label class="form-label small fw-semibold">Tanggal BAST</label><input type="date" name="tanggal_bast" class="form-control" value="<?= html_escape($b->tanggal_bast ?? date('Y-m-d')) ?>" required></div>
+                            <div class="col-md-6"><label class="form-label small fw-semibold">Jenis</label><select name="jenis_bast" class="form-select"><option value="Barang" <?= (($b->jenis_pengajuan ?? 'Barang') === 'Barang') ? 'selected' : '' ?>>Barang</option><option value="Jasa" <?= (($b->jenis_pengajuan ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option><option value="Barang dan Jasa" <?= (($b->jenis_pengajuan ?? '') === 'Barang dan Jasa') ? 'selected' : '' ?>>Barang dan Jasa</option></select></div>
+                            <div class="col-md-6"><label class="form-label small fw-semibold">File PDF/Scan</label><input type="file" name="file_bast" class="form-control" accept=".pdf,.jpg,.jpeg,.png"<?= empty($b->file_bast) ? ' required' : '' ?>></div>
+                            <div class="col-12"><label class="form-label small fw-semibold">Catatan</label><input type="text" name="catatan" class="form-control" value="<?= html_escape($b->catatan_bast ?? '') ?>"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Tutup</button>
+                            <button class="btn btn-fik rounded-pill px-4"><i class="bi bi-upload me-1"></i> Simpan BAST</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        <?php endforeach; ?>
+
+        <div class="modal fade" id="bastGenerateModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title fw-bold">Preview BAST</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="bastPreviewArea" class="border rounded-3 p-3" style="font-family: 'Times New Roman', serif; font-size: .92rem;"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Tutup</button>
+                        <button type="button" class="btn btn-fik rounded-pill px-4" id="bastPrintBtn"><i class="bi bi-printer me-1"></i> Cetak / Simpan PDF</button>
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
         <?php endif; ?>
 
         <?php if ($active_module === 'laporan'): ?>
@@ -1087,6 +1260,108 @@ function kaur_module_url($module) {
             });
             updateNegotiationTotal(form);
         });
+    </script>
+    <script>
+        (() => {
+            const previewArea = document.getElementById('bastPreviewArea');
+            const printBtn = document.getElementById('bastPrintBtn');
+            const modalEl = document.getElementById('bastGenerateModal');
+            if (!previewArea || !modalEl) return;
+            const bsModal = window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+            let currentHtml = '';
+
+            const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+            const buildBastHtml = (data) => {
+                let items = [];
+                try { items = JSON.parse(data.items || '[]'); } catch (e) { items = []; }
+                const rows = items.map((item, index) => `
+                    <tr>
+                        <td style="border:1px solid #333;padding:6px;text-align:center;">${index + 1}.</td>
+                        <td style="border:1px solid #333;padding:6px;">${escapeHtml(item.uraian)}</td>
+                        <td style="border:1px solid #333;padding:6px;text-align:center;">${Number(item.vol || 0).toLocaleString('id-ID')}</td>
+                        <td style="border:1px solid #333;padding:6px;text-align:center;">${escapeHtml(item.satuan)}</td>
+                        <td style="border:1px solid #333;padding:6px;text-align:center;">&#9744; sesuai / &#9744; tidak sesuai</td>
+                        <td style="border:1px solid #333;padding:6px;"></td>
+                    </tr>`).join('') || '<tr><td colspan="6" style="border:1px solid #333;padding:10px;text-align:center;">Belum ada rincian barang.</td></tr>';
+
+                return `
+                    <div style="text-align:right;font-size:.85rem;">No : ${escapeHtml(data.nomor)}</div>
+                    <h5 style="text-align:center;font-weight:700;margin:10px 0 2px;">BERITA ACARA SERAH TERIMA (BAST)</h5>
+                    <div style="text-align:center;margin-bottom:14px;">(Pengiriman Aset)</div>
+                    <p style="text-align:justify;">Pada hari <b>${escapeHtml(data.hari)}</b> tanggal <b>${escapeHtml(data.tanggalKata)}</b> Bulan <b>${escapeHtml(data.bulanKata)}</b> Tahun <b>${escapeHtml(data.tahunKata)}</b>, bertempat di kantor, ruangan <b>${escapeHtml(data.ruangan)}</b> telah dilakukan SERAH TERIMA BARANG (SPK No : <b>${escapeHtml(data.spk)}</b>) antara pihak PENCATATAN &amp; PENGELOLAAN ASET dengan <b>${escapeHtml(data.prodi)}</b> - ${escapeHtml(data.kegiatan)}.</p>
+                    <p>Adapun rincian barang yang diserahterimakan secara lengkap sebagai berikut:</p>
+                    <table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:.85rem;">
+                        <thead>
+                            <tr>
+                                <th style="border:1px solid #333;padding:6px;">No</th>
+                                <th style="border:1px solid #333;padding:6px;">Uraian dan Spesifikasi Barang</th>
+                                <th style="border:1px solid #333;padding:6px;">Vol</th>
+                                <th style="border:1px solid #333;padding:6px;">Sat</th>
+                                <th style="border:1px solid #333;padding:6px;">Hasil Serah Terima</th>
+                                <th style="border:1px solid #333;padding:6px;">Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <p style="font-size:.8rem;">*Pilih sesuai kondisi riil saat serah terima</p>
+                    <p>Demikian Berita Acara ini dibuat dengan sebenarnya.</p>
+                    <div style="display:flex;justify-content:space-between;margin-top:26px;font-size:.9rem;">
+                        <div style="width:46%;">
+                            <div>Yang Menyerahkan,</div>
+                            <div style="height:64px;"></div>
+                            <div style="border-top:1px solid #333;padding-top:4px;">
+                                <div><b>${escapeHtml(data.kaurNama)}</b></div>
+                                <div>${escapeHtml(data.kaurJabatan)}</div>
+                            </div>
+                        </div>
+                        <div style="width:46%;">
+                            <div>Yang Menerima,</div>
+                            <div style="height:64px;"></div>
+                            <div style="border-top:1px solid #333;padding-top:4px;">
+                                <div><b>${escapeHtml(data.kaprodiNama || '.............................')}</b></div>
+                                <div>Kaprodi ${escapeHtml(data.prodi)}</div>
+                            </div>
+                        </div>
+                    </div>`;
+            };
+
+            document.querySelectorAll('.btn-generate-bast').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const data = {
+                        nomor: btn.dataset.nomor,
+                        spk: btn.dataset.spk,
+                        hari: btn.dataset.hari,
+                        tanggalKata: btn.dataset.tanggalKata,
+                        bulanKata: btn.dataset.bulanKata,
+                        tahunKata: btn.dataset.tahunKata,
+                        ruangan: btn.dataset.ruangan,
+                        prodi: btn.dataset.prodi,
+                        kegiatan: btn.dataset.kegiatan,
+                        kaurNama: btn.dataset.kaurNama,
+                        kaurJabatan: btn.dataset.kaurJabatan,
+                        kaprodiNama: btn.dataset.kaprodiNama,
+                        items: btn.dataset.items,
+                    };
+                    currentHtml = buildBastHtml(data);
+                    previewArea.innerHTML = currentHtml;
+                    if (bsModal) bsModal.show();
+                });
+            });
+
+            if (printBtn) {
+                printBtn.addEventListener('click', () => {
+                    const printWindow = window.open('', '_blank', 'width=850,height=1000');
+                    if (!printWindow) return;
+                    printWindow.document.write(`<!DOCTYPE html><html><head><title>BAST</title>
+                        <style>body{font-family:'Times New Roman', serif;padding:32px;color:#111;}</style>
+                        </head><body>${currentHtml}</body></html>`);
+                    printWindow.document.close();
+                    printWindow.focus();
+                    printWindow.onload = () => printWindow.print();
+                });
+            }
+        })();
     </script>
 </body>
 </html>

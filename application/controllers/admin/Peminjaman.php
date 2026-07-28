@@ -156,6 +156,10 @@ class Peminjaman extends CI_Controller {
         }
         $peminjaman = $locked_peminjaman;
         $items = !empty($peminjaman->detail_barang) ? $peminjaman->detail_barang : [$peminjaman];
+
+        // Terapkan jumlah yang diedit laboran (tidak boleh melebihi jumlah pinjam asli)
+        $items = $this->apply_edited_jumlah($items);
+
         foreach ($items as $item) {
             $aset = $this->Aset_model->get_aset_by_id_for_update($item->id_aset);
             if (!$aset || $item->jumlah_pinjam > $aset->jumlah_tersedia) {
@@ -280,7 +284,7 @@ class Peminjaman extends CI_Controller {
                 $this->session->set_flashdata('error', 'Keterangan wajib diisi jika kondisi barang Rusak atau Hilang.');
                 redirect($redirect_to);
             }
-            if (empty($_FILES['foto_pengembalian']['name']) && empty($_FILES['foto_pengembalian_camera']['name'])) {
+            if (!$this->has_uploaded_files('foto_pengembalian')) {
                 $this->session->set_flashdata('error', 'Evidence wajib diupload jika kondisi barang Rusak atau Hilang.');
                 redirect($redirect_to);
             }
@@ -294,6 +298,10 @@ class Peminjaman extends CI_Controller {
         }
         $peminjaman = $locked_peminjaman;
         $items = !empty($peminjaman->detail_barang) ? $peminjaman->detail_barang : [$peminjaman];
+
+        // Terapkan jumlah yang diedit laboran (tidak boleh melebihi jumlah pinjam asli)
+        $items = $this->apply_edited_jumlah($items);
+
         $foto_pengembalian = $this->upload_evidence_pengembalian();
         if ($foto_pengembalian === false) {
             $this->db->trans_rollback();
@@ -322,8 +330,8 @@ class Peminjaman extends CI_Controller {
             'qr_locked' => 0,
             'updated_at' => date('Y-m-d H:i:s')
         ];
-        if ($foto_pengembalian) {
-            $update['foto_pengembalian'] = $foto_pengembalian;
+        if (!empty($foto_pengembalian)) {
+            $update['foto_pengembalian'] = $foto_pengembalian[0]['path'];
         }
 
         if (!empty($peminjaman->group_id)) {
@@ -331,6 +339,18 @@ class Peminjaman extends CI_Controller {
         } else {
             $this->db->where('id_peminjaman', $id_peminjaman)->update('peminjaman', $update);
         }
+
+        foreach ($foto_pengembalian as $file) {
+            $this->Peminjaman_model->insert_evidence([
+                'id_peminjaman' => $peminjaman->id_peminjaman,
+                'group_id' => $peminjaman->group_id,
+                'jenis' => 'pengembalian',
+                'nama_file' => $file['path'],
+                'original_name' => $file['original_name'],
+                'uploaded_by' => $this->session->userdata('id_user'),
+            ]);
+        }
+
         $this->db->trans_complete();
 
         if ($this->db->trans_status()) {
@@ -399,6 +419,46 @@ class Peminjaman extends CI_Controller {
         return 'QR terbaca, tetapi transaksi belum dapat diproses.';
     }
 
+    /**
+     * Terapkan jumlah_barang (hasil edit laboran di form) ke tiap item,
+     * dikunci maksimal ke jumlah_pinjam asli supaya tidak bisa dinaikkan.
+     * Key posting: jumlah_barang[<kode_aset>].
+     */
+    private function apply_edited_jumlah(array $items) {
+        $jumlah_edit = $this->input->post('jumlah_barang', true);
+        if (empty($jumlah_edit) || !is_array($jumlah_edit)) {
+            return $items;
+        }
+
+        foreach ($items as $item) {
+            $kode = $item->kode_aset ?? null;
+            $jumlah_asli = (int) ($item->jumlah_pinjam ?? 0);
+
+            if ($kode !== null && array_key_exists($kode, $jumlah_edit)) {
+                $jumlah_baru = (int) $jumlah_edit[$kode];
+                $jumlah_baru = max(0, min($jumlah_baru, $jumlah_asli));
+                $item->jumlah_pinjam = $jumlah_baru;
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Cek apakah field file (bisa single atau array) benar-benar berisi file.
+     */
+    private function has_uploaded_files($field) {
+        if (empty($_FILES[$field]['name'])) {
+            return false;
+        }
+        foreach ((array) $_FILES[$field]['name'] as $name) {
+            if (trim((string) $name) !== '') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private function upload_multiple_evidence($field) {
         if (empty($_FILES[$field]['name'])) {
             return [];
@@ -440,14 +500,15 @@ class Peminjaman extends CI_Controller {
         return $files;
     }
 
+    /**
+     * Upload evidence pengembalian. Mendukung banyak file (foto_pengembalian[]).
+     * Return array of ['path' => ..., 'original_name' => ...], [] jika tidak ada file,
+     * atau false jika salah satu upload gagal.
+     */
     private function upload_evidence_pengembalian() {
         $field = 'foto_pengembalian';
-        if (empty($_FILES[$field]['name']) && !empty($_FILES['foto_pengembalian_camera']['name'])) {
-            $field = 'foto_pengembalian_camera';
-        }
-
         if (empty($_FILES[$field]['name'])) {
-            return null;
+            return [];
         }
 
         $path = './assets/uploads/bukti_pengembalian/';
@@ -455,21 +516,35 @@ class Peminjaman extends CI_Controller {
             mkdir($path, 0777, true);
         }
 
-        $config = [
-            'upload_path' => $path,
-            'allowed_types' => 'jpg|jpeg|png|pdf',
-            'max_size' => 5120,
-            'encrypt_name' => true,
-        ];
-
+        $files = [];
         $this->load->library('upload');
-        $this->upload->initialize($config);
-        if (!$this->upload->do_upload($field)) {
-            $this->session->set_flashdata('error', 'Upload evidence pengembalian gagal: ' . $this->upload->display_errors('', ''));
-            return false;
+        foreach ((array) $_FILES[$field]['name'] as $index => $name) {
+            if (trim((string) $name) === '') {
+                continue;
+            }
+            $_FILES['single_evidence'] = [
+                'name' => $_FILES[$field]['name'][$index],
+                'type' => $_FILES[$field]['type'][$index],
+                'tmp_name' => $_FILES[$field]['tmp_name'][$index],
+                'error' => $_FILES[$field]['error'][$index],
+                'size' => $_FILES[$field]['size'][$index],
+            ];
+            $this->upload->initialize([
+                'upload_path' => $path,
+                'allowed_types' => 'jpg|jpeg|png|pdf',
+                'max_size' => 5120,
+                'encrypt_name' => true,
+            ]);
+            if (!$this->upload->do_upload('single_evidence')) {
+                $this->session->set_flashdata('error', 'Upload evidence pengembalian gagal: ' . $this->upload->display_errors('', ''));
+                return false;
+            }
+            $uploaded = $this->upload->data();
+            $files[] = [
+                'path' => 'assets/uploads/bukti_pengembalian/' . $uploaded['file_name'],
+                'original_name' => $uploaded['client_name'],
+            ];
         }
-
-        $file = $this->upload->data();
-        return 'assets/uploads/bukti_pengembalian/' . $file['file_name'];
+        return $files;
     }
 }
