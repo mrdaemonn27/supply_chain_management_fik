@@ -79,7 +79,7 @@ class Peminjaman extends CI_Controller {
 
         $data['title'] = 'Laporan Pengajuan Sampai Tahap ACC';
         $data['rows'] = $this->Peminjaman_model->get_pengajuan_sampai_acc_report($filters);
-        $filename = 'laporan_pengajuan_sampai_acc_' . date('Ymd_His') . '.xls';
+        $filename = 'laporan_pengajuan_sampai_acc_' . date('Ymd_His') . '.xlsx';
 
         if ($this->input->get('download') !== '1' && $this->input->get('inline') !== '1') {
             $query = $this->input->get();
@@ -93,10 +93,9 @@ class Peminjaman extends CI_Controller {
         }
 
         if ($this->input->get('download') === '1') {
-            $this->output
-                ->set_content_type('application/vnd.ms-excel')
-                ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
-                ->set_header('Cache-Control: max-age=0');
+            $this->load->helper('scm_xlsx');
+            scm_download_xlsx($filename, $this->load->view('admin/export_pengajuan_acc', $data, true));
+            return;
         }
         $this->load->view('admin/export_pengajuan_acc', $data);
     }

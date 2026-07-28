@@ -32,6 +32,10 @@ class Peminjaman extends CI_Controller {
             'Menunggu ACC Kaur',
             'Disetujui (Menunggu Finalisasi QR)',
             'Disetujui (Menunggu Pengambilan)',
+            'Sedang Dipinjam',
+            'Dipinjam',
+            'Dikembalikan',
+            'Terlambat',
             'Ditolak',
         ];
         $status = $this->input->get('status', true);
@@ -45,7 +49,7 @@ class Peminjaman extends CI_Controller {
             'tanggal' => $this->input->get('tanggal', true),
         ];
         if (empty($filters['status'])) {
-            $filters['status_in'] = $allowed_status;
+            $filters['status_in'] = array_values(array_diff($allowed_status, ['Terlambat']));
         }
 
         $page = max(1, (int) $this->input->get('page', true));
@@ -76,7 +80,7 @@ class Peminjaman extends CI_Controller {
 
         $data['title'] = 'Laporan Pengajuan Sampai Tahap ACC';
         $data['rows'] = $this->Peminjaman_model->get_pengajuan_sampai_acc_report($filters);
-        $filename = 'laporan_pengajuan_sampai_acc_' . date('Ymd_His') . '.xls';
+        $filename = 'laporan_pengajuan_sampai_acc_' . date('Ymd_His') . '.xlsx';
 
         if ($this->input->get('download') !== '1' && $this->input->get('inline') !== '1') {
             $query = $this->input->get();
@@ -90,10 +94,9 @@ class Peminjaman extends CI_Controller {
         }
 
         if ($this->input->get('download') === '1') {
-            $this->output
-                ->set_content_type('application/vnd.ms-excel')
-                ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
-                ->set_header('Cache-Control: max-age=0');
+            $this->load->helper('scm_xlsx');
+            scm_download_xlsx($filename, $this->load->view('admin/export_pengajuan_acc', $data, true));
+            return;
         }
         $this->load->view('admin/export_pengajuan_acc', $data);
     }
@@ -115,9 +118,10 @@ class Peminjaman extends CI_Controller {
             redirect('admin/peminjaman/scanner');
         }
 
-        if (in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true)) {
+        if (in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true) && (int) ($peminjaman->qr_locked ?? 0) === 1) {
             $data['title'] = 'Validasi Pengembalian Barang';
             $data['peminjaman'] = $peminjaman;
+            $data['qr_valid'] = true;
             $this->load->view('admin/validasi_pengembalian', $data);
             return;
         }
@@ -125,6 +129,8 @@ class Peminjaman extends CI_Controller {
         $data['title'] = 'Serah Terima Barang';
         $data['peminjaman'] = $peminjaman;
         $data['qr_payload'] = $this->Peminjaman_model->get_qr_payload($group_id);
+        $data['qr_valid'] = ($peminjaman->status ?? '') === 'Disetujui (Menunggu Pengambilan)' && (int) ($peminjaman->qr_locked ?? 0) === 1;
+        $data['qr_message'] = $this->qr_message_for($peminjaman);
         $this->load->view('admin/serah_terima', $data);
     }
 
@@ -136,29 +142,60 @@ class Peminjaman extends CI_Controller {
             redirect('admin/peminjaman/scanner');
         }
 
-        if ($peminjaman->status !== 'Disetujui (Menunggu Pengambilan)') {
-            $this->session->set_flashdata('error', 'Barang hanya bisa diserahkan setelah ACC Kaur.');
+        if ($peminjaman->status !== 'Disetujui (Menunggu Pengambilan)' || (int) ($peminjaman->qr_locked ?? 0) !== 1) {
+            $this->session->set_flashdata('error', 'Barang hanya bisa diserahkan setelah ACC Kaur dan QR aktif. QR yang sudah digunakan tidak dapat dipakai lagi untuk serah terima.');
             redirect('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
         }
 
+        $this->db->trans_start();
+        $locked_peminjaman = $this->Peminjaman_model->get_peminjaman_by_group_id_for_update($group_id);
+        if (!$locked_peminjaman || $locked_peminjaman->status !== 'Disetujui (Menunggu Pengambilan)' || (int) ($locked_peminjaman->qr_locked ?? 0) !== 1) {
+            $this->db->trans_rollback();
+            $this->session->set_flashdata('error', 'QR transaksi sudah dipakai atau tidak lagi aktif.');
+            redirect('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
+        }
+        $peminjaman = $locked_peminjaman;
         $items = !empty($peminjaman->detail_barang) ? $peminjaman->detail_barang : [$peminjaman];
         foreach ($items as $item) {
-            $aset = $this->Aset_model->get_aset_by_id($item->id_aset);
+            $aset = $this->Aset_model->get_aset_by_id_for_update($item->id_aset);
             if (!$aset || $item->jumlah_pinjam > $aset->jumlah_tersedia) {
+                $this->db->trans_rollback();
                 $this->session->set_flashdata('error', 'Stok ' . ($item->nama_aset ?? 'barang') . ' tidak cukup saat serah terima.');
                 redirect('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
             }
         }
 
-        $this->db->trans_start();
+        $evidence = $this->upload_multiple_evidence('foto_serah');
+        if ($evidence === false) {
+            $this->db->trans_rollback();
+            redirect('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
+        }
+
         foreach ($items as $item) {
-            $this->Aset_model->update_jumlah_tersedia($item->id_aset, $item->jumlah_pinjam);
+            if (!$this->Aset_model->update_jumlah_tersedia($item->id_aset, $item->jumlah_pinjam)) {
+                $this->db->trans_rollback();
+                $this->session->set_flashdata('error', 'Stok berubah saat proses serah terima. Silakan periksa kembali transaksi.');
+                redirect('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
+            }
             $this->Aset_model->increment_total_peminjaman($item->id_aset);
         }
         $this->Peminjaman_model->update_group_status($group_id, [
             'status' => 'Sedang Dipinjam',
             'catatan_laboran' => trim($this->input->post('catatan_serah', true)),
         ]);
+        foreach ($evidence as $file) {
+            $this->Peminjaman_model->insert_evidence([
+                'id_peminjaman' => $peminjaman->id_peminjaman,
+                'group_id' => $peminjaman->group_id,
+                'jenis' => 'serah_terima',
+                'nama_file' => $file['path'],
+                'original_name' => $file['original_name'],
+                'uploaded_by' => $this->session->userdata('id_user'),
+            ]);
+        }
+        if (!empty($evidence)) {
+            $this->db->where('id_peminjaman', $peminjaman->id_peminjaman)->update('peminjaman', ['foto_bukti' => $evidence[0]['path']]);
+        }
         $this->db->trans_complete();
 
         if ($this->db->trans_status() && !empty($peminjaman->id_user)) {
@@ -212,6 +249,8 @@ class Peminjaman extends CI_Controller {
 
         $data['title'] = 'Validasi Pengembalian Barang';
         $data['peminjaman'] = $peminjaman;
+        $data['qr_valid'] = in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true) && (int) ($peminjaman->qr_locked ?? 0) === 1;
+        $data['qr_message'] = $this->qr_message_for($peminjaman);
         $this->load->view('admin/validasi_pengembalian', $data);
     }
 
@@ -223,12 +262,12 @@ class Peminjaman extends CI_Controller {
             redirect($redirect_to);
         }
 
-        if (!in_array($peminjaman->status, ['Sedang Dipinjam', 'Dipinjam'], true)) {
-            $this->session->set_flashdata('error', 'Hanya peminjaman yang sedang dipinjam yang bisa dikembalikan.');
+        $from_qr = $this->input->post('from_qr', true) === '1';
+        if (!in_array($peminjaman->status, ['Sedang Dipinjam', 'Dipinjam'], true) || ($from_qr && (int) ($peminjaman->qr_locked ?? 0) !== 1)) {
+            $this->session->set_flashdata('error', 'QR transaksi sudah tidak berlaku atau peminjaman tidak sedang aktif.');
             redirect($redirect_to);
         }
 
-        $items = !empty($peminjaman->detail_barang) ? $peminjaman->detail_barang : [$peminjaman];
         $kondisi_kembali = $this->input->post('kondisi_saat_kembali', true) ?: null;
         if (!in_array($kondisi_kembali, ['Baik', 'Rusak', 'Hilang'], true)) {
             $this->session->set_flashdata('error', 'Kondisi pengembalian wajib dipilih dengan benar.');
@@ -246,12 +285,21 @@ class Peminjaman extends CI_Controller {
                 redirect($redirect_to);
             }
         }
+        $this->db->trans_start();
+        $locked_peminjaman = $this->Peminjaman_model->get_peminjaman_by_group_id_for_update($peminjaman->group_id ?: 'single-' . $id_peminjaman);
+        if (!$locked_peminjaman || !in_array($locked_peminjaman->status, ['Sedang Dipinjam', 'Dipinjam'], true) || ($from_qr && (int) ($locked_peminjaman->qr_locked ?? 0) !== 1)) {
+            $this->db->trans_rollback();
+            $this->session->set_flashdata('error', 'QR transaksi sudah dipakai atau peminjaman sudah selesai dikembalikan.');
+            redirect($redirect_to);
+        }
+        $peminjaman = $locked_peminjaman;
+        $items = !empty($peminjaman->detail_barang) ? $peminjaman->detail_barang : [$peminjaman];
         $foto_pengembalian = $this->upload_evidence_pengembalian();
         if ($foto_pengembalian === false) {
+            $this->db->trans_rollback();
             redirect($redirect_to);
         }
 
-        $this->db->trans_start();
         foreach ($items as $item) {
             if (!empty($item->id_aset) && !empty($item->jumlah_pinjam)) {
                 if ($kondisi_kembali === 'Baik') {
@@ -271,6 +319,7 @@ class Peminjaman extends CI_Controller {
             'tanggal_kembali_actual' => date('Y-m-d'),
             'kondisi_saat_kembali' => $kondisi_kembali,
             'catatan' => $catatan_pengembalian,
+            'qr_locked' => 0,
             'updated_at' => date('Y-m-d H:i:s')
         ];
         if ($foto_pengembalian) {
@@ -305,6 +354,90 @@ class Peminjaman extends CI_Controller {
 
         $this->session->set_flashdata($this->db->trans_status() ? 'success' : 'error', $this->db->trans_status() ? 'Barang berhasil ditandai kembali.' : 'Gagal memproses pengembalian.');
         redirect($redirect_to);
+    }
+
+    public function upload_evidence_serah($id_peminjaman) {
+        $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id_peminjaman);
+        if (!$peminjaman || !in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true)) {
+            $this->session->set_flashdata('error', 'Evidence hanya dapat ditambahkan pada transaksi yang sedang dipinjam.');
+            redirect('admin/pengembalian');
+        }
+
+        $files = $this->upload_multiple_evidence('foto_serah');
+        if ($files === false) {
+            redirect('admin/pengembalian');
+        }
+        if (empty($files)) {
+            $this->session->set_flashdata('error', 'Pilih minimal satu foto dokumentasi.');
+            redirect('admin/pengembalian');
+        }
+
+        foreach ($files as $file) {
+            $this->Peminjaman_model->insert_evidence([
+                'id_peminjaman' => $peminjaman->id_peminjaman,
+                'group_id' => $peminjaman->group_id,
+                'jenis' => 'serah_terima',
+                'nama_file' => $file['path'],
+                'original_name' => $file['original_name'],
+                'uploaded_by' => $this->session->userdata('id_user'),
+            ]);
+        }
+        $this->session->set_flashdata('success', count($files) . ' foto dokumentasi serah terima berhasil disimpan.');
+        redirect('admin/pengembalian');
+    }
+
+    private function qr_message_for($peminjaman) {
+        if (($peminjaman->status ?? '') === 'Dikembalikan') {
+            return 'Transaksi sudah selesai dikembalikan. QR ini sudah tidak berlaku.';
+        }
+        if ((int) ($peminjaman->qr_locked ?? 0) !== 1) {
+            return 'QR belum aktif atau sudah dinonaktifkan. QR hanya bisa digunakan setelah finalisasi transaksi.';
+        }
+        if (($peminjaman->status ?? '') !== 'Disetujui (Menunggu Pengambilan)') {
+            return 'QR belum dapat digunakan karena transaksi belum berada pada tahap pengambilan.';
+        }
+        return 'QR terbaca, tetapi transaksi belum dapat diproses.';
+    }
+
+    private function upload_multiple_evidence($field) {
+        if (empty($_FILES[$field]['name'])) {
+            return [];
+        }
+
+        $path = './assets/uploads/bukti_serah/';
+        if (!is_dir($path)) {
+            mkdir($path, 0777, true);
+        }
+        $files = [];
+        $this->load->library('upload');
+        foreach ((array) $_FILES[$field]['name'] as $index => $name) {
+            if (trim((string) $name) === '') {
+                continue;
+            }
+            $_FILES['single_evidence'] = [
+                'name' => $_FILES[$field]['name'][$index],
+                'type' => $_FILES[$field]['type'][$index],
+                'tmp_name' => $_FILES[$field]['tmp_name'][$index],
+                'error' => $_FILES[$field]['error'][$index],
+                'size' => $_FILES[$field]['size'][$index],
+            ];
+            $this->upload->initialize([
+                'upload_path' => $path,
+                'allowed_types' => 'jpg|jpeg|png',
+                'max_size' => 5120,
+                'encrypt_name' => true,
+            ]);
+            if (!$this->upload->do_upload('single_evidence')) {
+                $this->session->set_flashdata('error', 'Upload foto gagal: ' . $this->upload->display_errors('', ''));
+                return false;
+            }
+            $uploaded = $this->upload->data();
+            $files[] = [
+                'path' => 'assets/uploads/bukti_serah/' . $uploaded['file_name'],
+                'original_name' => $uploaded['client_name'],
+            ];
+        }
+        return $files;
     }
 
     private function upload_evidence_pengembalian() {

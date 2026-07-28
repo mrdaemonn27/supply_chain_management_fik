@@ -30,7 +30,26 @@ class Barang extends CI_Controller {
     }
 
     public function index() {
-        $data['barang'] = $this->Barang_model->get_all();
+        $per_page_options = [10, 25, 50, 100];
+        $per_page = (int) $this->input->get('per_page', true);
+        if (!in_array($per_page, $per_page_options, true)) {
+            $per_page = 10;
+        }
+        $page = max(1, (int) $this->input->get('page', true));
+        $filters = ['q' => trim((string) $this->input->get('q', true))];
+        $total = $this->Barang_model->count_all($filters);
+        $data['barang'] = $this->Barang_model->get_all(array_merge($filters, [
+            'limit' => $per_page,
+            'offset' => ($page - 1) * $per_page,
+        ]));
+        $data['filters'] = $filters;
+        $data['per_page_options'] = $per_page_options;
+        $data['pagination'] = [
+            'page' => $page,
+            'per_page' => $per_page,
+            'total' => $total,
+            'total_pages' => max(1, (int) ceil($total / $per_page)),
+        ];
         $this->load->view('admin/barang_list', $data);
     }
 
@@ -55,6 +74,13 @@ class Barang extends CI_Controller {
             redirect('admin/barang/import');
         }
 
+        foreach ($preview as $index => &$row) {
+            $duplicate = $this->Barang_model->find_duplicate($row);
+            $row['duplicate_id'] = $duplicate ? (int) $duplicate->id_aset : null;
+            $row['duplicate_label'] = $duplicate ? ($duplicate->kode_aset . ' - ' . $duplicate->nama_aset) : '';
+        }
+        unset($row);
+
         $this->session->set_userdata('inventory_import_preview', $preview);
         $this->session->set_flashdata('success', count($preview) . ' baris siap direview sebelum masuk inventory.');
         redirect('admin/barang/import');
@@ -67,12 +93,23 @@ class Barang extends CI_Controller {
             redirect('admin/barang/import');
         }
 
+        $duplicate_action = strtolower((string) $this->input->post('duplicate_action', true));
+        if (!in_array($duplicate_action, ['skip', 'update', 'cancel'], true)) {
+            $duplicate_action = 'skip';
+        }
+        if ($duplicate_action === 'cancel') {
+            $this->session->unset_userdata('inventory_import_preview');
+            $this->session->set_flashdata('error', 'Import dibatalkan. Tidak ada data yang diubah.');
+            redirect('admin/barang');
+        }
+
         $inserted = 0;
+        $updated = 0;
+        $skipped = 0;
         $this->db->trans_start();
         foreach ($preview as $index => $row) {
-            $kode = $this->make_unique_kode($row['kode_aset'] ?: ('IMP-' . date('YmdHis') . '-' . ($index + 1)));
             $aset = [
-                'kode_aset' => $kode,
+                'kode_aset' => trim((string) $row['kode_aset']),
                 'nama_aset' => $row['nama_aset'],
                 'id_ruangan' => $row['id_ruangan'],
                 'jumlah_total' => max(0, (int) $row['jumlah_total']),
@@ -82,6 +119,20 @@ class Barang extends CI_Controller {
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ];
+            $duplicate = $this->Barang_model->find_duplicate($aset);
+            if ($duplicate) {
+                if ($duplicate_action === 'skip') {
+                    $skipped++;
+                    continue;
+                }
+                $unit_dipinjam = max(0, (int) $duplicate->jumlah_total - (int) $duplicate->jumlah_tersedia);
+                $aset['jumlah_tersedia'] = max(0, (int) $aset['jumlah_total'] - $unit_dipinjam);
+                $this->Barang_model->update($duplicate->id_aset, $aset);
+                $updated++;
+                continue;
+            }
+            $kode = $this->make_unique_kode($aset['kode_aset'] ?: ('IMP-' . date('YmdHis') . '-' . ($index + 1)));
+            $aset['kode_aset'] = $kode;
             $this->db->insert('aset', $aset);
             $id_aset = $this->db->insert_id();
             if ($id_aset) {
@@ -96,7 +147,7 @@ class Barang extends CI_Controller {
 
         if ($this->db->trans_status()) {
             $this->session->unset_userdata('inventory_import_preview');
-            $this->session->set_flashdata('success', $inserted . ' data inventory berhasil diimport.');
+            $this->session->set_flashdata('success', $inserted . ' data baru, ' . $updated . ' data diperbarui, ' . $skipped . ' duplikat dilewati.');
             redirect('admin/barang');
         }
 
@@ -317,9 +368,21 @@ class Barang extends CI_Controller {
             'kondisi'         => $this->input->post('kondisi')
         ];
 
+        $duplicate = $this->Barang_model->find_duplicate($data, $id_aset);
+        if ($duplicate) {
+            $this->session->set_flashdata('error', 'Data duplikat terdeteksi. Kode atau kombinasi nama aset dan ruangan sudah terdaftar.');
+            redirect(empty($id_aset) ? 'admin/barang/tambah' : 'admin/barang/edit/' . $id_aset);
+        }
+
         // Menyimpan deskripsi jika fieldnya ada di form
         if($this->input->post('deskripsi') !== null) {
             $data['deskripsi'] = $this->input->post('deskripsi');
+        }
+
+        if (!empty($id_aset)) {
+            $existing = $this->Barang_model->get_by_id($id_aset);
+            $unit_dipinjam = $existing ? max(0, (int) $existing->jumlah_total - (int) $existing->jumlah_tersedia) : 0;
+            $data['jumlah_tersedia'] = max(0, (int) $data['jumlah_total'] - $unit_dipinjam);
         }
 
         // LOGIKA UPLOAD GAMBAR DINAMIS

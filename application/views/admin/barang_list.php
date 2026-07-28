@@ -1,3 +1,10 @@
+<?php
+$master_filters = isset($filters) && is_array($filters) ? $filters : ['q' => ''];
+$master_pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'per_page' => 10, 'total' => count($barang ?? []), 'total_pages' => 1];
+$master_page = (int) ($master_pagination['page'] ?? 1);
+$master_total_pages = (int) ($master_pagination['total_pages'] ?? 1);
+$master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_pagination['per_page'] ?? 10];
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -18,7 +25,8 @@
         .img-placeholder { width: 60px; height: 60px; background-color: #eee; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 1.5rem; }
     </style>
 </head>
-<body>
+<body class="scm-admin-shell">
+    <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
 
     <!-- Navbar Khusus Laboran -->
     <nav class="navbar navbar-expand-lg navbar-dark admin-navbar shadow-sm p-3 mb-4">
@@ -47,6 +55,22 @@
                 </a>
             </div>
         </div>
+
+        <form id="masterSearchForm" method="get" action="<?= base_url('index.php/admin/barang') ?>" class="card border-0 shadow-sm rounded-4 mb-4">
+            <div class="card-body d-flex flex-column flex-md-row gap-2 align-items-md-end">
+                <div class="flex-grow-1">
+                    <label for="masterSearch" class="form-label small fw-semibold text-muted">Cari aset</label>
+                    <input id="masterSearch" type="search" name="q" value="<?= html_escape($master_filters['q'] ?? '') ?>" class="form-control" placeholder="Kode, nama barang, ruangan, atau kondisi" autocomplete="off">
+                </div>
+                <div>
+                    <label for="masterPerPage" class="form-label small fw-semibold text-muted">Data per halaman</label>
+                    <select id="masterPerPage" name="per_page" class="form-select">
+                        <?php foreach (($per_page_options ?? [10, 25, 50, 100]) as $option): ?><option value="<?= (int) $option ?>" <?= (int) $option === (int) ($master_pagination['per_page'] ?? 10) ? 'selected' : '' ?>><?= (int) $option ?> data</option><?php endforeach; ?>
+                    </select>
+                </div>
+                <button class="btn btn-fik-orange rounded-pill px-4" type="submit"><i class="bi bi-search me-1"></i> Cari</button>
+            </div>
+        </form>
 
         <?php if($this->session->flashdata('success')): ?>
             <div class="alert alert-success border-0 shadow-sm rounded-3">
@@ -117,9 +141,44 @@
                     </table>
                 </div>
             </div>
+            <?php if ($master_total_pages > 1): ?>
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 px-3 py-3 border-top">
+                    <div class="small text-muted">Menampilkan <?= count($barang ?? []) ?> dari <?= (int) ($master_pagination['total'] ?? 0) ?> data aset</div>
+                    <nav aria-label="Pagination master data">
+                        <ul class="pagination pagination-sm mb-0">
+                            <?php $master_prev = http_build_query(array_merge($master_base_query, ['page' => max(1, $master_page - 1)])); ?>
+                            <li class="page-item <?= $master_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_prev) ?>">Prev</a></li>
+                            <?php for ($page_index = 1; $page_index <= $master_total_pages; $page_index++): $master_query = http_build_query(array_merge($master_base_query, ['page' => $page_index])); ?>
+                                <li class="page-item <?= $master_page === $page_index ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_query) ?>"><?= $page_index ?></a></li>
+                            <?php endfor; ?>
+                            <?php $master_next = http_build_query(array_merge($master_base_query, ['page' => min($master_total_pages, $master_page + 1)])); ?>
+                            <li class="page-item <?= $master_page >= $master_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_next) ?>">Next</a></li>
+                        </ul>
+                    </nav>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const masterSearch = document.getElementById('masterSearch');
+        const masterSearchForm = document.getElementById('masterSearchForm');
+        const masterPerPage = document.getElementById('masterPerPage');
+        let masterSearchTimer;
+        if (masterSearch && masterSearchForm) {
+            masterSearch.addEventListener('input', () => {
+                clearTimeout(masterSearchTimer);
+                masterSearchTimer = setTimeout(() => {
+                    const url = new URL(masterSearchForm.action, window.location.origin);
+                    url.searchParams.set('q', masterSearch.value.trim());
+                    url.searchParams.set('per_page', masterPerPage?.value || '10');
+                    url.searchParams.set('page', '1');
+                    window.location.href = url.toString();
+                }, 450);
+            });
+        }
+        masterPerPage?.addEventListener('change', () => masterSearchForm?.submit());
+    </script>
 </body>
 </html>

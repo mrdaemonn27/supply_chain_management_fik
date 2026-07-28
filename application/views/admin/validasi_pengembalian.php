@@ -1,5 +1,5 @@
 <?php
-$boleh_kembali = in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true);
+$boleh_kembali = !empty($qr_valid) && in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipinjam'], true);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -17,7 +17,8 @@ $boleh_kembali = in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipi
         .btn-fik:hover { background: #c24a13; color: #fff; }
     </style>
 </head>
-<body>
+<body class="scm-admin-shell">
+    <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
             <div>
@@ -59,6 +60,7 @@ $boleh_kembali = in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipi
             <?php if($boleh_kembali): ?>
                 <form method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/kembalikan/'.$peminjaman->id_peminjaman) ?>">
                     <input type="hidden" name="return_to" value="admin/pengembalian">
+                    <input type="hidden" name="from_qr" value="1">
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label class="form-label fw-semibold">Kondisi Akhir</label>
@@ -84,7 +86,7 @@ $boleh_kembali = in_array(($peminjaman->status ?? ''), ['Sedang Dipinjam', 'Dipi
                     <button class="btn btn-fik rounded-pill px-4 mt-3" onclick="return confirm('Konfirmasi barang sudah diterima kembali?')"><i class="bi bi-check2-circle me-1"></i> Terima Pengembalian</button>
                 </form>
             <?php else: ?>
-                <div class="alert alert-warning mb-0">QR terbaca, tetapi transaksi belum berstatus sedang dipinjam atau sudah selesai dikembalikan.</div>
+                <div class="alert alert-warning mb-0"><?= html_escape($qr_message ?? 'QR terbaca, tetapi transaksi belum berstatus sedang dipinjam atau sudah selesai dikembalikan.') ?></div>
             <?php endif; ?>
         </section>
     </main>

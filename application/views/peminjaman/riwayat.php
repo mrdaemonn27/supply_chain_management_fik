@@ -43,6 +43,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         
         .badge-status { padding: 8px 12px; border-radius: 6px; font-weight: 500; font-size: 0.8rem;}
     </style>
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
 </head>
 <body>
 

@@ -46,4 +46,75 @@ class Dashboard extends CI_Controller {
         // Memanggil file UI dari folder views/dashboard/index.php beserta datanya
         $this->load->view('dashboard/index', $data);
     }
+
+    public function notifikasi($id_notifikasi = 0) {
+        if (!$this->session->userdata('logged_in')) {
+            $this->session->set_flashdata('error', 'Silakan login untuk membuka notifikasi.');
+            redirect('auth');
+        }
+
+        $role = strtolower((string) $this->session->userdata('role'));
+        $recipient_role = null;
+        $recipient_user_id = null;
+
+        if (in_array($role, ['admin', 'laboran'], true)) {
+            $recipient_role = 'laboran';
+        } elseif ($role === 'kaur') {
+            $recipient_role = 'kaur';
+        } else {
+            $recipient_user_id = (int) $this->session->userdata('id_user');
+        }
+
+        $notification = $this->Peminjaman_model->get_notifikasi_by_id(
+            (int) $id_notifikasi,
+            $recipient_role,
+            $recipient_user_id
+        );
+        $fallback = $this->notification_fallback($role);
+
+        if (!$notification) {
+            $this->session->set_flashdata('error', 'Notifikasi tidak ditemukan atau bukan milik akun ini.');
+            redirect($fallback);
+        }
+
+        $this->Peminjaman_model->mark_notifikasi_read(
+            (int) $id_notifikasi,
+            $recipient_role,
+            $recipient_user_id
+        );
+        redirect($this->notification_target($notification, $fallback));
+    }
+
+    private function notification_fallback($role) {
+        if (in_array($role, ['admin', 'laboran'], true)) {
+            return 'admin/dashboard';
+        }
+        if ($role === 'kaur') {
+            return 'kaur/dashboard';
+        }
+        if ($role === 'kaprodi') {
+            return 'kaprodi/dashboard?tab=riwayat';
+        }
+        return 'peminjaman/riwayat';
+    }
+
+    private function notification_target($notification, $fallback) {
+        $target = trim((string) ($notification->link ?? ''));
+        if ($target === '' || $target === '#') {
+            return $fallback;
+        }
+
+        $legacy_targets = [
+            'kaur/dashboard#approval-peminjaman' => 'kaur/dashboard/peminjaman',
+            'kaur/dashboard#pengajuan' => 'kaur/dashboard/pengajuan',
+            'admin/dashboard#approval' => 'admin/approval',
+        ];
+        foreach ($legacy_targets as $legacy => $replacement) {
+            if (strpos($target, $legacy) !== false) {
+                return $replacement;
+            }
+        }
+
+        return $target;
+    }
 }

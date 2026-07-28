@@ -27,6 +27,19 @@ class Dashboard extends CI_Controller {
         $data['title'] = 'Dashboard Laboran - SCM FIK';
         $data['user_role'] = ($role === 'admin') ? 'Laboran' : ($role ? ucfirst($role) : 'Laboran');
         $data['stats'] = $this->Dashboard_model->get_statistik();
+        $years = $this->Dashboard_model->get_dashboard_years();
+        $tahun = (int) $this->input->get('tahun', true);
+        $bulan = (int) $this->input->get('bulan', true);
+        if (!in_array($tahun, $years, true)) {
+            $tahun = (int) ($years[0] ?? date('Y'));
+        }
+        if ($bulan < 0 || $bulan > 12) {
+            $bulan = 0;
+        }
+        $data['dashboard_years'] = $years;
+        $data['dashboard_year'] = $tahun;
+        $data['dashboard_month'] = $bulan;
+        $data['dashboard_overview'] = $this->Dashboard_model->get_dashboard_overview($tahun, $bulan);
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);
 

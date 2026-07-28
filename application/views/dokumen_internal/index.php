@@ -37,6 +37,7 @@ function internal_icon($file) {
         .kaur-preview-frame { width: 100%; height: min(78vh, 760px); border: 0; background: #f7f8fa; }
         @media (max-width: 767.98px) { .topbar-actions { width: 100%; } .topbar-actions .btn { flex: 1 1 auto; } }
     </style>
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
 </head>
 <body>
 <header class="topbar sticky-top">
@@ -131,18 +132,15 @@ function internal_icon($file) {
                                     <td class="text-end pe-3">
                                         <div class="d-inline-flex flex-wrap justify-content-end gap-1">
                                             <?php if($d->is_active): ?>
-                                                <?php if($is_kaur): ?>
-                                                    <button type="button"
-                                                        class="btn btn-sm btn-outline-primary rounded-pill js-kaur-preview"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#kaurPreviewModal"
-                                                        data-title="<?= html_escape($d->judul) ?>"
-                                                        data-preview="<?= base_url('index.php/dokumen_internal/preview/'.$d->id_dokumen) ?>">
-                                                        <i class="bi bi-eye me-1"></i> Preview
-                                                    </button>
-                                                <?php else: ?>
-                                                    <a href="<?= base_url('index.php/dokumen_internal/lihat/'.$d->id_dokumen) ?>" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill"><i class="bi bi-eye me-1"></i> Buka</a>
-                                                <?php endif; ?>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-primary rounded-pill js-internal-preview"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#internalPreviewModal"
+                                                    data-title="<?= html_escape($d->judul) ?>"
+                                                    data-preview="<?= base_url('index.php/dokumen_internal/preview/'.$d->id_dokumen) ?>"
+                                                    data-download="<?= base_url('index.php/dokumen_internal/unduh/'.$d->id_dokumen) ?>">
+                                                    <i class="bi bi-eye me-1"></i> Preview
+                                                </button>
                                                 <a href="<?= base_url('index.php/dokumen_internal/unduh/'.$d->id_dokumen) ?>" class="btn btn-sm btn-outline-secondary rounded-pill"><i class="bi bi-download"></i></a>
                                             <?php endif; ?>
                                             <?php if($can_manage): ?>
@@ -161,38 +159,40 @@ function internal_icon($file) {
     </div>
 </main>
 
-<?php if($is_kaur): ?>
-<div class="modal fade" id="kaurPreviewModal" tabindex="-1" aria-labelledby="kaurPreviewModalLabel" aria-hidden="true">
+<div class="modal fade" id="internalPreviewModal" tabindex="-1" aria-labelledby="internalPreviewModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-lg-down">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-dark text-white border-0">
                 <div>
                     <p class="small text-uppercase text-warning fw-bold mb-1">Preview Dokumen</p>
-                    <h5 class="modal-title fw-bold mb-0" id="kaurPreviewModalLabel">Dokumen Internal</h5>
+                    <h5 class="modal-title fw-bold mb-0" id="internalPreviewModalLabel">Dokumen Internal</h5>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
             </div>
-            <iframe class="kaur-preview-frame" id="kaurPreviewFrame" title="Preview Dokumen Internal Kaur"></iframe>
+            <iframe class="kaur-preview-frame" id="internalPreviewFrame" title="Preview Dokumen Internal"></iframe>
+            <div class="modal-footer"><a class="btn btn-fik rounded-pill px-3" id="internalPreviewDownload" href="#"><i class="bi bi-download me-1"></i> Unduh</a><button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Tutup</button></div>
         </div>
     </div>
 </div>
-<?php endif; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<?php if($is_kaur): ?>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const modal = document.getElementById('kaurPreviewModal');
-        const frame = document.getElementById('kaurPreviewFrame');
-        const title = document.getElementById('kaurPreviewModalLabel');
+        const modal = document.getElementById('internalPreviewModal');
+        const frame = document.getElementById('internalPreviewFrame');
+        const title = document.getElementById('internalPreviewModalLabel');
+        const download = document.getElementById('internalPreviewDownload');
 
-        document.querySelectorAll('.js-kaur-preview').forEach(function (button) {
+        document.querySelectorAll('.js-internal-preview').forEach(function (button) {
             button.addEventListener('click', function () {
                 if (title) {
                     title.textContent = button.dataset.title || 'Dokumen Internal';
                 }
                 if (frame) {
                     frame.setAttribute('src', button.dataset.preview || 'about:blank');
+                }
+                if (download) {
+                    download.setAttribute('href', button.dataset.download || '#');
                 }
             });
         });
@@ -202,8 +202,7 @@ function internal_icon($file) {
                 frame.removeAttribute('src');
             });
         }
-    });
+});
 </script>
-<?php endif; ?>
 </body>
 </html>

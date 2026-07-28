@@ -56,6 +56,15 @@ class Peminjaman_model extends CI_Model {
             if ($return_condition && stripos((string) $return_condition->Type, 'enum') !== false) {
                 $this->db->query("ALTER TABLE `{$this->table_peminjaman}` MODIFY `kondisi_saat_kembali` varchar(50) DEFAULT NULL");
             }
+
+            // Legacy records with an approved/active status already passed
+            // QR finalization in the old workflow. Restore the QR flag so
+            // those transactions do not become permanently unprocessable.
+            $this->db->query("UPDATE `{$this->table_peminjaman}`
+                SET `qr_locked` = 1,
+                    `qr_finalized_at` = COALESCE(`qr_finalized_at`, `updated_at`, NOW())
+                WHERE `qr_locked` = 0
+                  AND `status` IN ('Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dipinjam')");
         }
 
         if ($this->db->table_exists('aset')) {
@@ -73,12 +82,38 @@ class Peminjaman_model extends CI_Model {
                 `judul` varchar(160) NOT NULL,
                 `pesan` text DEFAULT NULL,
                 `link` varchar(255) DEFAULT NULL,
+                `reference_type` varchar(60) DEFAULT NULL,
+                `reference_id` int(11) DEFAULT NULL,
                 `is_read` tinyint(1) NOT NULL DEFAULT 0,
                 `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
                 PRIMARY KEY (`id_notifikasi`),
                 KEY `idx_notif_role` (`recipient_role`),
                 KEY `idx_notif_user` (`recipient_user_id`),
                 KEY `idx_notif_read` (`is_read`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        } else {
+            if (!$this->db->field_exists('reference_type', $this->table_notifikasi)) {
+                $this->db->query("ALTER TABLE `{$this->table_notifikasi}` ADD `reference_type` varchar(60) DEFAULT NULL AFTER `link`");
+            }
+            if (!$this->db->field_exists('reference_id', $this->table_notifikasi)) {
+                $this->db->query("ALTER TABLE `{$this->table_notifikasi}` ADD `reference_id` int(11) DEFAULT NULL AFTER `reference_type`");
+            }
+        }
+
+        if (!$this->db->table_exists('peminjaman_evidence')) {
+            $this->db->query("CREATE TABLE `peminjaman_evidence` (
+                `id_evidence` int(11) NOT NULL AUTO_INCREMENT,
+                `id_peminjaman` int(11) DEFAULT NULL,
+                `group_id` varchar(120) DEFAULT NULL,
+                `jenis` varchar(40) NOT NULL DEFAULT 'serah_terima',
+                `nama_file` varchar(255) NOT NULL,
+                `original_name` varchar(255) DEFAULT NULL,
+                `uploaded_by` int(11) DEFAULT NULL,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                PRIMARY KEY (`id_evidence`),
+                KEY `idx_evidence_peminjaman` (`id_peminjaman`),
+                KEY `idx_evidence_group` (`group_id`),
+                KEY `idx_evidence_jenis` (`jenis`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         }
 
@@ -162,7 +197,7 @@ class Peminjaman_model extends CI_Model {
     public function search_peminjaman($filters = []) {
         // Select dengan GROUP BY group_id
         $this->db->select('
-            p.group_id,
+            COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman)) as group_id,
             MIN(p.id_peminjaman) as id_peminjaman,
             MAX(p.id_user) as id_user,
             MAX(p.tanggal_pinjam) as tanggal_pinjam,
@@ -173,6 +208,7 @@ class Peminjaman_model extends CI_Model {
             MAX(p.status_kaur) as status_kaur,
             MAX(p.keperluan) as keperluan,
             MAX(p.foto_pengembalian) as foto_pengembalian,
+            MAX(p.foto_bukti) as foto_bukti,
             MAX(p.qr_locked) as qr_locked,
             MAX(p.qr_finalized_at) as qr_finalized_at,
             MAX(p.created_at) as created_at,
@@ -216,7 +252,7 @@ class Peminjaman_model extends CI_Model {
             $this->db->where('DATE(p.tanggal_pinjam)', $filters['tanggal']);
         }
         
-        $this->db->group_by('p.group_id');
+        $this->db->group_by('COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman))', false);
         
         // ========== INI YANG PALING PENTING ==========
         // Urutkan dari yang TERBARU ke TERLAMA
@@ -241,11 +277,16 @@ class Peminjaman_model extends CI_Model {
             $this->db->from($this->table_peminjaman . ' as p');
             $this->db->join('aset a', 'a.id_aset = p.id_aset', 'left');
             $this->db->join('ruangan r', 'r.id_ruangan = a.id_ruangan', 'left');
-            $this->db->where('p.group_id', $result->group_id);
+            if (strpos((string) $result->group_id, 'single-') === 0) {
+                $this->db->where('p.id_peminjaman', (int) str_replace('single-', '', $result->group_id));
+            } else {
+                $this->db->where('p.group_id', $result->group_id);
+            }
             $detail = $this->db->get()->result();
             
             $result->detail_barang = $detail;
             $result->kegiatan = $result->keperluan;
+            $result->evidence_serah = $this->get_evidence_by_group_id($result->group_id, 'serah_terima');
         }
         
         return $results;
@@ -310,7 +351,11 @@ class Peminjaman_model extends CI_Model {
             $this->db->from($this->table_peminjaman . ' as p');
             $this->db->join('aset a', 'a.id_aset = p.id_aset', 'left');
             $this->db->join('ruangan r', 'r.id_ruangan = a.id_ruangan', 'left');
-            $this->db->where('p.group_id', $result->group_id);
+            if (!empty($result->group_id)) {
+                $this->db->where('p.group_id', $result->group_id);
+            } else {
+                $this->db->where('p.id_peminjaman', $result->id_peminjaman);
+            }
             $detail = $this->db->get()->result();
             
             $result->detail_barang = $detail;
@@ -447,14 +492,64 @@ class Peminjaman_model extends CI_Model {
 
     public function update_group_status($group_id, $data) {
         $data['updated_at'] = date('Y-m-d H:i:s');
-        $this->db->where('group_id', $group_id);
+        if (strpos((string) $group_id, 'single-') === 0) {
+            $this->db->where('id_peminjaman', (int) str_replace('single-', '', $group_id));
+        } else {
+            $this->db->where('group_id', $group_id);
+        }
         return $this->db->update($this->table_peminjaman, $data);
     }
 
     public function get_peminjaman_by_group_id($group_id) {
         $this->db->select('MIN(id_peminjaman) as id_peminjaman');
-        $row = $this->db->where('group_id', $group_id)->get($this->table_peminjaman)->row();
+        if (strpos((string) $group_id, 'single-') === 0) {
+            $row = $this->db->where('id_peminjaman', (int) str_replace('single-', '', $group_id))->get($this->table_peminjaman)->row();
+        } else {
+            $row = $this->db->where('group_id', $group_id)->get($this->table_peminjaman)->row();
+        }
         return $row && $row->id_peminjaman ? $this->get_peminjaman_by_id($row->id_peminjaman) : null;
+    }
+
+    /**
+     * Reads one transaction while holding an InnoDB row lock. This prevents
+     * two concurrent QR scans from both passing the same status check.
+     */
+    public function get_peminjaman_by_group_id_for_update($group_id) {
+        if (strpos((string) $group_id, 'single-') === 0) {
+            $sql = 'SELECT id_peminjaman FROM `' . $this->table_peminjaman . '` WHERE id_peminjaman = ? LIMIT 1 FOR UPDATE';
+            $row = $this->db->query($sql, [(int) str_replace('single-', '', $group_id)])->row();
+        } else {
+            $sql = 'SELECT id_peminjaman FROM `' . $this->table_peminjaman . '` WHERE group_id = ? ORDER BY id_peminjaman ASC LIMIT 1 FOR UPDATE';
+            $row = $this->db->query($sql, [$group_id])->row();
+        }
+
+        return $row && $row->id_peminjaman ? $this->get_peminjaman_by_id($row->id_peminjaman) : null;
+    }
+
+    public function get_evidence_by_group_id($group_id, $jenis = null) {
+        if (!$this->db->table_exists('peminjaman_evidence')) {
+            return [];
+        }
+        $this->db->from('peminjaman_evidence');
+        if (strpos((string) $group_id, 'single-') === 0) {
+            $this->db->where('id_peminjaman', (int) str_replace('single-', '', $group_id));
+        } elseif ($group_id === null || $group_id === '') {
+            $this->db->where('id_peminjaman IS NULL', null, false);
+        } else {
+            $this->db->where('group_id', $group_id);
+        }
+        if ($jenis !== null) {
+            $this->db->where('jenis', $jenis);
+        }
+        $this->db->order_by('created_at', 'DESC');
+        return $this->db->get()->result();
+    }
+
+    public function insert_evidence($data) {
+        if (!$this->db->table_exists('peminjaman_evidence')) {
+            return false;
+        }
+        return $this->db->insert('peminjaman_evidence', $data);
     }
 
     public function get_pending_laboran() {
@@ -486,20 +581,67 @@ class Peminjaman_model extends CI_Model {
         ]);
     }
 
-    public function create_notifikasi($recipient_role, $recipient_user_id, $judul, $pesan, $link = null) {
+    public function create_notifikasi($recipient_role, $recipient_user_id, $judul, $pesan, $link = null, $reference_type = null, $reference_id = null) {
         if (!$this->db->table_exists($this->table_notifikasi)) {
             return false;
         }
 
-        return $this->db->insert($this->table_notifikasi, [
+        $inserted = $this->db->insert($this->table_notifikasi, [
             'recipient_role' => $recipient_role ?: null,
             'recipient_user_id' => $recipient_user_id ?: null,
             'judul' => $judul,
             'pesan' => $pesan,
             'link' => $link,
+            'reference_type' => $reference_type,
+            'reference_id' => $reference_id ?: null,
             'is_read' => 0,
             'created_at' => date('Y-m-d H:i:s'),
         ]);
+        if (!$inserted) {
+            return false;
+        }
+
+        $id_notifikasi = (int) $this->db->insert_id();
+        if ($id_notifikasi > 0 && $reference_type === 'kaprodi_pengajuan' && $recipient_user_id) {
+            $this->db->where('id_notifikasi', $id_notifikasi)->update($this->table_notifikasi, [
+                'link' => site_url('kaprodi/dashboard/notifikasi/' . $id_notifikasi),
+            ]);
+        }
+        return $id_notifikasi;
+    }
+
+    public function get_notifikasi_by_id($id_notifikasi, $recipient_role = null, $recipient_user_id = null) {
+        if (!$this->db->table_exists($this->table_notifikasi)) {
+            return null;
+        }
+
+        $this->db->from($this->table_notifikasi);
+        $this->db->where('id_notifikasi', (int) $id_notifikasi);
+        $this->db->group_start();
+        if ($recipient_role) {
+            $this->db->where('recipient_role', $recipient_role);
+        }
+        if ($recipient_user_id) {
+            if ($recipient_role) {
+                $this->db->or_where('recipient_user_id', $recipient_user_id);
+            } else {
+                $this->db->where('recipient_user_id', $recipient_user_id);
+            }
+        }
+        $this->db->group_end();
+        return $this->db->get()->row();
+    }
+
+    public function mark_notifikasi_read($id_notifikasi, $recipient_role = null, $recipient_user_id = null) {
+        if (!$this->db->table_exists($this->table_notifikasi)) {
+            return false;
+        }
+
+        $notification = $this->get_notifikasi_by_id($id_notifikasi, $recipient_role, $recipient_user_id);
+        if (!$notification) {
+            return false;
+        }
+        return $this->db->where('id_notifikasi', (int) $id_notifikasi)->update($this->table_notifikasi, ['is_read' => 1]);
     }
 
     public function get_notifikasi($recipient_role = null, $recipient_user_id = null, $limit = null) {

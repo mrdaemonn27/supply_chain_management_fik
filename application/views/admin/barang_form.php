@@ -96,7 +96,8 @@
     </style>
 </head>
 
-<body>
+<body class="scm-admin-shell">
+    <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
     <div class="container mt-5 mb-5">
         <div class="row justify-content-center">
             <div class="col-lg-7">

@@ -38,6 +38,14 @@ class Dashboard extends CI_Controller {
         } elseif ($kategori !== 'gabungan') {
             $kategori = 'gabungan';
         }
+        $focus_id = max(
+            0,
+            (int) $this->input->get('focus_id'),
+            (int) $this->input->get('id_pengajuan')
+        );
+        if ($focus_id > 0) {
+            $filters['id_pengajuan'] = $focus_id;
+        }
         $page = max(1, (int) $this->input->get('page'));
         $requested_tab = trim((string) $this->input->get('tab', true));
         $limit = 8;
@@ -52,16 +60,71 @@ class Dashboard extends CI_Controller {
         $data['active_category'] = $kategori;
         $data['page'] = $page;
         $data['limit'] = $limit;
-        $data['active_tab'] = in_array($requested_tab, ['ajukan', 'riwayat'], true)
+        $data['active_tab'] = in_array($requested_tab, ['panel', 'ajukan', 'riwayat'], true)
             ? $requested_tab
-            : (($page > 1 || $has_filter) ? 'riwayat' : 'ajukan');
-        $data['total_rows'] = $this->Kaprodi_model->count_filtered_by_user($id_user, $filters);
-        $data['total_pages'] = max(1, (int) ceil($data['total_rows'] / $limit));
-        $data['pengajuan'] = $this->Kaprodi_model->get_filtered_by_user($id_user, $filters, $limit, $offset);
-        $data['stats'] = $this->Kaprodi_model->get_stats_by_user($id_user);
+            : (($page > 1 || $has_filter) ? 'riwayat' : 'panel');
+        if ($data['active_tab'] === 'panel') {
+            $data['total_rows'] = 0;
+            $data['total_pages'] = 1;
+            $data['pengajuan'] = [];
+        } else {
+            $data['total_rows'] = $this->Kaprodi_model->count_filtered_by_user($id_user, $filters);
+            $data['total_pages'] = max(1, (int) ceil($data['total_rows'] / $limit));
+            $data['pengajuan'] = $this->Kaprodi_model->get_filtered_by_user($id_user, $filters, $limit, $offset);
+        }
         $data['status_options'] = $this->Kaprodi_model->get_status_options();
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi(null, $id_user);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread(null, $id_user);
+
+        $current_year = (int) date('Y');
+        $dashboard_year = (int) $this->input->get('tahun');
+        if ($dashboard_year < 2000 || $dashboard_year > $current_year + 1) {
+            $dashboard_year = $current_year;
+        }
+        $data['dashboard_years'] = $this->Kaprodi_model->get_dashboard_years_by_user($id_user);
+        if (!in_array($dashboard_year, $data['dashboard_years'], true)) {
+            $data['dashboard_years'][] = $dashboard_year;
+            rsort($data['dashboard_years']);
+        }
+        $data['dashboard_year'] = $dashboard_year;
+        $data['dashboard_stats'] = $this->Kaprodi_model->get_dashboard_stats_by_user($id_user);
+        $data['stats'] = $data['dashboard_stats'];
+        $data['dashboard_monthly_submissions'] = $this->Kaprodi_model->get_dashboard_monthly_submissions_by_user($id_user, $dashboard_year);
+        $data['dashboard_monthly_values'] = $this->Kaprodi_model->get_dashboard_monthly_values_by_user($id_user, $dashboard_year);
+        $data['dashboard_status_breakdown'] = $this->Kaprodi_model->get_dashboard_status_breakdown_by_user($id_user, $dashboard_year);
+        $data['dashboard_type_breakdown'] = $this->Kaprodi_model->get_dashboard_type_breakdown_by_user($id_user, $dashboard_year);
+        $activity = $this->Kaprodi_model->get_dashboard_recent_activity_by_user($id_user, 12);
+        foreach ((array) $data['notifikasi'] as $notification) {
+            $activity[] = [
+                'title' => (string) $notification->judul,
+                'description' => (string) $notification->pesan,
+                'time' => (string) $notification->created_at,
+                'status' => empty($notification->is_read) ? 'Baru' : 'Sudah dibaca',
+                'icon' => 'bi-bell',
+                'link' => site_url('kaprodi/dashboard/notifikasi/' . (int) $notification->id_notifikasi),
+            ];
+        }
+        usort($activity, static function ($left, $right) {
+            return strtotime((string) ($right['time'] ?? '')) <=> strtotime((string) ($left['time'] ?? ''));
+        });
+        $data['dashboard_activity'] = array_slice($activity, 0, 12);
         $this->load->view('kaprodi/dashboard', $data);
+    }
+
+    public function notifikasi($id_notifikasi) {
+        $id_user = (int) $this->session->userdata('id_user');
+        $notification = $this->Peminjaman_model->get_notifikasi_by_id($id_notifikasi, null, $id_user);
+        if (!$notification) {
+            $this->session->set_flashdata('error', 'Notifikasi tidak ditemukan atau bukan milik akun ini.');
+            redirect('kaprodi/dashboard?tab=riwayat');
+        }
+
+        $this->Peminjaman_model->mark_notifikasi_read($id_notifikasi, null, $id_user);
+        $focus_id = (int) ($notification->reference_id ?? 0);
+        if ($focus_id > 0 && ($notification->reference_type ?? '') === 'kaprodi_pengajuan') {
+            redirect('kaprodi/dashboard?tab=riwayat&focus_id=' . $focus_id);
+        }
+
+        redirect($notification->link ?: 'kaprodi/dashboard?tab=riwayat');
     }
 }

@@ -51,6 +51,14 @@ class Dokumen_internal extends CI_Controller {
     public function simpan() {
         $this->guard_manage();
 
+        $judul = trim((string) $this->input->post('judul', true));
+        $kategori = trim((string) $this->input->post('kategori', true));
+        $kategori_options = ['SOP', 'Instruksi Kerja', 'Tata Tertib', 'Lainnya'];
+        if ($judul === '' || !in_array($kategori, $kategori_options, true)) {
+            $this->session->set_flashdata('error', 'Judul dan kategori dokumen wajib diisi dengan benar.');
+            redirect('dokumen_internal');
+        }
+
         if (!is_dir($this->upload_path)) {
             mkdir($this->upload_path, 0777, true);
         }
@@ -70,8 +78,8 @@ class Dokumen_internal extends CI_Controller {
 
         $file = $this->upload->data();
         $this->Dokumen_internal_model->insert([
-            'judul' => $this->input->post('judul', true),
-            'kategori' => $this->input->post('kategori', true) ?: 'SOP',
+            'judul' => $judul,
+            'kategori' => $kategori,
             'deskripsi' => $this->input->post('deskripsi', true),
             'nama_file' => $file['file_name'],
             'original_name' => $file['orig_name'],
@@ -104,8 +112,8 @@ class Dokumen_internal extends CI_Controller {
             show_404();
         }
 
-        $path = FCPATH . 'assets/uploads/dokumen_internal/' . $dokumen->nama_file;
-        if (is_file($path)) {
+        $path = $this->document_path($dokumen);
+        if ($path) {
             unlink($path);
         }
 
@@ -121,15 +129,19 @@ class Dokumen_internal extends CI_Controller {
             show_404();
         }
 
-        $path = FCPATH . 'assets/uploads/dokumen_internal/' . $dokumen->nama_file;
-        if (!is_file($path)) {
+        $path = $this->document_path($dokumen);
+        if (!$path) {
             show_404();
         }
 
         $mime = $dokumen->mime_type ?: 'application/octet-stream';
-        $filename = $dokumen->original_name ?: $dokumen->nama_file;
+        $filename = $this->safe_filename($dokumen->original_name ?: $dokumen->nama_file);
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
         header('Content-Type: ' . $mime);
-        header('Content-Disposition: inline; filename="' . str_replace('"', '', $filename) . '"');
+        header('Content-Disposition: inline; filename="' . $filename . '"');
+        header('X-Content-Type-Options: nosniff');
         header('Content-Length: ' . filesize($path));
         readfile($path);
         exit;
@@ -142,8 +154,8 @@ class Dokumen_internal extends CI_Controller {
             show_404();
         }
 
-        $path = FCPATH . 'assets/uploads/dokumen_internal/' . $dokumen->nama_file;
-        if (!is_file($path)) {
+        $path = $this->document_path($dokumen);
+        if (!$path) {
             show_404();
         }
 
@@ -172,11 +184,29 @@ class Dokumen_internal extends CI_Controller {
             show_404();
         }
 
-        $path = FCPATH . 'assets/uploads/dokumen_internal/' . $dokumen->nama_file;
-        if (!is_file($path)) {
+        $path = $this->document_path($dokumen);
+        if (!$path) {
             show_404();
         }
 
-        force_download($dokumen->original_name ?: $dokumen->nama_file, file_get_contents($path));
+        force_download($this->safe_filename($dokumen->original_name ?: $dokumen->nama_file), file_get_contents($path));
+    }
+
+    private function safe_filename($filename) {
+        return str_replace(['"', "\r", "\n"], '', basename((string) $filename));
+    }
+
+    private function document_path($dokumen) {
+        if (!$dokumen || empty($dokumen->nama_file)) {
+            return false;
+        }
+
+        $base_path = realpath(FCPATH . 'assets/uploads/dokumen_internal');
+        $path = realpath(FCPATH . 'assets/uploads/dokumen_internal/' . basename($dokumen->nama_file));
+        if (!$base_path || !$path || strpos($path, $base_path . DIRECTORY_SEPARATOR) !== 0 || !is_file($path)) {
+            return false;
+        }
+
+        return $path;
     }
 }

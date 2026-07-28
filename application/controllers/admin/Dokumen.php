@@ -6,7 +6,7 @@ class Dokumen extends CI_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->library(['session', 'upload']);
-        $this->load->helper('url');
+        $this->load->helper(['url', 'download']);
         $this->load->model('Dokumen_model');
         $this->load->model('Peminjaman_model');
         $this->guard_laboran();
@@ -32,6 +32,19 @@ class Dokumen extends CI_Controller {
     }
 
     public function simpan() {
+        $judul = trim((string) $this->input->post('judul', true));
+        $jenis = trim((string) $this->input->post('jenis', true));
+        $jenis_options = ['SOP', 'Bukti', 'Berita Acara', 'Lainnya'];
+        $id_peminjaman = (int) $this->input->post('id_peminjaman');
+        if ($judul === '' || !in_array($jenis, $jenis_options, true)) {
+            $this->session->set_flashdata('error', 'Judul dan jenis dokumen wajib diisi dengan benar.');
+            redirect('admin/dokumen');
+        }
+        if ($id_peminjaman > 0 && !$this->Peminjaman_model->get_peminjaman_by_id($id_peminjaman)) {
+            $this->session->set_flashdata('error', 'Relasi peminjaman tidak ditemukan.');
+            redirect('admin/dokumen');
+        }
+
         $upload_path = './assets/uploads/dokumen/';
         if (!is_dir($upload_path)) {
             mkdir($upload_path, 0777, true);
@@ -52,9 +65,9 @@ class Dokumen extends CI_Controller {
 
         $file = $this->upload->data();
         $this->Dokumen_model->insert([
-            'id_peminjaman' => $this->input->post('id_peminjaman') ?: null,
-            'judul' => $this->input->post('judul', true),
-            'jenis' => $this->input->post('jenis', true) ?: 'Lainnya',
+            'id_peminjaman' => $id_peminjaman > 0 ? $id_peminjaman : null,
+            'judul' => $judul,
+            'jenis' => $jenis,
             'nama_file' => $file['file_name'],
             'original_name' => $file['orig_name'],
             'keterangan' => $this->input->post('keterangan', true),
@@ -68,8 +81,8 @@ class Dokumen extends CI_Controller {
     public function hapus($id) {
         $dokumen = $this->Dokumen_model->get_by_id($id);
         if ($dokumen) {
-            $path = './assets/uploads/dokumen/' . $dokumen->nama_file;
-            if (is_file($path)) {
+            $path = $this->document_path($dokumen);
+            if ($path) {
                 unlink($path);
             }
             $this->Dokumen_model->delete($id);
@@ -78,5 +91,73 @@ class Dokumen extends CI_Controller {
             $this->session->set_flashdata('error', 'Dokumen tidak ditemukan.');
         }
         redirect('admin/dokumen');
+    }
+
+    /**
+     * Streams a document for browser preview. This endpoint must never force
+     * a download; the explicit download() action below is used for that.
+     */
+    public function lihat($id) {
+        $this->stream_document($id, false);
+    }
+
+    public function download($id) {
+        $dokumen = $this->Dokumen_model->get_by_id($id);
+        $path = $this->document_path($dokumen);
+        if (!$dokumen || !$path) {
+            show_404();
+        }
+
+        force_download($dokumen->original_name ?: $dokumen->nama_file, file_get_contents($path));
+    }
+
+    private function stream_document($id, $force_download = false) {
+        $dokumen = $this->Dokumen_model->get_by_id($id);
+        $path = $this->document_path($dokumen);
+        if (!$dokumen || !$path) {
+            show_404();
+        }
+
+        $filename = str_replace(['"', "\r", "\n"], '', $dokumen->original_name ?: $dokumen->nama_file);
+        $mime = function_exists('mime_content_type') ? mime_content_type($path) : 'application/octet-stream';
+        if (!$mime || $mime === 'application/octet-stream') {
+            $extension_mimes = [
+                'pdf' => 'application/pdf',
+                'jpg' => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png' => 'image/png',
+                'gif' => 'image/gif',
+                'webp' => 'image/webp',
+                'doc' => 'application/msword',
+                'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'xls' => 'application/vnd.ms-excel',
+                'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            ];
+            $mime = $extension_mimes[strtolower(pathinfo($filename, PATHINFO_EXTENSION))] ?? 'application/octet-stream';
+        }
+
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: ' . $mime);
+        header('Content-Disposition: ' . ($force_download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
+        header('Content-Length: ' . filesize($path));
+        header('X-Content-Type-Options: nosniff');
+        readfile($path);
+        exit;
+    }
+
+    private function document_path($dokumen) {
+        if (!$dokumen || empty($dokumen->nama_file)) {
+            return false;
+        }
+
+        $base_path = realpath(FCPATH . 'assets/uploads/dokumen');
+        $path = realpath(FCPATH . 'assets/uploads/dokumen/' . basename($dokumen->nama_file));
+        if (!$base_path || !$path || strpos($path, $base_path . DIRECTORY_SEPARATOR) !== 0 || !is_file($path)) {
+            return false;
+        }
+
+        return $path;
     }
 }

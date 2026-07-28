@@ -36,36 +36,46 @@ class Pengajuan extends CI_Controller {
             redirect('kaur/dashboard/negosiasi');
         }
 
+        $item = $this->Kaur_model->get_kaprodi_item($id_pengajuan, $id_item);
+        if (!$item) {
+            $this->session->set_flashdata('error', 'Item negosiasi tidak ditemukan pada pengajuan tersebut.');
+            redirect('kaur/dashboard/negosiasi');
+        }
+
         $vendor = trim($this->input->post('vendor', true));
         $status = trim($this->input->post('status', true));
-        $harga_awal = $this->parse_money($this->input->post('harga_awal'));
         $harga_negosiasi = $this->parse_money($this->input->post('harga_negosiasi'));
         $volume_negosiasi = (float) $this->input->post('volume_negosiasi');
 
-        if ($vendor === '' || $harga_awal < 0 || $harga_negosiasi < 0 || $volume_negosiasi <= 0) {
-            $this->session->set_flashdata('error', 'Vendor, harga, dan volume negosiasi wajib diisi dengan benar.');
+        if (!in_array($status, ['Sedang Negosiasi', 'Deal', 'Ditolak'], true)) {
+            $status = 'Sedang Negosiasi';
+        }
+        if ($vendor === '' || $harga_negosiasi < 0 || $volume_negosiasi <= 0) {
+            $this->session->set_flashdata('error', 'Vendor, harga setelah negosiasi, dan volume setelah negosiasi wajib diisi dengan benar.');
             redirect('kaur/dashboard/negosiasi');
         }
 
         $ok = $this->Kaur_model->save_negosiasi($id_pengajuan, $id_item, [
             'vendor' => $vendor,
-            'harga_awal' => $harga_awal,
             'harga_negosiasi' => $harga_negosiasi,
             'volume_negosiasi' => $volume_negosiasi,
             'garansi' => trim($this->input->post('garansi', true)),
             'catatan' => trim($this->input->post('catatan', true)),
-            'status' => $status ?: 'Belum Negosiasi',
+            'status' => $status,
             'created_by' => $this->session->userdata('id_user'),
         ]);
 
         $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Riwayat negosiasi berhasil disimpan.' : 'Gagal menyimpan negosiasi.');
-        if ($ok && $status === 'Deal') {
+        $updated_pengajuan = $ok ? $this->Kaur_model->get_kaprodi_by_id($id_pengajuan) : null;
+        if ($ok && $updated_pengajuan && $updated_pengajuan->status === 'Approval') {
             $this->Peminjaman_model->create_notifikasi(
                 null,
                 $pengajuan->id_user,
                 'Negosiasi selesai',
-                'Negosiasi pengajuan ' . $pengajuan->nama_pengajuan . ' sudah berstatus Deal.',
-                site_url('kaprodi/dashboard?tab=riwayat')
+                'Negosiasi pengajuan ' . $pengajuan->nama_pengajuan . ' selesai dan otomatis berstatus Approval.',
+                null,
+                'kaprodi_pengajuan',
+                $id_pengajuan
             );
         }
         redirect('kaur/dashboard/negosiasi');
@@ -97,7 +107,9 @@ class Pengajuan extends CI_Controller {
                 $pengajuan->id_user,
                 'Approval pengadaan diperbarui',
                 'Pengajuan ' . $pengajuan->nama_pengajuan . ' berstatus ' . $status . '.',
-                site_url('kaprodi/dashboard?tab=riwayat')
+                null,
+                'kaprodi_pengajuan',
+                $id_pengajuan
             );
         }
 
@@ -141,7 +153,7 @@ class Pengajuan extends CI_Controller {
         $tanggal = trim($this->input->post('tanggal_bast', true));
         $jenis = trim($this->input->post('jenis_bast', true));
 
-        if ($nomor === '' || $tanggal === '' || !in_array($jenis, ['Barang', 'Jasa'], true)) {
+        if ($nomor === '' || $tanggal === '' || !in_array($jenis, ['Barang', 'Jasa', 'Barang dan Jasa'], true)) {
             $this->session->set_flashdata('error', 'Nomor, tanggal, dan jenis BAST wajib diisi.');
             redirect('kaur/dashboard/bast');
         }
@@ -182,7 +194,9 @@ class Pengajuan extends CI_Controller {
                 $pengajuan->id_user,
                 'Barang masuk Inventory',
                 'BAST pengajuan ' . $pengajuan->nama_pengajuan . ' sudah diinput dan diproses ke inventory.',
-                site_url('kaprodi/dashboard?tab=riwayat')
+                null,
+                'kaprodi_pengajuan',
+                $id_pengajuan
             );
         }
         redirect('kaur/dashboard/bast');
@@ -353,7 +367,7 @@ class Pengajuan extends CI_Controller {
         $data['pengajuan_list'] = $data['rows'];
         $data['show_negosiasi'] = true;
         $data['role_label'] = 'Kaur Laboratorium';
-        $filename = 'laporan_pengajuan_barang_jasa_sampai_acc_' . date('Ymd_His') . '.xls';
+        $filename = 'laporan_pengajuan_barang_jasa_sampai_acc_' . date('Ymd_His') . '.xlsx';
 
         if ($this->input->get('download') !== '1' && $this->input->get('inline') !== '1') {
             $query = $this->input->get();
@@ -367,10 +381,9 @@ class Pengajuan extends CI_Controller {
         }
 
         if ($this->input->get('download') === '1') {
-            $this->output
-                ->set_content_type('application/vnd.ms-excel')
-                ->set_header('Content-Disposition: attachment; filename="' . $filename . '"')
-                ->set_header('Cache-Control: max-age=0');
+            $this->load->helper('scm_xlsx');
+            scm_download_xlsx($filename, $this->load->view('kaur/export_ba_klarifikasi', $data, true));
+            return;
         }
         $this->load->view('kaur/export_ba_klarifikasi', $data);
     }
@@ -394,11 +407,16 @@ class Pengajuan extends CI_Controller {
             return;
         }
 
-        $filename = 'berita_acara_klarifikasi_' . $pengajuan->kode_pengajuan . '.xls';
+        $filename = 'berita_acara_klarifikasi_' . $pengajuan->kode_pengajuan . '.xlsx';
         if ($this->input->get('download') === '1') {
-            header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            header('Cache-Control: max-age=0');
+            $this->load->helper('scm_xlsx');
+            scm_download_xlsx($filename, $this->load->view('kaur/export_ba_klarifikasi', [
+                'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
+                'pengajuan' => $pengajuan,
+                'show_negosiasi' => true,
+                'role_label' => 'Kaur Laboratorium',
+            ], true));
+            return;
         }
         $this->load->view('kaur/export_ba_klarifikasi', [
             'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',

@@ -215,6 +215,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         }
         .map-container iframe { width: 100%; height: 350px; border-radius: 15px; }
     </style>
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
 </head>
 <body>
 
@@ -276,7 +277,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                             <?php if (empty($notif_items)): ?>
                                 <div class="small text-muted px-2 py-3">Belum ada notifikasi.</div>
                             <?php else: foreach ($notif_items as $n): ?>
-                                <a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>">
+                                <a class="dropdown-item rounded-3 py-2" href="<?= site_url('dashboard/notifikasi/' . (int) $n->id_notifikasi) ?>">
                                     <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
                                     <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
                                 </a>

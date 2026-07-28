@@ -12,6 +12,7 @@
         .btn-fik { background: #ea5b1a; color: #fff; border: 0; }
         .btn-fik:hover { background: #c24a13; color: #fff; }
     </style>
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
 </head>
 <body>
     <main class="container px-3">

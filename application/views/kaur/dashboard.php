@@ -33,8 +33,14 @@ function query_kaur($filters, $page) {
     return http_build_query($params);
 }
 $filters = $filters ?? [];
-$stats = $stats ?? ['pengajuan' => 0, 'negosiasi' => 0, 'deal' => 0, 'bast' => 0, 'laporan_deal' => 0];
+$stats = $stats ?? ['pengajuan' => 0, 'total_pengajuan' => 0, 'negosiasi' => 0, 'sedang_negosiasi' => 0, 'deal' => 0, 'deal_approval' => 0, 'menunggu_approval' => 0, 'bast' => 0, 'total_bast' => 0, 'laporan_deal' => 0];
 $anggaran = $anggaran ?? ['tahun' => date('Y'), 'total_anggaran' => 0, 'total_pengeluaran' => 0, 'sisa_anggaran' => 0, 'persentase_penggunaan' => 0, 'catatan' => null];
+$dashboard_year = (int) ($dashboard_year ?? $anggaran['tahun'] ?? date('Y'));
+$dashboard_years = $dashboard_years ?? [$dashboard_year];
+$dashboard_monthly_submissions = $dashboard_monthly_submissions ?? array_fill(0, 12, 0);
+$dashboard_status_breakdown = $dashboard_status_breakdown ?? ['Pengajuan' => 0, 'Sedang Negosiasi' => 0, 'Deal' => 0, 'Ditolak' => 0, 'Revisi' => 0];
+$dashboard_negotiation = $dashboard_negotiation ?? ['harga_awal' => 0, 'harga_negosiasi' => 0, 'penghematan' => 0];
+$dashboard_activity = $dashboard_activity ?? [];
 $page = $page ?? 1;
 $total_pages = $total_pages ?? 1;
 $total_rows = $total_rows ?? count($pengajuan_kaprodi ?? []);
@@ -101,19 +107,143 @@ function kaur_module_url($module) {
         .notif-bell { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 38px; }
         .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }
         @media (max-width: 767.98px) {
-            .topbar-actions { width: 100%; flex-wrap: wrap; }
-            .topbar-actions .btn { flex: 1 1 auto; }
+            .topbar-actions { width: 100%; flex-wrap: wrap; justify-content: flex-end; }
+            .topbar-actions .btn { flex: 0 0 auto; }
             .topbar-actions .notif-bell { flex: 0 0 38px; }
             .summary-card { min-height: auto; }
             .module-strip { top: 126px; }
         }
+
+        .scm-dashboard-kaur .dashboard-content { background: var(--scm-bg); }
+        .kaur-overview-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+        .kaur-overview-eyebrow { color: var(--scm-orange); font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+        .kaur-overview-heading h2 { color: var(--scm-text); font-size: clamp(1.45rem, 2vw, 2rem); margin: 5px 0 7px; }
+        .kaur-overview-heading p { color: var(--scm-muted); margin: 0; font-size: .9rem; }
+        .kaur-year-filter { background: var(--scm-surface); border: 1px solid var(--scm-border); border-radius: 10px; padding: 10px 12px; min-width: 180px; }
+        .kaur-year-filter label { color: var(--scm-muted); display: block; font-size: .7rem; font-weight: 700; letter-spacing: .05em; margin-bottom: 5px; text-transform: uppercase; }
+        .kaur-year-filter .form-select { background-color: #17191a; border-color: var(--scm-border); color: var(--scm-text); }
+        .kaur-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+        .kaur-stat-card { background: linear-gradient(145deg, #151819 0%, #101213 100%); border: 1px solid var(--scm-border); border-radius: 14px; min-height: 148px; overflow: hidden; padding: 18px; position: relative; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }
+        .kaur-stat-card:hover { border-color: rgba(255, 121, 0, .55); box-shadow: 0 14px 28px rgba(0, 0, 0, .2); transform: translateY(-3px); }
+        .kaur-stat-card::after { background: currentColor; content: ''; height: 3px; left: 0; opacity: .65; position: absolute; right: 0; top: 0; }
+        .kaur-stat-top { align-items: flex-start; display: flex; justify-content: space-between; gap: 10px; }
+        .kaur-stat-icon { align-items: center; border: 1px solid currentColor; border-radius: 10px; display: inline-flex; flex: 0 0 38px; height: 38px; justify-content: center; opacity: .95; width: 38px; }
+        .kaur-stat-label { color: var(--scm-muted); font-size: .78rem; line-height: 1.35; margin-top: 15px; }
+        .kaur-stat-value { color: var(--scm-text); font-size: clamp(1.1rem, 1.75vw, 1.65rem); font-weight: 700; letter-spacing: .01em; line-height: 1.2; margin-top: 6px; overflow-wrap: anywhere; }
+        .kaur-stat-blue, .kaur-stat-amber, .kaur-stat-green, .kaur-stat-red, .kaur-stat-orange, .kaur-stat-cyan, .kaur-stat-purple { color: var(--scm-orange); }
+        .kaur-stat-slate { color: #aeb6ba; }
+        .kaur-stat-blue .kaur-stat-value, .kaur-stat-amber .kaur-stat-value, .kaur-stat-green .kaur-stat-value, .kaur-stat-red .kaur-stat-value, .kaur-stat-orange .kaur-stat-value, .kaur-stat-cyan .kaur-stat-value, .kaur-stat-purple .kaur-stat-value, .kaur-stat-slate .kaur-stat-value { color: #f5f7f8; }
+        .kaur-chart-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, .85fr); gap: 14px; margin-bottom: 14px; }
+        .kaur-chart-panel, .kaur-activity-panel, .kaur-quick-panel { background: #111314; border: 1px solid var(--scm-border); border-radius: 14px; min-width: 0; padding: 18px; }
+        .kaur-chart-header, .kaur-panel-header { align-items: flex-start; display: flex; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+        .kaur-chart-header h3, .kaur-panel-header h3 { color: var(--scm-text); font-size: .95rem; font-weight: 600; margin: 0; }
+        .kaur-chart-header p, .kaur-panel-header p { color: var(--scm-muted); font-size: .76rem; margin: 4px 0 0; }
+        .kaur-chart-note { color: var(--scm-muted); font-size: .73rem; white-space: nowrap; }
+        .kaur-chart-wrap { height: 260px; position: relative; }
+        .kaur-chart-wrap canvas { height: 100% !important; max-width: 100%; width: 100% !important; }
+        .kaur-chart-fallback { align-items: center; color: var(--scm-muted); display: none; height: 100%; justify-content: center; text-align: center; }
+        .kaur-budget-list { display: grid; gap: 12px; margin-top: 8px; }
+        .kaur-budget-row { align-items: center; display: flex; justify-content: space-between; gap: 12px; }
+        .kaur-budget-row span { color: var(--scm-muted); font-size: .78rem; }
+        .kaur-budget-row strong { color: var(--scm-text); font-size: .8rem; }
+        .kaur-savings { color: var(--scm-orange); font-size: .78rem; font-weight: 600; }
+        .kaur-bottom-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr); gap: 14px; }
+        .kaur-activity-list { max-height: 368px; overflow-y: auto; padding-right: 3px; }
+        .kaur-activity-item { align-items: flex-start; border-bottom: 1px solid rgba(255, 255, 255, .07); display: flex; gap: 12px; padding: 11px 0; }
+        .kaur-activity-item:first-child { padding-top: 2px; }
+        .kaur-activity-item:last-child { border-bottom: 0; }
+        .kaur-activity-icon { align-items: center; background: rgba(255, 121, 0, .13); border: 1px solid rgba(255, 121, 0, .2); border-radius: 9px; color: var(--scm-orange); display: inline-flex; flex: 0 0 34px; height: 34px; justify-content: center; width: 34px; }
+        .kaur-activity-copy { min-width: 0; }
+        .kaur-activity-title { color: var(--scm-text); font-size: .8rem; font-weight: 600; }
+        .kaur-activity-description { color: var(--scm-muted); font-size: .74rem; margin-top: 3px; overflow-wrap: anywhere; }
+        .kaur-activity-meta { align-items: center; color: var(--scm-muted); display: flex; flex-wrap: wrap; font-size: .68rem; gap: 7px; margin-top: 6px; }
+        .kaur-activity-meta .status-pill { font-size: .62rem; padding: 3px 7px; }
+        .kaur-quick-grid { display: grid; gap: 9px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .kaur-quick-action { align-items: center; background: #17191a; border: 1px solid var(--scm-border); border-radius: 10px; color: var(--scm-text); display: flex; gap: 9px; min-height: 54px; padding: 10px; text-decoration: none; transition: .2s ease; }
+        .kaur-quick-action:hover { background: rgba(255, 121, 0, .11); border-color: rgba(255, 121, 0, .5); color: #fff; transform: translateY(-2px); }
+        .kaur-quick-action i { color: var(--scm-orange); font-size: 1rem; }
+        .kaur-quick-action span { font-size: .75rem; font-weight: 600; line-height: 1.25; }
+        .topbar-actions { margin-left: auto; }
+        .theme-toggle { flex: 0 0 38px !important; height: 38px; padding: 0 !important; width: 38px; }
+        .scm-dashboard-kaur .text-warning { color: var(--scm-orange) !important; }
+        .scm-dashboard-kaur .kaur-activity-meta .status-pengajuan,
+        .scm-dashboard-kaur .kaur-activity-meta .status-revisi,
+        .scm-dashboard-kaur .kaur-activity-meta .status-negosiasi,
+        .scm-dashboard-kaur .kaur-activity-meta .status-deal,
+        .scm-dashboard-kaur .kaur-activity-meta .status-approval,
+        .scm-dashboard-kaur .kaur-activity-meta .status-bast,
+        .scm-dashboard-kaur .kaur-activity-meta .status-inventory,
+        .scm-dashboard-kaur .kaur-activity-meta .status-selesai { background: rgba(255, 121, 0, .14); color: #ffb477; }
+        .scm-dashboard-kaur .kaur-activity-meta .status-ditolak { background: rgba(255, 255, 255, .09); color: #c6cdd1; }
+        @media (max-width: 1199.98px) { .kaur-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+        @media (max-width: 991.98px) { .kaur-overview-heading { align-items: stretch; flex-direction: column; gap: 14px; } .kaur-year-filter { width: 100%; } .kaur-chart-grid, .kaur-bottom-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 575.98px) { .kaur-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .kaur-stat-card { min-height: 128px; padding: 14px; } .kaur-stat-icon { flex-basis: 32px; height: 32px; width: 32px; } .kaur-stat-label { font-size: .7rem; margin-top: 11px; } .kaur-stat-value { font-size: 1.08rem; } .kaur-chart-panel, .kaur-activity-panel, .kaur-quick-panel { padding: 14px; } .kaur-chart-wrap { height: 230px; } .kaur-chart-note { white-space: normal; text-align: right; } }
+
+        html.scm-theme-light {
+            --scm-bg: #f3f4f6;
+            --scm-surface: #ffffff;
+            --scm-surface-strong: #eef0f2;
+            --scm-border: #dfe3e6;
+            --scm-text: #1c2024;
+            --scm-muted: #68727b;
+            --scm-orange-soft: rgba(234, 91, 26, .1);
+        }
+        html.scm-theme-light .scm-dashboard { background: var(--scm-bg) !important; color: var(--scm-text) !important; }
+        html.scm-theme-light .scm-dashboard .dashboard-sidebar { background: #ffffff; border-color: #e3e6e8; }
+        html.scm-theme-light .scm-dashboard .sidebar-link { color: #59636b; }
+        html.scm-theme-light .scm-dashboard .sidebar-link i { color: #7e878e; }
+        html.scm-theme-light .scm-dashboard .sidebar-link:hover, html.scm-theme-light .scm-dashboard .sidebar-link.active { color: #ffffff; }
+        html.scm-theme-light .scm-dashboard .sidebar-footer { border-color: #e3e6e8; }
+        html.scm-theme-light .scm-dashboard .topbar { background: #ffffff !important; border-color: #e3e6e8 !important; box-shadow: 0 5px 18px rgba(35, 42, 47, .06); }
+        html.scm-theme-light .scm-dashboard .topbar .btn-outline-light { color: #4e5961; border-color: #cbd2d7; }
+        html.scm-theme-light .scm-dashboard .topbar .btn-outline-light:hover { color: #1c2024; background: #f1f3f4; border-color: #aeb7bd; }
+        html.scm-theme-light .scm-dashboard main, html.scm-theme-light .scm-dashboard .dashboard-content { background: var(--scm-bg); }
+        html.scm-theme-light .scm-dashboard .summary-card, html.scm-theme-light .scm-dashboard .menu-card, html.scm-theme-light .scm-dashboard .panel-card, html.scm-theme-light .scm-dashboard .quick-link, html.scm-theme-light .scm-dashboard .need-row, html.scm-theme-light .scm-dashboard .item-card, html.scm-theme-light .scm-dashboard .fill-summary, html.scm-theme-light .scm-dashboard .subtotal-preview { background: #ffffff !important; border-color: var(--scm-border) !important; box-shadow: 0 8px 22px rgba(36, 43, 48, .06) !important; }
+        html.scm-theme-light .scm-dashboard .summary-value, html.scm-theme-light .scm-dashboard .summary-card .value, html.scm-theme-light .scm-dashboard .summary-card .summary-value { color: #1c2024; }
+        html.scm-theme-light .scm-dashboard .form-control, html.scm-theme-light .scm-dashboard .form-select, html.scm-theme-light .scm-dashboard .input-group-text, html.scm-theme-light .scm-dashboard .form-control:disabled, html.scm-theme-light .scm-dashboard .form-select:disabled { color: #283138 !important; background-color: #ffffff !important; border-color: #cfd6da !important; }
+        html.scm-theme-light .scm-dashboard .form-control::placeholder { color: #89939a !important; }
+        html.scm-theme-light .scm-dashboard .table { --bs-table-color: #293238; }
+        html.scm-theme-light .scm-dashboard .table-clean thead th, html.scm-theme-light .scm-dashboard .table-light, html.scm-theme-light .scm-dashboard .table-light th { color: #5b666e !important; background: #f0f2f3 !important; border-color: var(--scm-border) !important; }
+        html.scm-theme-light .scm-dashboard .table-hover > tbody > tr:hover > *, html.scm-theme-light .scm-dashboard .table-striped > tbody > tr:nth-of-type(odd) > * { color: #1c2024; --bs-table-accent-bg: rgba(234, 91, 26, .04); }
+        html.scm-theme-light .scm-dashboard .btn-outline-dark, html.scm-theme-light .scm-dashboard .btn-outline-secondary { color: #56616a !important; border-color: #b9c2c8 !important; }
+        html.scm-theme-light .scm-dashboard .btn-outline-dark:hover, html.scm-theme-light .scm-dashboard .btn-outline-secondary:hover { color: #1c2024 !important; background: #e9edef !important; }
+        html.scm-theme-light .scm-dashboard .alert { color: #334047; background: #ffffff; border-color: var(--scm-border); }
+        html.scm-theme-light .scm-dashboard .modal-content, html.scm-theme-light .scm-dashboard .dropdown-menu { color: var(--scm-text); background: #ffffff; border-color: var(--scm-border) !important; }
+        html.scm-theme-light .scm-dashboard .modal-header, html.scm-theme-light .scm-dashboard .modal-footer { border-color: var(--scm-border); }
+        html.scm-theme-light .scm-dashboard .modal .btn-close { filter: none; }
+        html.scm-theme-light .scm-dashboard .dropdown-item { color: #39444b; }
+        html.scm-theme-light .scm-dashboard .dropdown-item:hover, html.scm-theme-light .scm-dashboard .dropdown-item:focus { color: #1c2024; background: #f0f2f3; }
+        html.scm-theme-light .scm-dashboard-kaur .kaur-year-filter, html.scm-theme-light .scm-dashboard-kaur .kaur-chart-panel, html.scm-theme-light .scm-dashboard-kaur .kaur-activity-panel, html.scm-theme-light .scm-dashboard-kaur .kaur-quick-panel { background: #ffffff; border-color: var(--scm-border); }
+        html.scm-theme-light .scm-dashboard-kaur .kaur-year-filter .form-select { background-color: #ffffff; color: #283138; }
+        html.scm-theme-light .scm-dashboard-kaur .kaur-stat-card { background: linear-gradient(145deg, #ffffff 0%, #f7f8f9 100%); }
+        html.scm-theme-light .scm-dashboard-kaur .kaur-stat-value, html.scm-theme-light .scm-dashboard-kaur .kaur-stat-slate .kaur-stat-value { color: #1c2024; }
+        html.scm-theme-light .scm-dashboard-kaur .kaur-quick-action { background: #f7f8f9; border-color: var(--scm-border); color: #273138; }
+        html.scm-theme-light .scm-dashboard-kaur .kaur-quick-action:hover { background: rgba(234, 91, 26, .08); color: #1c2024; }
+        html.scm-theme-light .scm-dashboard-kaur .kaur-activity-item { border-color: rgba(35, 42, 47, .1); }
+        html.scm-theme-light .scm-dashboard-kaur .kaur-chart-wrap canvas { color: #263138; }
     </style>
+    <link rel="stylesheet" href="<?= base_url('assets/dashboard-theme.css') ?>">
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
 </head>
-<body>
+<body class="scm-dashboard scm-dashboard-kaur">
+    <aside class="dashboard-sidebar" aria-label="Navigasi Panel Kaur">
+        <a class="sidebar-brand" href="<?= kaur_module_url('overview') ?>">
+            <span class="sidebar-brand-mark"><i class="bi bi-diagram-3"></i></span>
+            <span><strong>SCM FIK</strong><small>Panel Kaur Laboratorium</small></span>
+        </a>
+        <div class="sidebar-caption">Pengadaan &amp; aset</div>
+        <nav class="sidebar-nav">
+            <?php foreach (['overview' => ['Panel', 'bi-grid-1x2-fill'], 'pengajuan' => ['Pengajuan', 'bi-inboxes'], 'negosiasi' => ['Negosiasi', 'bi-chat-square-text'], 'approval' => ['Approval', 'bi-patch-check'], 'peminjaman' => ['ACC Peminjaman', 'bi-qr-code-scan'], 'anggaran' => ['Alokasi Anggaran', 'bi-cash-coin'], 'bast' => ['BAST', 'bi-file-earmark-pdf'], 'laporan' => ['Laporan', 'bi-file-earmark-spreadsheet']] as $key => $item): ?>
+                <a class="sidebar-link <?= $active_module === $key ? 'active' : '' ?>" href="<?= kaur_module_url($key) ?>"><i class="bi <?= $item[1] ?>"></i><span><?= html_escape($item[0]) ?></span></a>
+            <?php endforeach; ?>
+        </nav>
+        <div class="sidebar-footer"><span class="sidebar-status-dot"></span><span>System operational</span></div>
+    </aside>
+    <div class="dashboard-content">
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3">
             <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
-                <div class="d-flex align-items-center gap-3">
+                <div class="dashboard-topbar-brand d-flex align-items-center gap-3">
                     <span class="brand-mark"><i class="bi bi-diagram-3"></i></span>
                     <div>
                         <div class="fw-bold">Panel Kaur Laboratorium</div>
@@ -131,13 +261,16 @@ function kaur_module_url($module) {
                             <?php if (empty($notif_items)): ?>
                                 <div class="small text-muted px-2 py-3">Belum ada notifikasi.</div>
                             <?php else: foreach ($notif_items as $n): ?>
-                                <a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>">
+                                <a class="dropdown-item rounded-3 py-2" href="<?= site_url('dashboard/notifikasi/' . (int) $n->id_notifikasi) ?>">
                                     <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
                                     <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
                                 </a>
                             <?php endforeach; endif; ?>
                         </div>
                     </div>
+                    <button type="button" class="btn btn-outline-light btn-sm rounded-circle theme-toggle" data-theme-toggle aria-label="Aktifkan mode terang" title="Aktifkan mode terang">
+                        <i class="bi bi-sun" aria-hidden="true"></i>
+                    </button>
                     <a href="<?= base_url('index.php/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-globe me-1"></i> Web User</a>
                     <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
                 </div>
@@ -176,34 +309,113 @@ function kaur_module_url($module) {
         </div>
 
         <?php if ($is_overview): ?>
-        <div class="row g-3 mb-4">
-            <div class="col-6 col-xl-2"><div class="panel-card summary-card"><div class="value"><?= (int) $stats['pengajuan'] ?></div><div class="label">Pengajuan</div></div></div>
-            <div class="col-6 col-xl-2"><div class="panel-card summary-card"><div class="value"><?= (int) $stats['negosiasi'] ?></div><div class="label">Negosiasi</div></div></div>
-            <div class="col-6 col-xl-2"><div class="panel-card summary-card"><div class="value"><?= (int) $stats['deal'] ?></div><div class="label">Deal</div></div></div>
-            <div class="col-6 col-xl-2"><div class="panel-card summary-card"><div class="value"><?= (int) $stats['bast'] ?></div><div class="label">BAST</div></div></div>
-            <div class="col-12 col-xl-4"><div class="panel-card summary-card"><div class="value"><?= rp_kaur($anggaran['sisa_anggaran']) ?></div><div class="label">Sisa anggaran <?= (int) $anggaran['tahun'] ?></div></div></div>
-        </div>
-
-        <div class="row g-3 mb-4">
-            <?php
-            $menus = [
-                ['id' => 'pengajuan', 'icon' => 'bi-inboxes', 'title' => 'Pengajuan', 'desc' => 'Pantau semua kebutuhan prodi.'],
-                ['id' => 'negosiasi', 'icon' => 'bi-chat-square-text', 'title' => 'Negosiasi', 'desc' => 'Pilih vendor dan catat histori harga.'],
-                ['id' => 'approval', 'icon' => 'bi-patch-check', 'title' => 'Approval', 'desc' => 'Setujui pengadaan yang sudah Deal.'],
-                ['id' => 'peminjaman', 'icon' => 'bi-qr-code-scan', 'title' => 'ACC Peminjaman', 'desc' => 'Aktifkan QR peminjam.'],
-                ['id' => 'anggaran', 'icon' => 'bi-cash-coin', 'title' => 'Alokasi Anggaran', 'desc' => 'Kelola total, pengeluaran, dan sisa.'],
-                ['id' => 'bast', 'icon' => 'bi-file-earmark-pdf', 'title' => 'BAST', 'desc' => 'Input dokumen dari Logistik.'],
-                ['id' => 'laporan', 'icon' => 'bi-file-earmark-spreadsheet', 'title' => 'Laporan', 'desc' => 'Hasil akhir negosiasi Deal.'],
+        <?php
+            $stat_cards = [
+                ['label' => 'Total Pengajuan', 'value' => (int) ($stats['total_pengajuan'] ?? $stats['pengajuan']), 'icon' => 'bi-inboxes', 'class' => 'kaur-stat-blue', 'format' => 'number'],
+                ['label' => 'Sedang Negosiasi', 'value' => (int) ($stats['sedang_negosiasi'] ?? $stats['negosiasi']), 'icon' => 'bi-chat-square-text', 'class' => 'kaur-stat-amber', 'format' => 'number'],
+                ['label' => 'Deal / Approval', 'value' => (int) ($stats['deal_approval'] ?? $stats['deal']), 'icon' => 'bi-patch-check', 'class' => 'kaur-stat-green', 'format' => 'number'],
+                ['label' => 'Menunggu Approval', 'value' => (int) ($stats['menunggu_approval'] ?? 0), 'icon' => 'bi-hourglass-split', 'class' => 'kaur-stat-red', 'format' => 'number'],
+                ['label' => 'Total Anggaran Tahunan', 'value' => (float) ($anggaran['total_anggaran'] ?? 0), 'icon' => 'bi-wallet2', 'class' => 'kaur-stat-orange', 'format' => 'currency'],
+                ['label' => 'Anggaran Terpakai', 'value' => (float) ($anggaran['total_pengeluaran'] ?? 0), 'icon' => 'bi-graph-up-arrow', 'class' => 'kaur-stat-cyan', 'format' => 'currency'],
+                ['label' => 'Sisa Anggaran', 'value' => (float) ($anggaran['sisa_anggaran'] ?? 0), 'icon' => 'bi-piggy-bank', 'class' => 'kaur-stat-purple', 'format' => 'currency'],
+                ['label' => 'Total Dokumen BAST', 'value' => (int) ($stats['total_bast'] ?? $stats['bast']), 'icon' => 'bi-file-earmark-pdf', 'class' => 'kaur-stat-slate', 'format' => 'number'],
             ];
-            foreach ($menus as $menu): ?>
-                <div class="col-md-6 col-xl-2">
-                    <a class="quick-link d-flex align-items-center gap-3 p-3 h-100" href="<?= kaur_module_url($menu['id']) ?>">
-                        <span class="quick-icon"><i class="bi <?= $menu['icon'] ?>"></i></span>
-                        <span><span class="fw-bold d-block"><?= $menu['title'] ?></span><span class="small text-muted"><?= $menu['desc'] ?></span></span>
-                    </a>
-                </div>
-            <?php endforeach; ?>
-        </div>
+            $quick_actions = [
+                ['id' => 'pengajuan', 'icon' => 'bi-inboxes', 'label' => 'Pengajuan'],
+                ['id' => 'negosiasi', 'icon' => 'bi-chat-square-text', 'label' => 'Negosiasi'],
+                ['id' => 'approval', 'icon' => 'bi-patch-check', 'label' => 'Approval'],
+                ['id' => 'peminjaman', 'icon' => 'bi-qr-code-scan', 'label' => 'ACC Peminjaman'],
+                ['id' => 'anggaran', 'icon' => 'bi-cash-coin', 'label' => 'Alokasi Anggaran'],
+                ['id' => 'bast', 'icon' => 'bi-file-earmark-pdf', 'label' => 'Input BAST'],
+                ['id' => 'laporan', 'icon' => 'bi-file-earmark-spreadsheet', 'label' => 'Laporan'],
+            ];
+        ?>
+        <section class="kaur-overview">
+            <div class="kaur-stat-grid">
+                <?php foreach ($stat_cards as $card): ?>
+                    <article class="kaur-stat-card <?= $card['class'] ?>">
+                        <div class="kaur-stat-top">
+                            <span class="kaur-stat-icon"><i class="bi <?= $card['icon'] ?>"></i></span>
+                            <i class="bi bi-three-dots text-white-50" aria-hidden="true"></i>
+                        </div>
+                        <div class="kaur-stat-label"><?= html_escape($card['label']) ?></div>
+                        <div class="kaur-stat-value" data-counter="<?= (float) $card['value'] ?>" data-counter-format="<?= html_escape($card['format']) ?>">
+                            <?= $card['format'] === 'currency' ? rp_kaur($card['value']) : number_format((int) $card['value'], 0, ',', '.') ?>
+                        </div>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="kaur-chart-grid">
+                <section class="kaur-chart-panel">
+                    <div class="kaur-chart-header">
+                        <div><h3>Pengajuan per Bulan</h3><p>Jumlah pengajuan yang masuk sepanjang <?= $dashboard_year ?>.</p></div>
+                        <span class="kaur-chart-note">Jan - Des</span>
+                    </div>
+                    <div class="kaur-chart-wrap"><canvas id="submissionChart" aria-label="Grafik pengajuan per bulan"></canvas><div class="kaur-chart-fallback">Grafik belum dapat dimuat pada browser ini.</div></div>
+                </section>
+                <section class="kaur-chart-panel">
+                    <div class="kaur-chart-header">
+                        <div><h3>Status Pengajuan</h3><p>Distribusi status tahun <?= $dashboard_year ?>.</p></div>
+                        <span class="kaur-chart-note">Overview</span>
+                    </div>
+                    <div class="kaur-chart-wrap"><canvas id="statusChart" aria-label="Grafik status pengajuan"></canvas><div class="kaur-chart-fallback">Grafik belum dapat dimuat pada browser ini.</div></div>
+                </section>
+            </div>
+
+            <div class="kaur-chart-grid">
+                <section class="kaur-chart-panel">
+                    <div class="kaur-chart-header">
+                        <div><h3>Penggunaan Anggaran</h3><p>Pagu dan realisasi berdasarkan hasil Deal.</p></div>
+                        <span class="kaur-chart-note"><?= html_escape((string) $dashboard_year) ?></span>
+                    </div>
+                    <div class="kaur-chart-wrap"><canvas id="budgetChart" aria-label="Grafik penggunaan anggaran"></canvas><div class="kaur-chart-fallback">Grafik belum dapat dimuat pada browser ini.</div></div>
+                </section>
+                <section class="kaur-chart-panel">
+                    <div class="kaur-chart-header">
+                        <div><h3>Perbandingan Negosiasi</h3><p>Harga awal dibandingkan harga setelah negosiasi.</p></div>
+                        <span class="kaur-savings">Hemat <?= rp_kaur($dashboard_negotiation['penghematan'] ?? 0) ?></span>
+                    </div>
+                    <div class="kaur-chart-wrap"><canvas id="negotiationChart" aria-label="Grafik perbandingan harga negosiasi"></canvas><div class="kaur-chart-fallback">Grafik belum dapat dimuat pada browser ini.</div></div>
+                </section>
+            </div>
+
+            <div class="kaur-bottom-grid">
+                <section class="kaur-activity-panel">
+                    <div class="kaur-panel-header">
+                        <div><h3>Recent Activity</h3><p>Aktivitas terbaru yang berkaitan dengan panel Kaur.</p></div>
+                        <i class="bi bi-activity text-warning" aria-hidden="true"></i>
+                    </div>
+                    <div class="kaur-activity-list">
+                        <?php if (empty($dashboard_activity)): ?>
+                            <div class="text-muted small py-4 text-center">Belum ada aktivitas terbaru.</div>
+                        <?php else: foreach ($dashboard_activity as $activity): ?>
+                            <?php $activity_time = !empty($activity['time']) ? date('d M Y, H:i', strtotime($activity['time'])) : '-'; ?>
+                            <div class="kaur-activity-item">
+                                <span class="kaur-activity-icon"><i class="bi <?= html_escape($activity['icon'] ?? 'bi-activity') ?>"></i></span>
+                                <div class="kaur-activity-copy">
+                                    <div class="kaur-activity-title"><?= html_escape($activity['title'] ?? 'Aktivitas') ?></div>
+                                    <div class="kaur-activity-description"><?= html_escape($activity['description'] ?? '-') ?></div>
+                                    <div class="kaur-activity-meta"><span><i class="bi bi-clock me-1"></i><?= html_escape($activity_time) ?></span><span class="status-pill <?= status_class_kaur($activity['status'] ?? '') ?>"><?= html_escape($activity['status'] ?? '-') ?></span></div>
+                                </div>
+                            </div>
+                        <?php endforeach; endif; ?>
+                    </div>
+                </section>
+
+                <section class="kaur-quick-panel">
+                    <div class="kaur-panel-header">
+                        <div><h3>Quick Action</h3><p>Akses cepat tanpa menggantikan menu sidebar.</p></div>
+                        <i class="bi bi-lightning-charge text-warning" aria-hidden="true"></i>
+                    </div>
+                    <div class="kaur-quick-grid">
+                        <?php foreach ($quick_actions as $quick): ?>
+                            <a class="kaur-quick-action" href="<?= kaur_module_url($quick['id']) ?>"><i class="bi <?= $quick['icon'] ?>"></i><span><?= html_escape($quick['label']) ?></span></a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+            </div>
+        </section>
         <?php endif; ?>
 
         <?php if ($active_module === 'peminjaman'): ?>
@@ -309,7 +521,8 @@ function kaur_module_url($module) {
                     <select name="jenis_pengajuan" class="form-select">
                         <option value="">Semua</option>
                         <option value="Barang" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang') ? 'selected' : '' ?>>Barang</option>
-                        <option value="Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option>
+                                <option value="Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option>
+                                <option value="Barang dan Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang dan Jasa') ? 'selected' : '' ?>>Barang dan Jasa</option>
                     </select>
                 </div>
                 <div class="col-md-2">
@@ -340,7 +553,7 @@ function kaur_module_url($module) {
                                 <td style="min-width: 280px;">
                                     <div class="small text-muted mb-1"><?= html_escape($p->kebutuhan_lab ?: '-') ?></div>
                                     <?php foreach (($p->items ?? []) as $item): ?>
-                                        <div class="small"><i class="bi bi-dot"></i><?= html_escape($item->uraian_barang) ?> - <?= num_kaur($item->vol) ?> <?= html_escape($item->satuan) ?></div>
+                                        <div class="small"><i class="bi bi-dot"></i><span class="badge text-bg-light border me-1"><?= html_escape($item->jenis_item ?? 'Barang') ?></span><?= html_escape($item->uraian_barang) ?> - <?= num_kaur($item->vol) ?> <?= html_escape($item->satuan) ?></div>
                                     <?php endforeach; ?>
                                 </td>
                                 <td><span class="status-pill <?= status_class_kaur($p->status) ?>"><?= html_escape($p->status) ?></span></td>
@@ -384,7 +597,7 @@ function kaur_module_url($module) {
                         <label class="form-label small fw-semibold">Status Negosiasi</label>
                         <select name="status_negosiasi" class="form-select">
                             <option value="">Semua</option>
-                            <?php foreach (['Belum Negosiasi','Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
+                            <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
                                 <option value="<?= $s ?>" <?= (($filters['status_negosiasi'] ?? '') === $s) ? 'selected' : '' ?>><?= $s ?></option>
                             <?php endforeach; ?>
                         </select>
@@ -399,6 +612,7 @@ function kaur_module_url($module) {
                             <option value="">Semua</option>
                             <option value="Barang" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang') ? 'selected' : '' ?>>Barang</option>
                             <option value="Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option>
+                            <option value="Barang dan Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang dan Jasa') ? 'selected' : '' ?>>Barang dan Jasa</option>
                         </select>
                     </div>
                     <div class="col-md-1"><label class="form-label small fw-semibold">Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
@@ -419,21 +633,31 @@ function kaur_module_url($module) {
                             <span class="status-pill <?= status_class_kaur($p->status) ?> align-self-start"><?= html_escape($p->status) ?></span>
                         </div>
                         <div class="row g-3">
-                            <?php foreach (($p->items ?? []) as $item): $latest = $item->latest_negosiasi ?? null; ?>
+                            <?php foreach (($p->items ?? []) as $item):
+                                $latest = $item->latest_negosiasi ?? null;
+                                $harga_awal_referensi = (float) ($item->harga_awal_referensi ?? $item->harga_penawaran_sat ?? 0);
+                                $volume_awal_referensi = (float) ($item->volume_awal_referensi ?? $item->vol ?? 0);
+                                $harga_akhir = $latest ? (float) $latest->harga_negosiasi : 0;
+                                $volume_akhir = $latest ? (float) $latest->volume_negosiasi : $volume_awal_referensi;
+                                $total_negosiasi_item = $harga_akhir * $volume_akhir;
+                                $status_negosiasi = $latest && in_array($latest->status, ['Sedang Negosiasi', 'Deal', 'Ditolak'], true) ? $latest->status : 'Sedang Negosiasi';
+                            ?>
                                 <div class="col-12">
-                                    <form class="item-card p-3" method="post" action="<?= base_url('index.php/kaur/pengajuan/simpan_negosiasi/'.$p->id_pengajuan.'/'.$item->id_item) ?>">
+                                    <form class="item-card p-3 negotiation-form" method="post" action="<?= base_url('index.php/kaur/pengajuan/simpan_negosiasi/'.$p->id_pengajuan.'/'.$item->id_item) ?>">
                                         <div class="row g-2 align-items-end">
                                             <div class="col-lg-3">
                                                 <div class="mini-label">Item</div>
-                                                <div class="fw-semibold"><?= html_escape($item->uraian_barang) ?></div>
-                                                <div class="small text-muted">Vol awal <?= num_kaur($item->vol) ?> <?= html_escape($item->satuan) ?></div>
+                                                <div class="fw-semibold"><span class="badge text-bg-light border me-1"><?= html_escape($item->jenis_item ?? 'Barang') ?></span><?= html_escape($item->uraian_barang) ?></div>
+                                                <div class="small text-muted">Referensi dari pengajuan Kaprodi</div>
                                             </div>
                                             <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Vendor</label><input type="text" name="vendor" class="form-control" value="<?= html_escape($latest->vendor ?? '') ?>" required></div>
-                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Harga Awal</label><input type="text" name="harga_awal" class="form-control money-input" value="<?= $latest ? rp_kaur($latest->harga_awal) : '' ?>" required></div>
-                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Harga Akhir</label><input type="text" name="harga_negosiasi" class="form-control money-input" value="<?= $latest ? rp_kaur($latest->harga_negosiasi) : '' ?>" required></div>
-                                            <div class="col-md-6 col-lg-1"><label class="form-label small fw-semibold">Vol</label><input type="number" name="volume_negosiasi" class="form-control" min="1" step="1" value="<?= html_escape($latest->volume_negosiasi ?? $item->vol) ?>" required></div>
+                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Harga Awal</label><input type="text" name="harga_awal" class="form-control" value="<?= rp_kaur($harga_awal_referensi) ?>" disabled readonly aria-readonly="true"><div class="form-text">Dari Kaprodi</div></div>
+                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Harga Setelah Negosiasi</label><input type="text" name="harga_negosiasi" class="form-control money-input negotiation-price" value="<?= $latest && $harga_akhir > 0 ? rp_kaur($harga_akhir) : '' ?>" placeholder="Rp 0" required></div>
+                                            <div class="col-md-6 col-lg-1"><label class="form-label small fw-semibold">Volume Awal</label><input type="number" name="volume_awal" class="form-control" value="<?= html_escape($volume_awal_referensi) ?>" disabled readonly aria-readonly="true"><div class="form-text"><?= html_escape($item->satuan) ?></div></div>
+                                            <div class="col-md-6 col-lg-1"><label class="form-label small fw-semibold">Volume Setelah Negosiasi</label><input type="number" name="volume_negosiasi" class="form-control negotiation-volume" min="0.01" step="0.01" value="<?= html_escape($volume_akhir) ?>" required><div class="form-text"><?= html_escape($item->satuan) ?></div></div>
+                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Total Hasil</label><input type="text" class="form-control negotiation-total fw-semibold" value="<?= rp_kaur($total_negosiasi_item) ?>" readonly aria-readonly="true"><div class="form-text">Volume akhir x harga akhir</div></div>
                                             <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Garansi</label><input type="text" name="garansi" class="form-control" value="<?= html_escape($latest->garansi ?? '') ?>" placeholder="Contoh: 1 tahun"></div>
-                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Status</label><select name="status" class="form-select"><?php foreach (['Belum Negosiasi','Sedang Negosiasi','Deal','Ditolak'] as $s): ?><option value="<?= $s ?>" <?= (($latest->status ?? 'Belum Negosiasi') === $s) ? 'selected' : '' ?>><?= $s ?></option><?php endforeach; ?></select></div>
+                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Status</label><select name="status" class="form-select"><?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?><option value="<?= $s ?>" <?= ($status_negosiasi === $s) ? 'selected' : '' ?>><?= $s ?></option><?php endforeach; ?></select></div>
                                             <div class="col-lg-8"><label class="form-label small fw-semibold">Catatan</label><input type="text" name="catatan" class="form-control" value="<?= html_escape($latest->catatan ?? '') ?>" placeholder="Catatan hasil negosiasi"></div>
                                             <div class="col-lg-2 d-grid"><button class="btn btn-fik"><i class="bi bi-save me-1"></i> Simpan</button></div>
                                         </div>
@@ -523,6 +747,7 @@ function kaur_module_url($module) {
                         break;
                     }
                 }
+                $auto_approved = (($p->status ?? '') === 'Approval');
             ?>
             <div class="modal fade" id="approvalModal<?= (int) $p->id_pengajuan ?>" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-scrollable">
@@ -542,9 +767,9 @@ function kaur_module_url($module) {
                                     <tbody>
                                         <?php foreach (($p->items ?? []) as $item): $latest = $item->latest_negosiasi ?? null; ?>
                                             <tr>
-                                                <td><?= html_escape($item->uraian_barang) ?></td>
-                                                <td><?= num_kaur($item->vol) ?> <?= html_escape($item->satuan) ?></td>
-                                                <td><?= rp_kaur($latest->harga_awal ?? $item->harga_penawaran_sat ?? 0) ?></td>
+                                                <td><span class="badge text-bg-light border me-1"><?= html_escape($item->jenis_item ?? 'Barang') ?></span><?= html_escape($item->uraian_barang) ?></td>
+                                                <td><?= num_kaur($item->volume_awal_referensi ?? $item->vol) ?> <?= html_escape($item->satuan) ?></td>
+                                                <td><?= rp_kaur($item->harga_awal_referensi ?? $item->harga_penawaran_sat ?? 0) ?></td>
                                                 <td><?= html_escape($latest->vendor ?? '-') ?></td>
                                                 <td><?= $latest ? rp_kaur($latest->harga_negosiasi) : '-' ?></td>
                                                 <td><?= html_escape($latest->status ?? 'Belum Negosiasi') ?></td>
@@ -557,13 +782,13 @@ function kaur_module_url($module) {
                             </div>
                             <label class="form-label small fw-semibold">Catatan Approval / Revisi</label>
                             <textarea name="catatan_approval" class="form-control" rows="3" placeholder="Catatan approval, revisi, atau alasan penolakan."><?= html_escape($p->catatan_approval ?? '') ?></textarea>
-                            <?php if (!$can_approve_modal): ?><div class="small text-warning mt-2"><i class="bi bi-exclamation-triangle me-1"></i> Setujui aktif setelah semua item negosiasi berstatus Deal.</div><?php endif; ?>
+                            <?php if ($auto_approved): ?><div class="alert alert-success py-2 small mt-2 mb-0"><i class="bi bi-check-circle me-1"></i> Semua item sudah Deal. Pengajuan otomatis berstatus Approval dan dapat dilanjutkan ke Alokasi Anggaran/BAST.</div><?php elseif (!$can_approve_modal): ?><div class="small text-warning mt-2"><i class="bi bi-exclamation-triangle me-1"></i> Pengajuan aktif setelah semua item negosiasi berstatus Deal.</div><?php endif; ?>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Tutup</button>
                             <button formaction="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/revisi') ?>" class="btn btn-warning rounded-pill px-3"><i class="bi bi-pencil-square me-1"></i> Revisi</button>
                             <button formaction="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/tolak') ?>" class="btn btn-outline-danger rounded-pill px-3" onclick="return confirm('Tolak pengajuan ini?')"><i class="bi bi-x-lg me-1"></i> Tolak</button>
-                            <button formaction="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/approve') ?>" class="btn btn-success rounded-pill px-3" <?= $can_approve_modal ? '' : 'disabled' ?>><i class="bi bi-check2 me-1"></i> Setujui</button>
+                            <?php if (!$auto_approved): ?><button formaction="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/approve') ?>" class="btn btn-success rounded-pill px-3" <?= $can_approve_modal ? '' : 'disabled' ?>><i class="bi bi-check2 me-1"></i> Setujui</button><?php endif; ?>
                         </div>
                     </form>
                 </div>
@@ -623,7 +848,7 @@ function kaur_module_url($module) {
                                         <form class="accordion-body row g-2" method="post" enctype="multipart/form-data" action="<?= base_url('index.php/kaur/pengajuan/simpan_bast/'.$p->id_pengajuan) ?>">
                                             <div class="col-md-4"><label class="form-label small fw-semibold">Nomor BAST</label><input type="text" name="nomor_bast" class="form-control" required></div>
                                             <div class="col-md-4"><label class="form-label small fw-semibold">Tanggal</label><input type="date" name="tanggal_bast" class="form-control" required></div>
-                                            <div class="col-md-4"><label class="form-label small fw-semibold">Jenis</label><select name="jenis_bast" class="form-select"><option value="Barang" <?= (($p->jenis_pengajuan ?? 'Barang') === 'Barang') ? 'selected' : '' ?>>Barang</option><option value="Jasa" <?= (($p->jenis_pengajuan ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option></select></div>
+                                            <div class="col-md-4"><label class="form-label small fw-semibold">Jenis</label><select name="jenis_bast" class="form-select"><option value="Barang" <?= (($p->jenis_pengajuan ?? 'Barang') === 'Barang') ? 'selected' : '' ?>>Barang</option><option value="Jasa" <?= (($p->jenis_pengajuan ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option><option value="Barang dan Jasa" <?= (($p->jenis_pengajuan ?? '') === 'Barang dan Jasa') ? 'selected' : '' ?>>Barang dan Jasa</option></select></div>
                                             <div class="col-md-7"><label class="form-label small fw-semibold">File PDF/Scan</label><input type="file" name="file_bast" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required></div>
                                             <div class="col-md-5"><label class="form-label small fw-semibold">Catatan</label><input type="text" name="catatan" class="form-control"></div>
                                             <div class="col-12 d-grid d-md-flex justify-content-md-end"><button class="btn btn-fik rounded-pill px-4"><i class="bi bi-upload me-1"></i> Simpan BAST</button></div>
@@ -683,15 +908,184 @@ function kaur_module_url($module) {
         </section>
         <?php endif; ?>
     </main>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script>
+        (() => {
+            const dashboardData = <?= json_encode([
+                'monthly' => array_values($dashboard_monthly_submissions),
+                'statuses' => $dashboard_status_breakdown,
+                'budget' => [
+                    'pagu' => (float) ($anggaran['total_anggaran'] ?? 0),
+                    'terpakai' => (float) ($anggaran['total_pengeluaran'] ?? 0),
+                    'sisa' => (float) ($anggaran['sisa_anggaran'] ?? 0),
+                ],
+                'negotiation' => [
+                    'harga_awal' => (float) ($dashboard_negotiation['harga_awal'] ?? 0),
+                    'harga_negosiasi' => (float) ($dashboard_negotiation['harga_negosiasi'] ?? 0),
+                ],
+            ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>;
+
+            const formatRupiah = (value) => 'Rp ' + Math.round(Number(value) || 0).toLocaleString('id-ID');
+            const formatCounter = (value, format) => format === 'currency' ? formatRupiah(value) : Math.round(Number(value) || 0).toLocaleString('id-ID');
+
+            document.querySelectorAll('[data-counter]').forEach((element) => {
+                const target = Number(element.dataset.counter || 0);
+                const format = element.dataset.counterFormat || 'number';
+                const startedAt = performance.now();
+                const duration = 760;
+
+                const tick = (now) => {
+                    const progress = Math.min(1, (now - startedAt) / duration);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    element.textContent = formatCounter(target * eased, format);
+                    if (progress < 1) {
+                        window.requestAnimationFrame(tick);
+                    }
+                };
+                window.requestAnimationFrame(tick);
+            });
+
+            const chartInstances = [];
+            const isLightTheme = document.documentElement.classList.contains('scm-theme-light');
+            const chartText = isLightTheme ? '#273138' : '#f3f5f6';
+            const chartMuted = isLightTheme ? '#68727b' : '#8f989f';
+            const chartGrid = isLightTheme ? 'rgba(35, 42, 47, .1)' : 'rgba(255, 255, 255, .08)';
+            const orange = '#ff7900';
+            const orangeSoft = '#f39a52';
+            const orangeDeep = '#c65b18';
+            const warmGray = '#aeb6ba';
+            const darkGray = '#4b5257';
+            const chartFont = { family: 'Poppins, sans-serif' };
+            const scaleOptions = {
+                x: { ticks: { color: chartMuted, font: chartFont }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { color: chartMuted, precision: 0, font: chartFont }, grid: { color: chartGrid } },
+            };
+            const baseOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 850, easing: 'easeOutQuart' },
+                plugins: { legend: { labels: { color: chartText, usePointStyle: true, padding: 16, font: chartFont } }, tooltip: { backgroundColor: isLightTheme ? '#ffffff' : '#181a1b', titleColor: chartText, bodyColor: chartText, borderColor: chartGrid, borderWidth: 1 } },
+            };
+
+            const showFallback = (canvas) => {
+                if (!canvas) return;
+                const fallback = canvas.parentElement.querySelector('.kaur-chart-fallback');
+                if (fallback) fallback.style.display = 'flex';
+                canvas.style.display = 'none';
+            };
+
+            if (typeof window.Chart === 'undefined') {
+                document.querySelectorAll('.kaur-chart-wrap canvas').forEach(showFallback);
+            } else {
+                const submissionCanvas = document.getElementById('submissionChart');
+                if (submissionCanvas) {
+                    const chart = new window.Chart(submissionCanvas, {
+                        type: 'bar',
+                        data: {
+                            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'],
+                            datasets: [{ label: 'Pengajuan', data: dashboardData.monthly || [], backgroundColor: orange, borderRadius: 6, maxBarThickness: 24 }],
+                        },
+                        options: { ...baseOptions, scales: scaleOptions, plugins: { ...baseOptions.plugins, legend: { display: false } } },
+                    });
+                    chartInstances.push(chart);
+                }
+
+                const statusCanvas = document.getElementById('statusChart');
+                if (statusCanvas) {
+                    const statusLabels = ['Pengajuan', 'Sedang Negosiasi', 'Deal', 'Ditolak', 'Revisi'];
+                    const chart = new window.Chart(statusCanvas, {
+                        type: 'doughnut',
+                        data: {
+                            labels: statusLabels,
+                            datasets: [{ data: statusLabels.map((label) => Number((dashboardData.statuses || {})[label] || 0)), backgroundColor: [orange, orangeSoft, orangeDeep, warmGray, darkGray], borderColor: isLightTheme ? '#ffffff' : '#111314', borderWidth: 4, hoverOffset: 5 }],
+                        },
+                        options: { ...baseOptions, cutout: '68%', plugins: { ...baseOptions.plugins, legend: { position: 'bottom' } } },
+                    });
+                    chartInstances.push(chart);
+                }
+
+                const budgetCanvas = document.getElementById('budgetChart');
+                if (budgetCanvas) {
+                    const budget = dashboardData.budget || {};
+                    const chart = new window.Chart(budgetCanvas, {
+                        type: 'bar',
+                        data: { labels: ['Total Pagu', 'Terpakai', 'Sisa'], datasets: [{ label: 'Anggaran', data: [budget.pagu || 0, budget.terpakai || 0, budget.sisa || 0], backgroundColor: [warmGray, orange, orangeDeep], borderRadius: 7, maxBarThickness: 52 }] },
+                        options: { ...baseOptions, scales: { ...scaleOptions, y: { ...scaleOptions.y, ticks: { ...scaleOptions.y.ticks, callback: (value) => formatRupiah(value) } } }, plugins: { ...baseOptions.plugins, legend: { display: false }, tooltip: { callbacks: { label: (context) => formatRupiah(context.raw) } } } },
+                    });
+                    chartInstances.push(chart);
+                }
+
+                const negotiationCanvas = document.getElementById('negotiationChart');
+                if (negotiationCanvas) {
+                    const negotiation = dashboardData.negotiation || {};
+                    const chart = new window.Chart(negotiationCanvas, {
+                        type: 'bar',
+                        data: { labels: ['Harga Awal', 'Harga Setelah Negosiasi'], datasets: [{ label: 'Nilai Pengadaan', data: [negotiation.harga_awal || 0, negotiation.harga_negosiasi || 0], backgroundColor: [warmGray, orange], borderRadius: 7, maxBarThickness: 70 }] },
+                        options: { ...baseOptions, scales: { ...scaleOptions, y: { ...scaleOptions.y, ticks: { ...scaleOptions.y.ticks, callback: (value) => formatRupiah(value) } } }, plugins: { ...baseOptions.plugins, legend: { display: false }, tooltip: { callbacks: { label: (context) => formatRupiah(context.raw) } } } },
+                    });
+                    chartInstances.push(chart);
+                }
+            }
+
+            window.kaurSyncChartTheme = () => {
+                const light = document.documentElement.classList.contains('scm-theme-light');
+                const text = light ? '#273138' : '#f3f5f6';
+                const muted = light ? '#68727b' : '#8f989f';
+                const grid = light ? 'rgba(35, 42, 47, .1)' : 'rgba(255, 255, 255, .08)';
+                chartInstances.forEach((chart) => {
+                    if (chart.options.scales) {
+                        Object.values(chart.options.scales).forEach((scale) => {
+                            if (scale.ticks) scale.ticks.color = muted;
+                            if (scale.grid) scale.grid.color = grid;
+                        });
+                    }
+                    if (chart.options.plugins?.legend?.labels) chart.options.plugins.legend.labels.color = text;
+                    if (chart.options.plugins?.tooltip) {
+                        chart.options.plugins.tooltip.backgroundColor = light ? '#ffffff' : '#181a1b';
+                        chart.options.plugins.tooltip.titleColor = text;
+                        chart.options.plugins.tooltip.bodyColor = text;
+                        chart.options.plugins.tooltip.borderColor = grid;
+                    }
+                    chart.data.datasets.forEach((dataset) => {
+                        if (chart.config.type === 'doughnut') dataset.borderColor = light ? '#ffffff' : '#111314';
+                    });
+                    chart.update('none');
+                });
+            };
+
+            window.addEventListener('scm:themechange', window.kaurSyncChartTheme);
+            window.kaurSyncChartTheme();
+        })();
+    </script>
+    <script>
+        const parseKaurMoney = (value) => Number(String(value || '').replace(/[^0-9]/g, '')) || 0;
+
+        const updateNegotiationTotal = (form) => {
+            const price = parseKaurMoney(form.querySelector('.negotiation-price')?.value);
+            const volume = Number(form.querySelector('.negotiation-volume')?.value || 0);
+            const total = form.querySelector('.negotiation-total');
+            if (total) {
+                total.value = 'Rp ' + Math.round(price * volume).toLocaleString('id-ID');
+            }
+        };
+
         document.querySelectorAll('.money-input').forEach((input) => {
             input.addEventListener('blur', () => {
                 const digits = input.value.replace(/[^0-9]/g, '');
                 if (!digits) return;
                 input.value = 'Rp ' + Number(digits).toLocaleString('id-ID');
+                updateNegotiationTotal(input.closest('.negotiation-form'));
             });
+        });
+
+        document.querySelectorAll('.negotiation-form').forEach((form) => {
+            form.querySelectorAll('.negotiation-price, .negotiation-volume').forEach((input) => {
+                input.addEventListener('input', () => updateNegotiationTotal(form));
+            });
+            updateNegotiationTotal(form);
         });
     </script>
 </body>

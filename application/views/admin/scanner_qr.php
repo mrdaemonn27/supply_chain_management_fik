@@ -15,7 +15,8 @@
         #reader { width: min(100%, 520px); margin: 0 auto; overflow: hidden; border-radius: 8px; }
     </style>
 </head>
-<body>
+<body class="scm-admin-shell">
+    <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
             <div><div class="fw-bold"><i class="bi bi-qr-code-scan me-2 text-warning"></i><?= html_escape($scanner_label ?? 'Scanner QR Transaksi') ?></div><div class="small text-white-50"><?= html_escape($scanner_desc ?? 'Scan QR transaksi dari akun peminjam') ?></div></div>

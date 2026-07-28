@@ -58,6 +58,16 @@ class Dashboard extends CI_Controller {
 
     private function render($active_module = 'overview') {
         $id_user = $this->session->userdata('id_user');
+        $current_year = (int) date('Y');
+        $dashboard_year = (int) $this->input->get('tahun');
+        if ($dashboard_year < 2000 || $dashboard_year > $current_year + 1) {
+            $dashboard_year = $current_year;
+        }
+        $dashboard_years = $this->Kaur_model->get_dashboard_years();
+        if (!in_array($dashboard_year, $dashboard_years, true)) {
+            $dashboard_years[] = $dashboard_year;
+            rsort($dashboard_years, SORT_NUMERIC);
+        }
         $filters = [
             'q' => trim((string) $this->input->get('q', true)),
             'status' => trim((string) $this->input->get('status', true)),
@@ -90,8 +100,14 @@ class Dashboard extends CI_Controller {
         $data['total_rows'] = $this->Kaur_model->count_kaprodi_pengajuan($filters);
         $data['total_pages'] = max(1, (int) ceil($data['total_rows'] / $limit));
         $data['pengajuan_kaprodi'] = $this->Kaur_model->get_kaprodi_pengajuan($filters, $limit, $offset);
-        $data['stats'] = $this->Kaur_model->get_dashboard_stats();
-        $data['anggaran'] = $this->Kaur_model->get_anggaran_summary((int) date('Y'));
+        $data['dashboard_year'] = $dashboard_year;
+        $data['dashboard_years'] = $dashboard_years;
+        $data['stats'] = $this->Kaur_model->get_dashboard_stats($dashboard_year);
+        $data['anggaran'] = $this->Kaur_model->get_anggaran_summary($dashboard_year);
+        $data['dashboard_monthly_submissions'] = $this->Kaur_model->get_dashboard_monthly_submissions($dashboard_year);
+        $data['dashboard_status_breakdown'] = $this->Kaur_model->get_dashboard_status_breakdown($dashboard_year);
+        $data['dashboard_negotiation'] = $this->Kaur_model->get_dashboard_negotiation_summary($dashboard_year);
+        $data['dashboard_activity'] = $this->Kaur_model->get_dashboard_recent_activity(12);
         $data['laporan_negosiasi'] = $this->Kaur_model->get_laporan_negosiasi_deal($filters, 20);
         $data['bast_ready'] = $this->Kaur_model->get_bast_ready_pengajuan(12);
         $data['bast_list'] = $this->Kaur_model->get_bast_list(12);

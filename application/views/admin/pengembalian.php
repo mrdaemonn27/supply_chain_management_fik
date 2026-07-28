@@ -31,7 +31,8 @@ $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page
         @media (max-width: 767.98px) { .topbar-actions { width: 100%; flex-wrap: wrap; } .topbar-actions .btn:not(.notif-bell) { flex: 1; } }
     </style>
 </head>
-<body>
+<body class="scm-admin-shell">
+    <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
@@ -50,7 +51,7 @@ $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page
                             <?php if (empty($notif_items)): ?>
                                 <div class="small text-muted px-2 py-3">Belum ada notifikasi.</div>
                             <?php else: foreach ($notif_items as $n): ?>
-                                <a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>">
+                                <a class="dropdown-item rounded-3 py-2" href="<?= site_url('dashboard/notifikasi/' . (int) $n->id_notifikasi) ?>">
                                     <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
                                     <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
                                 </a>
@@ -92,9 +93,10 @@ $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page
                             <td class="ps-3"><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="fw-semibold"><?= (int)($p->total_jenis ?? 1) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?><?= html_escape($d->nama_aset) ?> (<?= (int)$d->jumlah_pinjam ?>), <?php endforeach; else: ?>- <?php endif; ?></div></td>
                             <td><div><?= html_escape($p->tanggal_pinjam ?? '-') ?></div><div class="small <?= $is_late ? 'text-danger fw-semibold' : 'text-muted' ?>">s.d. <?= html_escape($p->tanggal_kembali_rencana ?? '-') ?><?= $is_late ? ' - Terlambat' : '' ?></div></td>
-                            <td><span class="soft-badge <?= $is_late ? 'status-Terlambat' : $status_class($p->status ?? '') ?>"><?= $is_late ? 'Terlambat' : html_escape($p->status ?? '-') ?></span></td>
+                            <td><span class="soft-badge <?= $is_late ? 'status-Terlambat' : $status_class($p->status ?? '') ?>"><?= $is_late ? 'Terlambat' : html_escape($p->status ?? '-') ?></span><?php if (!empty($p->evidence_serah)): ?><div class="small mt-1"><?php foreach ($p->evidence_serah as $evidence): ?><a class="d-block" href="<?= base_url($evidence->nama_file) ?>" target="_blank" rel="noopener"><i class="bi bi-image me-1"></i><?= html_escape($evidence->original_name ?: 'Evidence serah terima') ?></a><?php endforeach; ?></div><?php endif; ?></td>
                             <td class="text-end pe-3">
                                 <div class="d-inline-flex flex-wrap justify-content-end gap-2">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#evidenceModal<?= (int)$p->id_peminjaman ?>" title="Tambah dokumentasi kondisi serah terima"><i class="bi bi-camera me-1"></i> Foto</button>
                                     <button class="btn btn-sm btn-outline-success rounded-pill" data-bs-toggle="modal" data-bs-target="#returnModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-arrow-counterclockwise me-1"></i> Terima</button>
                                     <button class="btn btn-sm btn-outline-danger rounded-pill" data-bs-toggle="modal" data-bs-target="#blockModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-shield-lock me-1"></i> Blokir</button>
                                 </div>
@@ -192,6 +194,21 @@ $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page
                 </form>
             </div>
         </div>
+
+        <div class="modal fade" id="evidenceModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <form class="modal-content evidence-form" method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/upload_evidence_serah/'.$p->id_peminjaman) ?>">
+                    <div class="modal-header"><h5 class="modal-title fw-bold"><i class="bi bi-camera me-2 text-primary"></i>Dokumentasi Serah Terima</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                        <p class="small text-muted">Tambahkan foto kondisi barang saat sedang dipinjam. Anda dapat memilih beberapa foto sekaligus atau mengambilnya langsung dari kamera HP.</p>
+                        <input type="file" name="foto_serah[]" class="form-control evidence-file" accept="image/*,.jpg,.jpeg,.png" capture="environment" multiple required>
+                        <div class="row g-2 evidence-preview mt-2"></div>
+                        <div class="small text-muted mt-2">Format JPG/PNG, maksimal 5MB per foto.</div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary rounded-pill px-4"><i class="bi bi-upload me-1"></i>Simpan Foto</button></div>
+                </form>
+            </div>
+        </div>
     <?php endforeach; endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -208,6 +225,29 @@ $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page
                 }
             });
         });
+        document.querySelectorAll('.evidence-file').forEach((input) => {
+            input.addEventListener('change', () => {
+                const preview = input.closest('form')?.querySelector('.evidence-preview');
+                if (!preview) return;
+                preview.innerHTML = '';
+                Array.from(input.files || []).forEach((file) => {
+                    if (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const item = document.createElement('div');
+                        item.className = 'col-4';
+                        item.innerHTML = '<img src="' + event.target.result + '" alt="Preview foto" class="img-fluid rounded-3 border" style="height:84px;width:100%;object-fit:cover">';
+                        preview.appendChild(item);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        });
+        window.setInterval(() => {
+            const activeElement = document.activeElement;
+            const isEditing = activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(activeElement.tagName);
+            if (!document.hidden && !document.querySelector('.modal.show') && !isEditing) window.location.reload();
+        }, 60000);
     </script>
 </body>
 </html>

@@ -15,7 +15,8 @@
         textarea { font-family: Consolas, monospace; }
     </style>
 </head>
-<body>
+<body class="scm-admin-shell">
+    <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
             <div>
@@ -51,8 +52,14 @@
                             <div class="small text-muted">Data baru masuk inventory setelah tombol Import ditekan.</div>
                         </div>
                         <?php if(!empty($preview_rows)): ?>
-                            <form method="post" action="<?= base_url('index.php/admin/barang/proses_import') ?>">
-                                <button class="btn btn-success rounded-pill px-4" onclick="return confirm('Import semua data preview ke inventory?')"><i class="bi bi-check2-circle me-1"></i> Import ke Inventory</button>
+                            <form method="post" action="<?= base_url('index.php/admin/barang/proses_import') ?>" class="d-flex flex-wrap gap-2 align-items-center">
+                                <label class="small fw-semibold text-muted mb-0" for="duplicateAction">Jika duplikat:</label>
+                                <select id="duplicateAction" name="duplicate_action" class="form-select form-select-sm" style="width:auto">
+                                    <option value="skip">Lewati data duplikat</option>
+                                    <option value="update">Perbarui data lama</option>
+                                    <option value="cancel">Batalkan import</option>
+                                </select>
+                                <button class="btn btn-success btn-sm rounded-pill px-4" onclick="return confirm('Proses data preview ke inventory?')"><i class="bi bi-check2-circle me-1"></i> Proses Import</button>
                             </form>
                         <?php endif; ?>
                     </div>
@@ -67,11 +74,12 @@
                                     <th>Tersedia</th>
                                     <th>Kondisi</th>
                                     <th>Deskripsi</th>
+                                    <th>Status Data</th>
                                 </tr>
                             </thead>
                             <tbody>
                             <?php if(empty($preview_rows)): ?>
-                                <tr><td colspan="7" class="text-center text-muted py-5">Belum ada preview data.</td></tr>
+                                <tr><td colspan="8" class="text-center text-muted py-5">Belum ada preview data.</td></tr>
                             <?php else: foreach($preview_rows as $row): ?>
                                 <tr>
                                     <td class="font-monospace"><?= html_escape($row['kode_aset'] ?: 'Auto') ?></td>
@@ -81,6 +89,7 @@
                                     <td><?= (int) $row['jumlah_tersedia'] ?></td>
                                     <td><span class="badge <?= $row['kondisi'] === 'Baik' ? 'bg-success' : ($row['kondisi'] === 'Rusak' ? 'bg-warning text-dark' : 'bg-danger') ?>"><?= html_escape($row['kondisi']) ?></span></td>
                                     <td><?= html_escape($row['deskripsi'] ?: '-') ?></td>
+                                    <td><?php if (!empty($row['duplicate_id'])): ?><span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>Duplikat: <?= html_escape($row['duplicate_label'] ?? 'data lama') ?></span><?php else: ?><span class="badge bg-success">Data baru</span><?php endif; ?></td>
                                 </tr>
                             <?php endforeach; endif; ?>
                             </tbody>

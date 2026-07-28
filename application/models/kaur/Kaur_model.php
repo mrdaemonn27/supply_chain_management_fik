@@ -32,7 +32,7 @@ class Kaur_model extends CI_Model {
                 `id_pengajuan` int(11) NOT NULL AUTO_INCREMENT,
                 `kode_pengajuan` varchar(40) NOT NULL,
                 `id_user` int(11) NOT NULL,
-                `jenis_pengajuan` enum('Barang','Jasa') NOT NULL DEFAULT 'Barang',
+                `jenis_pengajuan` varchar(50) NOT NULL DEFAULT 'Barang',
                 `nama_lab` varchar(150) NOT NULL,
                 `nama_pengajuan` varchar(200) NOT NULL,
                 `kebutuhan_lab` text DEFAULT NULL,
@@ -54,7 +54,8 @@ class Kaur_model extends CI_Model {
                 KEY `idx_kaur_status` (`status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         } else {
-            $this->ensure_column($this->table, 'jenis_pengajuan', "`jenis_pengajuan` enum('Barang','Jasa') NOT NULL DEFAULT 'Barang' AFTER `id_user`");
+            $this->ensure_column($this->table, 'jenis_pengajuan', "`jenis_pengajuan` varchar(50) NOT NULL DEFAULT 'Barang' AFTER `id_user`");
+            $this->ensure_varchar($this->table, 'jenis_pengajuan', 50, 'Barang');
             $this->ensure_status_varchar($this->table);
         }
 
@@ -85,7 +86,7 @@ class Kaur_model extends CI_Model {
                 `id_pengajuan` int(11) NOT NULL AUTO_INCREMENT,
                 `kode_pengajuan` varchar(40) NOT NULL,
                 `id_user` int(11) NOT NULL,
-                `jenis_pengajuan` enum('Barang','Jasa') NOT NULL DEFAULT 'Barang',
+                `jenis_pengajuan` varchar(50) NOT NULL DEFAULT 'Barang',
                 `nama_prodi` varchar(150) NOT NULL,
                 `nama_pengajuan` varchar(200) NOT NULL,
                 `kebutuhan_lab` text DEFAULT NULL,
@@ -106,7 +107,8 @@ class Kaur_model extends CI_Model {
                 KEY `idx_kaprodi_status` (`status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         } else {
-            $this->ensure_column($this->kaprodiTable, 'jenis_pengajuan', "`jenis_pengajuan` enum('Barang','Jasa') NOT NULL DEFAULT 'Barang' AFTER `id_user`");
+            $this->ensure_column($this->kaprodiTable, 'jenis_pengajuan', "`jenis_pengajuan` varchar(50) NOT NULL DEFAULT 'Barang' AFTER `id_user`");
+            $this->ensure_varchar($this->kaprodiTable, 'jenis_pengajuan', 50, 'Barang');
             $this->ensure_column($this->kaprodiTable, 'catatan_approval', "`catatan_approval` text DEFAULT NULL AFTER `catatan_alokasi`");
             $this->ensure_status_varchar($this->kaprodiTable);
         }
@@ -116,6 +118,7 @@ class Kaur_model extends CI_Model {
                 `id_item` int(11) NOT NULL AUTO_INCREMENT,
                 `id_pengajuan` int(11) NOT NULL,
                 `no_urut` int(11) NOT NULL DEFAULT 1,
+                `jenis_item` varchar(30) NOT NULL DEFAULT 'Barang',
                 `uraian_barang` varchar(255) NOT NULL,
                 `vol` decimal(12,2) NOT NULL DEFAULT 1.00,
                 `satuan` varchar(50) NOT NULL DEFAULT 'unit',
@@ -129,6 +132,8 @@ class Kaur_model extends CI_Model {
                 PRIMARY KEY (`id_item`),
                 KEY `idx_item_pengajuan` (`id_pengajuan`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        } else {
+            $this->ensure_column($this->kaprodiItemTable, 'jenis_item', "`jenis_item` varchar(30) NOT NULL DEFAULT 'Barang' AFTER `no_urut`");
         }
     }
 
@@ -141,6 +146,7 @@ class Kaur_model extends CI_Model {
                 `id_item` int(11) NOT NULL,
                 `vendor` varchar(180) DEFAULT NULL,
                 `harga_awal` decimal(18,2) NOT NULL DEFAULT 0.00,
+                `volume_awal` decimal(12,2) NOT NULL DEFAULT 1.00,
                 `harga_negosiasi` decimal(18,2) NOT NULL DEFAULT 0.00,
                 `volume_negosiasi` decimal(12,2) NOT NULL DEFAULT 1.00,
                 `garansi` varchar(150) DEFAULT NULL,
@@ -153,6 +159,8 @@ class Kaur_model extends CI_Model {
                 KEY `idx_negosiasi_pengajuan` (`id_pengajuan`),
                 KEY `idx_negosiasi_status` (`status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        } else {
+            $this->ensure_column($this->negosiasiTable, 'volume_awal', "`volume_awal` decimal(12,2) NOT NULL DEFAULT 1.00 AFTER `harga_awal`");
         }
 
         if (!$this->db->table_exists($this->anggaranTable)) {
@@ -174,7 +182,7 @@ class Kaur_model extends CI_Model {
                 `id_pengajuan` int(11) NOT NULL,
                 `nomor_bast` varchar(120) NOT NULL,
                 `tanggal_bast` date NOT NULL,
-                `jenis_bast` enum('Barang','Jasa') NOT NULL DEFAULT 'Barang',
+                `jenis_bast` varchar(50) NOT NULL DEFAULT 'Barang',
                 `file_bast` varchar(255) DEFAULT NULL,
                 `catatan` text DEFAULT NULL,
                 `input_by` int(11) DEFAULT NULL,
@@ -184,6 +192,8 @@ class Kaur_model extends CI_Model {
                 KEY `idx_bast_pengajuan` (`id_pengajuan`),
                 KEY `idx_bast_nomor` (`nomor_bast`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        } else {
+            $this->ensure_varchar($this->bastTable, 'jenis_bast', 50, 'Barang');
         }
 
         if (!$this->db->table_exists($this->evidenceTable)) {
@@ -237,6 +247,13 @@ class Kaur_model extends CI_Model {
         $column = $this->db->query("SHOW COLUMNS FROM `{$table}` LIKE 'status'")->row();
         if ($column && stripos((string) $column->Type, 'enum') !== false) {
             $this->db->query("ALTER TABLE `{$table}` MODIFY `status` varchar(60) NOT NULL DEFAULT 'Pengajuan'");
+        }
+    }
+
+    private function ensure_varchar($table, $field, $length, $default) {
+        $column = $this->db->query("SHOW COLUMNS FROM `{$table}` LIKE '{$field}'")->row();
+        if ($column && (stripos((string) $column->Type, 'enum') !== false || stripos((string) $column->Type, 'varchar') === false)) {
+            $this->db->query("ALTER TABLE `{$table}` MODIFY `{$field}` varchar({$length}) NOT NULL DEFAULT '" . $this->db->escape_str($default) . "'");
         }
     }
 
@@ -449,10 +466,11 @@ class Kaur_model extends CI_Model {
 
         foreach ($items as $item) {
             $item->latest_negosiasi = $this->get_latest_negosiasi($item->id_item);
+            $item->harga_awal_referensi = (float) $item->harga_penawaran_sat;
+            $item->volume_awal_referensi = (float) $item->vol;
             if ($item->latest_negosiasi) {
                 $item->hasil_negosiasi_vol = $item->latest_negosiasi->volume_negosiasi;
                 $item->hasil_negosiasi_sat = $item->latest_negosiasi->harga_negosiasi;
-                $item->harga_penawaran_sat = $item->latest_negosiasi->harga_awal;
                 $item->garansi = $item->latest_negosiasi->garansi;
             }
         }
@@ -473,6 +491,14 @@ class Kaur_model extends CI_Model {
             ->row();
     }
 
+    public function get_kaprodi_item($id_pengajuan, $id_item) {
+        return $this->db
+            ->where('id_pengajuan', (int) $id_pengajuan)
+            ->where('id_item', (int) $id_item)
+            ->get($this->kaprodiItemTable)
+            ->row();
+    }
+
     public function get_negosiasi_history($id_item) {
         return $this->db
             ->where('id_item', $id_item)
@@ -487,17 +513,23 @@ class Kaur_model extends CI_Model {
             $data['status'] = 'Belum Negosiasi';
         }
 
-        $data['sumber'] = 'kaprodi';
+        $data['sumber'] = 'kaur';
         $data['id_pengajuan'] = (int) $id_pengajuan;
         $data['id_item'] = (int) $id_item;
         $data['created_by'] = $data['created_by'] ?? null;
+
+        $item = $this->get_kaprodi_item($id_pengajuan, $id_item);
+        if (!$item) {
+            return false;
+        }
+        $data['harga_awal'] = (float) $item->harga_penawaran_sat;
+        $data['volume_awal'] = (float) $item->vol;
 
         $this->db->trans_start();
         $this->db->insert($this->negosiasiTable, $data);
         $this->db
             ->where('id_item', $id_item)
             ->update($this->kaprodiItemTable, [
-                'harga_penawaran_sat' => $data['harga_awal'],
                 'hasil_negosiasi_vol' => $data['volume_negosiasi'],
                 'hasil_negosiasi_sat' => $data['harga_negosiasi'],
                 'garansi' => $data['garansi'],
@@ -539,12 +571,12 @@ class Kaur_model extends CI_Model {
             }
         }
 
-        if ($current && in_array($current->status, ['Disetujui', 'Approval', 'BAST', 'Inventarisasi', 'Selesai'], true)) {
+        if ($current && in_array($current->status, ['BAST', 'Inventarisasi', 'Selesai'], true)) {
             return true;
         }
 
         if ($all_deal) {
-            return $this->update_kaprodi_status($id_pengajuan, 'Deal');
+            return $this->update_kaprodi_status($id_pengajuan, 'Approval');
         }
 
         if ($all_rejected) {
@@ -582,7 +614,7 @@ class Kaur_model extends CI_Model {
             ->row();
 
         $total = $anggaran ? (float) $anggaran->total_anggaran : 0;
-        $deal = $this->get_total_deal_summary();
+        $deal = $this->get_total_deal_summary($tahun);
         $pengeluaran = (float) $deal['total_negosiasi'];
         $sisa = max(0, $total - $pengeluaran);
         $persen = $total > 0 ? min(100, ($pengeluaran / $total) * 100) : 0;
@@ -600,9 +632,10 @@ class Kaur_model extends CI_Model {
         ];
     }
 
-    private function get_total_deal_summary() {
+    private function get_total_deal_summary($tahun = null) {
+        $year_condition = $tahun ? ' AND YEAR(p.created_at) = ' . (int) $tahun : '';
         $sql = "SELECT
-                COALESCE(SUM(n.harga_awal * n.volume_negosiasi), 0) AS total_awal,
+                COALESCE(SUM(n.harga_awal * n.volume_awal), 0) AS total_awal,
                 COALESCE(SUM(n.harga_negosiasi * n.volume_negosiasi), 0) AS total_negosiasi
             FROM `{$this->negosiasiTable}` n
             INNER JOIN (
@@ -610,7 +643,8 @@ class Kaur_model extends CI_Model {
                 FROM `{$this->negosiasiTable}`
                 GROUP BY id_item
             ) latest ON latest.max_id = n.id_negosiasi
-            WHERE n.status = 'Deal'";
+            INNER JOIN `{$this->kaprodiTable}` p ON p.id_pengajuan = n.id_pengajuan
+            WHERE n.status = 'Deal'{$year_condition}";
         $row = $this->db->query($sql)->row();
         return [
             'total_awal' => $row ? (float) $row->total_awal : 0,
@@ -650,7 +684,7 @@ class Kaur_model extends CI_Model {
 
     private function process_inventory_from_bast($id_bast, $id_pengajuan) {
         $pengajuan = $this->get_kaprodi_by_id($id_pengajuan);
-        if (!$pengajuan || $pengajuan->jenis_pengajuan !== 'Barang') {
+        if (!$pengajuan || !in_array($pengajuan->jenis_pengajuan, ['Barang', 'Barang dan Jasa'], true)) {
             $this->db->where('id_bast', $id_bast)->update($this->bastTable, ['inventory_processed_at' => date('Y-m-d H:i:s')]);
             return true;
         }
@@ -661,6 +695,9 @@ class Kaur_model extends CI_Model {
         }
 
         foreach ($pengajuan->items as $item) {
+            if (($item->jenis_item ?? 'Barang') !== 'Barang') {
+                continue;
+            }
             $exists = $this->db
                 ->where('id_bast', $id_bast)
                 ->where('id_item', $item->id_item)
@@ -774,14 +811,284 @@ class Kaur_model extends CI_Model {
         return $this->db->query($sql, $params)->result();
     }
 
-    public function get_dashboard_stats() {
-        return [
-            'pengajuan' => $this->count_kaprodi_pengajuan([]),
-            'negosiasi' => $this->count_kaprodi_pengajuan(['status' => 'Sedang Negosiasi']),
-            'deal' => $this->count_kaprodi_statuses(['Deal', 'Disetujui', 'Approval']),
-            'bast' => count($this->get_bast_list(null)),
-            'laporan_deal' => count($this->get_laporan_negosiasi_deal()),
+    public function get_dashboard_years() {
+        $years = [];
+        $sources = [
+            ['table' => $this->kaprodiTable, 'column' => 'created_at'],
+            ['table' => $this->anggaranTable, 'column' => 'tahun'],
+            ['table' => $this->bastTable, 'column' => 'created_at'],
         ];
+
+        foreach ($sources as $source) {
+            if (!$this->db->table_exists($source['table'])) {
+                continue;
+            }
+
+            if ($source['column'] === 'tahun') {
+                $rows = $this->db
+                    ->select('tahun')
+                    ->where('tahun IS NOT NULL', null, false)
+                    ->group_by('tahun')
+                    ->get($source['table'])
+                    ->result();
+            } else {
+                $rows = $this->db
+                    ->select('YEAR(' . $source['column'] . ') AS tahun', false)
+                    ->where($source['column'] . ' IS NOT NULL', null, false)
+                    ->group_by('YEAR(' . $source['column'] . ')', false)
+                    ->get($source['table'])
+                    ->result();
+            }
+
+            foreach ($rows as $row) {
+                $year = (int) ($row->tahun ?? 0);
+                if ($year >= 2000) {
+                    $years[] = $year;
+                }
+            }
+        }
+
+        $years[] = (int) date('Y');
+        $years = array_values(array_unique($years));
+        rsort($years, SORT_NUMERIC);
+        return $years;
+    }
+
+    public function get_dashboard_stats($tahun = null) {
+        $tahun = (int) ($tahun ?: date('Y'));
+        $counts = [];
+
+        if ($this->db->table_exists($this->kaprodiTable)) {
+            $rows = $this->db
+                ->select('status, COUNT(*) AS total', false)
+                ->where('YEAR(created_at) = ' . $tahun, null, false)
+                ->group_by('status')
+                ->get($this->kaprodiTable)
+                ->result();
+
+            foreach ($rows as $row) {
+                $counts[(string) $row->status] = (int) $row->total;
+            }
+        }
+
+        $deal_statuses = ['Deal', 'Approval', 'Disetujui', 'BAST', 'Inventarisasi', 'Selesai'];
+        $deal = 0;
+        foreach ($deal_statuses as $status) {
+            $deal += $counts[$status] ?? 0;
+        }
+
+        $bast = 0;
+        if ($this->db->table_exists($this->bastTable)) {
+            $bast = (int) $this->db
+                ->where('YEAR(created_at) = ' . $tahun, null, false)
+                ->count_all_results($this->bastTable);
+        }
+
+        return [
+            'pengajuan' => array_sum($counts),
+            'total_pengajuan' => array_sum($counts),
+            'negosiasi' => $counts['Sedang Negosiasi'] ?? 0,
+            'sedang_negosiasi' => $counts['Sedang Negosiasi'] ?? 0,
+            'deal' => $deal,
+            'deal_approval' => $deal,
+            'menunggu_approval' => $counts['Pengajuan'] ?? 0,
+            'bast' => $bast,
+            'total_bast' => $bast,
+            'laporan_deal' => count($this->get_laporan_negosiasi_deal([
+                'tanggal_dari' => $tahun . '-01-01',
+                'tanggal_sampai' => $tahun . '-12-31',
+            ])),
+        ];
+    }
+
+    public function get_dashboard_monthly_submissions($tahun = null) {
+        $tahun = (int) ($tahun ?: date('Y'));
+        $monthly = array_fill(1, 12, 0);
+
+        if (!$this->db->table_exists($this->kaprodiTable)) {
+            return array_values($monthly);
+        }
+
+        $rows = $this->db
+            ->select('MONTH(created_at) AS bulan, COUNT(*) AS total', false)
+            ->where('YEAR(created_at) = ' . $tahun, null, false)
+            ->group_by('MONTH(created_at)', false)
+            ->order_by('bulan', 'ASC')
+            ->get($this->kaprodiTable)
+            ->result();
+
+        foreach ($rows as $row) {
+            $month = (int) $row->bulan;
+            if ($month >= 1 && $month <= 12) {
+                $monthly[$month] = (int) $row->total;
+            }
+        }
+
+        return array_values($monthly);
+    }
+
+    public function get_dashboard_status_breakdown($tahun = null) {
+        $tahun = (int) ($tahun ?: date('Y'));
+        $breakdown = [
+            'Pengajuan' => 0,
+            'Sedang Negosiasi' => 0,
+            'Deal' => 0,
+            'Ditolak' => 0,
+            'Revisi' => 0,
+        ];
+
+        if (!$this->db->table_exists($this->kaprodiTable)) {
+            return $breakdown;
+        }
+
+        $rows = $this->db
+            ->select('status, COUNT(*) AS total', false)
+            ->where('YEAR(created_at) = ' . $tahun, null, false)
+            ->group_by('status')
+            ->get($this->kaprodiTable)
+            ->result();
+
+        foreach ($rows as $row) {
+            $status = (string) $row->status;
+            $key = $status;
+            if (in_array($status, ['Disetujui', 'Approval', 'BAST', 'Inventarisasi', 'Selesai'], true)) {
+                $key = 'Deal';
+            }
+            if (isset($breakdown[$key])) {
+                $breakdown[$key] += (int) $row->total;
+            }
+        }
+
+        return $breakdown;
+    }
+
+    public function get_dashboard_negotiation_summary($tahun = null) {
+        $tahun = (int) ($tahun ?: date('Y'));
+        $summary = $this->get_total_deal_summary($tahun);
+        return [
+            'harga_awal' => (float) $summary['total_awal'],
+            'harga_negosiasi' => (float) $summary['total_negosiasi'],
+            'penghematan' => max(0, (float) $summary['total_awal'] - (float) $summary['total_negosiasi']),
+        ];
+    }
+
+    public function get_dashboard_recent_activity($limit = 12) {
+        $activities = [];
+
+        if ($this->db->table_exists($this->kaprodiTable)) {
+            $rows = $this->db
+                ->select('id_pengajuan, nama_pengajuan, nama_prodi, status, updated_at, created_at')
+                ->order_by('updated_at', 'DESC')
+                ->limit(20)
+                ->get($this->kaprodiTable)
+                ->result();
+
+            foreach ($rows as $row) {
+                $status = (string) ($row->status ?? 'Pengajuan');
+                $title = 'Pengajuan diperbarui';
+                $icon = 'bi-inboxes';
+                if ($status === 'Pengajuan') {
+                    $title = 'Pengajuan baru diterima';
+                } elseif ($status === 'Ditolak') {
+                    $title = 'Pengajuan ditolak';
+                    $icon = 'bi-x-circle';
+                } elseif (in_array($status, ['Deal', 'Disetujui', 'Approval'], true)) {
+                    $title = 'Approval pengadaan selesai';
+                    $icon = 'bi-check2-circle';
+                }
+                $activities[] = [
+                    'title' => $title,
+                    'description' => ($row->nama_pengajuan ?? 'Pengajuan') . ' - ' . ($row->nama_prodi ?? 'Prodi'),
+                    'time' => $row->updated_at ?: $row->created_at,
+                    'status' => $status,
+                    'icon' => $icon,
+                ];
+            }
+        }
+
+        if ($this->db->table_exists($this->negosiasiTable)) {
+            $rows = $this->db
+                ->select('n.status, n.vendor, n.created_at, p.nama_pengajuan, p.nama_prodi')
+                ->from($this->negosiasiTable . ' n')
+                ->join($this->kaprodiTable . ' p', 'p.id_pengajuan = n.id_pengajuan', 'left')
+                ->order_by('n.created_at', 'DESC')
+                ->limit(20)
+                ->get()
+                ->result();
+
+            foreach ($rows as $row) {
+                $status = (string) ($row->status ?? 'Sedang Negosiasi');
+                $activities[] = [
+                    'title' => $status === 'Deal' ? 'Negosiasi berhasil dilakukan' : ($status === 'Ditolak' ? 'Negosiasi ditolak' : 'Negosiasi diperbarui'),
+                    'description' => ($row->nama_pengajuan ?? 'Pengadaan') . (!empty($row->vendor) ? ' - ' . $row->vendor : ''),
+                    'time' => $row->created_at,
+                    'status' => $status,
+                    'icon' => $status === 'Deal' ? 'bi-hand-thumbs-up' : 'bi-chat-square-text',
+                ];
+            }
+        }
+
+        if ($this->db->table_exists($this->anggaranTable)) {
+            $rows = $this->db
+                ->select('tahun, total_anggaran, created_at')
+                ->order_by('created_at', 'DESC')
+                ->limit(12)
+                ->get($this->anggaranTable)
+                ->result();
+            foreach ($rows as $row) {
+                $activities[] = [
+                    'title' => 'Alokasi anggaran berhasil dibuat',
+                    'description' => 'Pagu tahun ' . (int) $row->tahun . ' - Rp ' . number_format((float) $row->total_anggaran, 0, ',', '.'),
+                    'time' => $row->created_at,
+                    'status' => 'Tersimpan',
+                    'icon' => 'bi-cash-coin',
+                ];
+            }
+        }
+
+        if ($this->db->table_exists($this->bastTable)) {
+            $rows = $this->db
+                ->select('b.nomor_bast, b.created_at, p.nama_pengajuan')
+                ->from($this->bastTable . ' b')
+                ->join($this->kaprodiTable . ' p', 'p.id_pengajuan = b.id_pengajuan', 'left')
+                ->order_by('b.created_at', 'DESC')
+                ->limit(12)
+                ->get()
+                ->result();
+            foreach ($rows as $row) {
+                $activities[] = [
+                    'title' => 'Dokumen BAST berhasil diinput',
+                    'description' => ($row->nama_pengajuan ?? 'Pengadaan') . ' - ' . ($row->nomor_bast ?? '-'),
+                    'time' => $row->created_at,
+                    'status' => 'BAST',
+                    'icon' => 'bi-file-earmark-pdf',
+                ];
+            }
+        }
+
+        if ($this->db->table_exists('notifikasi_progress')) {
+            $rows = $this->db
+                ->where('recipient_role', 'kaur')
+                ->order_by('created_at', 'DESC')
+                ->limit(20)
+                ->get('notifikasi_progress')
+                ->result();
+            foreach ($rows as $row) {
+                $activities[] = [
+                    'title' => $row->judul,
+                    'description' => $row->pesan,
+                    'time' => $row->created_at,
+                    'status' => ((int) $row->is_read === 1) ? 'Dibaca' : 'Baru',
+                    'icon' => 'bi-bell',
+                ];
+            }
+        }
+
+        usort($activities, static function ($left, $right) {
+            return strtotime((string) ($right['time'] ?? '')) <=> strtotime((string) ($left['time'] ?? ''));
+        });
+
+        return array_slice($activities, 0, max(1, (int) $limit));
     }
 
     public function get_by_id($id_pengajuan) {

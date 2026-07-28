@@ -1,5 +1,5 @@
 <?php
-$boleh_serah = ($peminjaman->status ?? '') === 'Disetujui (Menunggu Pengambilan)';
+$boleh_serah = !empty($qr_valid) && ($peminjaman->status ?? '') === 'Disetujui (Menunggu Pengambilan)';
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -17,7 +17,8 @@ $boleh_serah = ($peminjaman->status ?? '') === 'Disetujui (Menunggu Pengambilan)
         .btn-fik:hover { background: #c24a13; color: #fff; }
     </style>
 </head>
-<body>
+<body class="scm-admin-shell">
+    <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
             <div><div class="fw-bold"><i class="bi bi-box-seam me-2 text-warning"></i>Serah Terima Barang</div><div class="small text-white-50">Validasi detail sebelum barang diserahkan</div></div>
@@ -60,15 +61,39 @@ $boleh_serah = ($peminjaman->status ?? '') === 'Disetujui (Menunggu Pengambilan)
             </div>
 
             <?php if($boleh_serah): ?>
-                <form method="post" action="<?= base_url('index.php/admin/peminjaman/proses_serah/'.rawurlencode($peminjaman->group_id)) ?>">
+                <form method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/proses_serah/'.rawurlencode($peminjaman->group_id)) ?>">
                     <label class="form-label small fw-semibold">Catatan Serah Terima</label>
                     <textarea name="catatan_serah" class="form-control mb-3" rows="2" placeholder="Contoh: Barang lengkap dan diterima peminjam."></textarea>
+                    <label class="form-label small fw-semibold">Dokumentasi Kondisi Saat Serah Terima</label>
+                    <input type="file" name="foto_serah[]" class="form-control serah-file mb-2" accept="image/*,.jpg,.jpeg,.png" capture="environment" multiple>
+                    <div class="small text-muted mb-2">Bisa memilih beberapa foto. Maksimal 5MB per foto.</div>
+                    <div class="row g-2 serah-preview mb-3"></div>
                     <button class="btn btn-fik rounded-pill px-4" onclick="return confirm('Serahkan barang ke peminjam dan kurangi stok?')"><i class="bi bi-check2-circle me-1"></i> Serahkan Barang ke Peminjam</button>
                 </form>
             <?php else: ?>
-                <div class="alert alert-warning mb-0">QR terbaca, tetapi transaksi belum berada pada status siap serah. Pastikan sudah di-ACC oleh Kaur.</div>
+                <div class="alert alert-warning mb-0"><?= html_escape($qr_message ?? 'QR terbaca, tetapi transaksi belum berada pada status siap serah.') ?></div>
             <?php endif; ?>
         </section>
     </main>
+    <script>
+        document.querySelectorAll('.serah-file').forEach((input) => {
+            input.addEventListener('change', () => {
+                const preview = input.closest('form')?.querySelector('.serah-preview');
+                if (!preview) return;
+                preview.innerHTML = '';
+                Array.from(input.files || []).forEach((file) => {
+                    if (!file.type.startsWith('image/') || file.size > 5 * 1024 * 1024) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const item = document.createElement('div');
+                        item.className = 'col-6 col-md-3';
+                        item.innerHTML = '<img src="' + event.target.result + '" alt="Preview dokumentasi" class="img-fluid rounded-3 border" style="height:90px;width:100%;object-fit:cover">';
+                        preview.appendChild(item);
+                    };
+                    reader.readAsDataURL(file);
+                });
+            });
+        });
+    </script>
 </body>
 </html>

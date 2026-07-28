@@ -82,6 +82,15 @@ class Aset_model extends CI_Model {
     }
 
     /**
+     * Ambil sekaligus kunci stok aset selama transaksi serah terima.
+     */
+    public function get_aset_by_id_for_update($id) {
+        return $this->db
+            ->query('SELECT * FROM `' . $this->table . '` WHERE `id_aset` = ? LIMIT 1 FOR UPDATE', [(int) $id])
+            ->row();
+    }
+
+    /**
      * Ambil aset berdasarkan ruangan
      * 
      * FIXED: Menambahkan parameter $limit dan $exclude_id yang tadinya tidak ada
@@ -186,17 +195,29 @@ class Aset_model extends CI_Model {
      * Update jumlah aset tersedia saat peminjaman
      */
     public function update_jumlah_tersedia($id_aset, $jumlah) {
-        $this->db->set('jumlah_tersedia', 'jumlah_tersedia - ' . (int)$jumlah, FALSE);
-        $this->db->where('id_aset', $id_aset);
-        return $this->db->update($this->table);
+        $jumlah = max(0, (int) $jumlah);
+        if ($jumlah < 1) {
+            return false;
+        }
+
+        $this->db->set('jumlah_tersedia', 'jumlah_tersedia - ' . $jumlah, false);
+        $this->db->where('id_aset', (int) $id_aset);
+        $this->db->where('jumlah_tersedia >=', $jumlah);
+        $updated = $this->db->update($this->table);
+        return $updated && $this->db->affected_rows() === 1;
     }
 
     /**
      * Kembalikan jumlah aset tersedia saat pengembalian
      */
     public function kembalikan_jumlah_tersedia($id_aset, $jumlah) {
-        $this->db->set('jumlah_tersedia', 'jumlah_tersedia + ' . (int)$jumlah, FALSE);
-        $this->db->where('id_aset', $id_aset);
+        $jumlah = max(0, (int) $jumlah);
+        if ($jumlah < 1) {
+            return false;
+        }
+
+        $this->db->set('jumlah_tersedia', 'LEAST(jumlah_total, jumlah_tersedia + ' . $jumlah . ')', false);
+        $this->db->where('id_aset', (int) $id_aset);
         return $this->db->update('aset');
     }
 

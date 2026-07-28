@@ -49,7 +49,8 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
         }
     </style>
 </head>
-<body>
+<body class="scm-admin-shell">
+    <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
@@ -68,7 +69,7 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                             <?php if (empty($notif_items)): ?>
                                 <div class="small text-muted px-2 py-3">Belum ada notifikasi.</div>
                             <?php else: foreach ($notif_items as $n): ?>
-                                <a class="dropdown-item rounded-3 py-2" href="<?= html_escape($n->link ?: '#') ?>">
+                                <a class="dropdown-item rounded-3 py-2" href="<?= site_url('dashboard/notifikasi/' . (int) $n->id_notifikasi) ?>">
                                     <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
                                     <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
                                 </a>

@@ -34,7 +34,7 @@ class Pengajuan extends CI_Controller {
         $nama_pengajuan = trim($this->input->post('nama_pengajuan', true));
         $jenis_pengajuan = trim($this->input->post('jenis_pengajuan', true));
 
-        if (!in_array($jenis_pengajuan, ['Barang', 'Jasa'], true)) {
+        if (!in_array($jenis_pengajuan, ['Barang', 'Jasa', 'Barang dan Jasa'], true)) {
             $jenis_pengajuan = 'Barang';
         }
 
@@ -48,6 +48,7 @@ class Pengajuan extends CI_Controller {
         $satuan_input = (array) $this->input->post('satuan');
         $harga_input = (array) $this->input->post('harga_penawaran_sat');
         $link_input = (array) $this->input->post('link_penawaran');
+        $jenis_item_input = (array) $this->input->post('jenis_item');
         $items = [];
         foreach ((array) $uraian as $i => $value) {
             $nama_item = trim((string) $value);
@@ -56,7 +57,15 @@ class Pengajuan extends CI_Controller {
             }
 
             $vol = ($vol_input[$i] ?? '') !== '' ? (float) $vol_input[$i] : 1;
+            $jenis_item = $jenis_pengajuan === 'Barang dan Jasa'
+                ? trim((string) ($jenis_item_input[$i] ?? 'Barang'))
+                : $jenis_pengajuan;
+            if (!in_array($jenis_item, ['Barang', 'Jasa'], true)) {
+                $jenis_item = 'Barang';
+            }
+
             $items[] = [
+                'jenis_item' => $jenis_item,
                 'uraian_barang' => $nama_item,
                 'vol' => max(1, $vol),
                 'satuan' => trim($satuan_input[$i] ?? 'unit'),
@@ -92,7 +101,9 @@ class Pengajuan extends CI_Controller {
                 $this->session->userdata('id_user'),
                 'Pengajuan berhasil dibuat',
                 'Pengajuan ' . $nama_pengajuan . ' berhasil diinput dan masuk ke riwayat Kaprodi.',
-                site_url('kaprodi/dashboard?tab=riwayat')
+                null,
+                'kaprodi_pengajuan',
+                $id
             );
             $this->Peminjaman_model->create_notifikasi(
                 'kaur',
@@ -144,6 +155,7 @@ class Pengajuan extends CI_Controller {
             'jenis_pengajuan' => trim((string) $this->input->get('jenis_pengajuan', true)),
             'tanggal_dari' => trim((string) $this->input->get('tanggal_dari', true)),
             'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
+            'id_pengajuan' => max(0, (int) $this->input->get('id_pengajuan')),
         ];
 
         $rows = $this->Kaprodi_model->get_filtered_by_user($this->session->userdata('id_user'), $filters, null, null);
@@ -157,11 +169,16 @@ class Pengajuan extends CI_Controller {
             return;
         }
 
-        $filename = 'berita_acara_klarifikasi_kaprodi_' . date('Ymd_His') . '.xls';
+        $filename = 'berita_acara_klarifikasi_kaprodi_' . date('Ymd_His') . '.xlsx';
         if ($this->input->get('download') === '1') {
-            header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            header('Cache-Control: max-age=0');
+            $this->load->helper('scm_xlsx');
+            scm_download_xlsx($filename, $this->load->view('kaur/export_ba_klarifikasi', [
+                'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
+                'pengajuan_list' => $rows,
+                'show_negosiasi' => false,
+                'role_label' => 'Kaprodi',
+            ], true));
+            return;
         }
         $this->load->view('kaur/export_ba_klarifikasi', [
             'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
@@ -187,11 +204,16 @@ class Pengajuan extends CI_Controller {
             return;
         }
 
-        $filename = 'berita_acara_klarifikasi_' . $pengajuan->kode_pengajuan . '.xls';
+        $filename = 'berita_acara_klarifikasi_' . $pengajuan->kode_pengajuan . '.xlsx';
         if ($this->input->get('download') === '1') {
-            header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-            header('Content-Disposition: attachment; filename="' . $filename . '"');
-            header('Cache-Control: max-age=0');
+            $this->load->helper('scm_xlsx');
+            scm_download_xlsx($filename, $this->load->view('kaur/export_ba_klarifikasi', [
+                'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',
+                'pengajuan' => $pengajuan,
+                'show_negosiasi' => false,
+                'role_label' => 'Kaprodi',
+            ], true));
+            return;
         }
         $this->load->view('kaur/export_ba_klarifikasi', [
             'title' => 'Berita Acara Klarifikasi Pengajuan Barang/Jasa',

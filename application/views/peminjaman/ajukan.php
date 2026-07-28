@@ -106,6 +106,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             transform: scale(1.1);
         }
     </style>
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
 </head>
 <body>
 

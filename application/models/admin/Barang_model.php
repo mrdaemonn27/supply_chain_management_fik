@@ -21,14 +21,71 @@ class Barang_model extends CI_Model {
     /**
      * Tampilkan semua barang beserta nama laboratorium/ruangannya
      */
-    public function get_all() {
+    public function get_all($filters = []) {
         $this->db->select('aset.*, ruangan.nama_ruangan');
         $this->db->from('aset');
         // Join dengan tabel ruangan untuk mendapatkan nama lab yang sesuai
         $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
+        if (!empty($filters['q'])) {
+            $this->db->group_start();
+            $this->db->like('aset.kode_aset', trim($filters['q']));
+            $this->db->or_like('aset.nama_aset', trim($filters['q']));
+            $this->db->or_like('ruangan.nama_ruangan', trim($filters['q']));
+            $this->db->or_like('aset.kondisi', trim($filters['q']));
+            $this->db->group_end();
+        }
         $this->db->order_by('aset.nama_aset', 'ASC');
+        if (!empty($filters['limit'])) {
+            $this->db->limit((int) $filters['limit'], max(0, (int) ($filters['offset'] ?? 0)));
+        }
         
         return $this->db->get()->result();
+    }
+
+    public function count_all($filters = []) {
+        if (!empty($filters['q'])) {
+            $q = trim($filters['q']);
+            $this->db->group_start();
+            $this->db->like('aset.kode_aset', $q);
+            $this->db->or_like('aset.nama_aset', $q);
+            $this->db->or_like('ruangan.nama_ruangan', $q);
+            $this->db->or_like('aset.kondisi', $q);
+            $this->db->group_end();
+        }
+        $this->db->from('aset');
+        $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
+        return (int) $this->db->count_all_results();
+    }
+
+    public function find_duplicate($data, $exclude_id = null) {
+        $kode = trim((string) ($data['kode_aset'] ?? ''));
+        $nama = trim((string) ($data['nama_aset'] ?? ''));
+        $id_ruangan = (int) ($data['id_ruangan'] ?? 0);
+        if ($kode === '' && $nama === '') {
+            return null;
+        }
+        $this->db->from('aset');
+        $this->db->group_start();
+        if ($kode !== '') {
+            $this->db->where('kode_aset', $kode);
+        }
+        if ($nama !== '') {
+            if ($kode !== '') {
+                $this->db->or_group_start();
+            }
+            $this->db->where('nama_aset', $nama);
+            if ($id_ruangan > 0) {
+                $this->db->where('id_ruangan', $id_ruangan);
+            }
+            if ($kode !== '') {
+                $this->db->group_end();
+            }
+        }
+        $this->db->group_end();
+        if ($exclude_id) {
+            $this->db->where('id_aset !=', (int) $exclude_id);
+        }
+        return $this->db->get()->row();
     }
 
     /**

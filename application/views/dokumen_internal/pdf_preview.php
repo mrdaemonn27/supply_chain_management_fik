@@ -13,6 +13,7 @@
         .empty h3 { margin: 0 0 8px; font-size: 18px; }
         .empty p { margin: 0; color: #666; line-height: 1.5; }
     </style>
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
 </head>
 <body>
     <div class="pdf-shell">
