@@ -25,8 +25,31 @@ class Maintenance extends CI_Controller {
     }
 
     public function index() {
+        $page = max(1, (int) $this->input->get('page', true));
+        $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
+        if ($requested_per_page === 'all') {
+            $per_page = 'all';
+            $limit = null;
+            $page = 1;
+        } else {
+            $requested_limit = (int) $requested_per_page;
+            $limit = in_array($requested_limit, [10, 25, 50], true) ? $requested_limit : 10;
+            $per_page = (string) $limit;
+        }
+
+        $total_rows = $this->Maintenance_model->count();
+        $total_pages = $limit === null ? 1 : max(1, (int) ceil($total_rows / $limit));
+        $page = min($page, $total_pages);
+        $offset = $limit === null ? 0 : (($page - 1) * $limit);
+
         $data['title'] = 'Maintenance Barang';
-        $data['maintenance'] = $this->Maintenance_model->get_all_maintenance();
+        $data['maintenance'] = $this->Maintenance_model->get_all_maintenance($limit, $offset);
+        $data['pagination'] = [
+            'page' => $page,
+            'per_page' => $per_page,
+            'total' => $total_rows,
+            'total_pages' => $total_pages,
+        ];
         $data['aset'] = $this->Aset_model->get_all_aset_ordered('nama_aset', 'ASC');
         $this->load->view('admin/maintenance', $data);
     }

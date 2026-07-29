@@ -36,13 +36,13 @@ function excel_kaur_num($value) { return rtrim(rtrim(number_format((float) $valu
             <th rowspan="2">Alokasi Sisa</th>
         </tr>
         <tr>
-            <th>Harga Sat</th><th>Jmlh Harga</th><th>Harga +20%</th><th>Link</th>
+            <th>Harga Sat</th><th>Jmlh Harga</th><th>Pajak 20%</th><th>Link</th>
             <th>Vol</th><th>Harga Sat</th><th>Jmlh Harga</th>
         </tr>
         <?php foreach($pengajuan->items as $i => $item): ?>
             <?php
             $jumlah_penawaran = (float)$item->vol * (float)$item->harga_penawaran_sat;
-            $jumlah_markup = (float)$item->vol * ((float)$item->harga_penawaran_sat * 1.2);
+            $jumlah_pajak = $jumlah_penawaran * 0.20;
             $nego_vol = $item->hasil_negosiasi_vol !== null ? (float)$item->hasil_negosiasi_vol : (float)$item->vol;
             $nego_sat = $item->hasil_negosiasi_sat !== null ? (float)$item->hasil_negosiasi_sat : 0;
             $jumlah_nego = $nego_vol * $nego_sat;
@@ -54,7 +54,7 @@ function excel_kaur_num($value) { return rtrim(rtrim(number_format((float) $valu
                 <td class="center"><?= html_escape($item->satuan) ?></td>
                 <td class="right"><?= excel_kaur_rp($item->harga_penawaran_sat) ?></td>
                 <td class="right"><?= excel_kaur_rp($jumlah_penawaran) ?></td>
-                <td class="right"><?= excel_kaur_rp($jumlah_markup) ?></td>
+                <td class="right"><?= excel_kaur_rp($jumlah_pajak) ?></td>
                 <td><?= html_escape($item->link_penawaran ?: '-') ?></td>
                 <td><?= html_escape($item->uraian_barang) ?></td>
                 <td class="center"><?= excel_kaur_num($nego_vol) ?></td>
@@ -64,9 +64,9 @@ function excel_kaur_num($value) { return rtrim(rtrim(number_format((float) $valu
                 <td><?= html_escape($item->alokasi_sisa ?: '-') ?></td>
             </tr>
         <?php endforeach; ?>
-        <tr><td colspan="6" class="right bold">Sub Total (+20%)</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['subtotal_markup']) ?></td><td></td><td colspan="3" class="right bold">Sub Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['subtotal_negosiasi']) ?></td><td colspan="2"></td></tr>
-        <tr><td colspan="6" class="right bold">PPN 11%</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['ppn_penawaran']) ?></td><td></td><td colspan="3" class="right bold">PPN 11%</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['ppn_negosiasi']) ?></td><td colspan="2"></td></tr>
-        <tr><td colspan="6" class="right bold">Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['total_penawaran']) ?></td><td></td><td colspan="3" class="right bold">Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['total_negosiasi']) ?></td><td colspan="2"></td></tr>
+        <tr><td colspan="5" class="right bold">Sub Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['subtotal_penawaran']) ?></td><td colspan="2"></td><td colspan="3" class="right bold">Sub Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['subtotal_negosiasi']) ?></td><td colspan="2"></td></tr>
+        <tr><td colspan="5" class="right bold">Pajak 20%</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['ppn_penawaran']) ?></td><td colspan="2"></td><td colspan="3" class="right bold">Pajak 20%</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['ppn_negosiasi']) ?></td><td colspan="2"></td></tr>
+        <tr><td colspan="5" class="right bold">Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['total_penawaran']) ?></td><td colspan="2"></td><td colspan="3" class="right bold">Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['total_negosiasi']) ?></td><td colspan="2"></td></tr>
         <tr><td colspan="14" class="no-border"></td></tr>
         <tr><td colspan="7" class="no-border">BAST Tahap 1: <?= html_escape($pengajuan->bast_nomor ?: '-') ?></td><td colspan="7" class="no-border">Anak Perusahaan: <?= html_escape($pengajuan->anak_perusahaan ?: '-') ?></td></tr>
         <tr><td colspan="7" class="no-border">Tanggal BAST: <?= html_escape($pengajuan->bast_tanggal ?: '-') ?></td><td colspan="7" class="no-border">Penerima: <?= html_escape($pengajuan->bast_penerima ?: '-') ?></td></tr>

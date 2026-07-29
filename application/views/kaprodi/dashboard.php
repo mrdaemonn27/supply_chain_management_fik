@@ -15,7 +15,7 @@ function status_class_kaprodi($status) {
     ];
     return $map[$status] ?? 'status-pengajuan';
 }
-function query_kaprodi($filters, $page, $tab = 'riwayat', $kategori = '') {
+function query_kaprodi($filters, $page, $tab = 'riwayat', $kategori = '', $per_page = null) {
     $params = [];
     foreach ((array) $filters as $key => $value) {
         if ($value !== '' && $value !== null) {
@@ -36,6 +36,9 @@ function query_kaprodi($filters, $page, $tab = 'riwayat', $kategori = '') {
             unset($params['jenis_pengajuan']);
         }
     }
+    if ($per_page !== null && $per_page !== '') {
+        $params['per_page'] = $per_page;
+    }
     return http_build_query($params);
 }
 $filters = $filters ?? [];
@@ -53,6 +56,7 @@ $dashboard_status_breakdown = $dashboard_status_breakdown ?? ['Pengajuan' => 0, 
 $dashboard_type_breakdown = $dashboard_type_breakdown ?? ['Barang' => 0, 'Jasa' => 0, 'Barang dan Jasa' => 0];
 $dashboard_activity = $dashboard_activity ?? [];
 $page = $page ?? 1;
+$per_page = $per_page ?? '10';
 $total_pages = $total_pages ?? 1;
 $total_rows = $total_rows ?? count($pengajuan ?? []);
 $active_tab = $active_tab ?? 'panel';
@@ -84,7 +88,22 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         .summary-card .label { color: #6c757d; font-size: .82rem; margin-top: 8px; }
         .table-clean thead th { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; color: #5f6368; background: #f8f9fa; border-bottom: 1px solid #e8eaed; white-space: nowrap; }
         .table-clean td { vertical-align: middle; }
-        .jenis-badge { width: 78px; min-height: 28px; display: inline-flex; align-items: center; justify-content: center; padding: 6px 10px; line-height: 1; text-align: center; }
+        .jenis-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 132px;
+            min-height: 32px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
         .status-pill { display: inline-flex; align-items: center; justify-content: center; min-width: 152px; border-radius: 999px; padding: 6px 10px; font-size: .74rem; font-weight: 700; white-space: nowrap; }
         .status-pengajuan { background: rgba(13, 110, 253, .12); color: #0d6efd; }
         .status-revisi { background: rgba(245, 158, 11, .16); color: #a16207; }
@@ -93,14 +112,377 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         .status-bast { background: rgba(13, 202, 240, .15); color: #087990; }
         .status-inventory, .status-selesai { background: rgba(32, 201, 151, .14); color: #087f5b; }
         .status-ditolak { background: rgba(220, 53, 69, .12); color: #dc3545; }
-        .need-row { border: 1px solid #e8eaed; border-radius: 8px; padding: 12px; background: #fff; }
-        .need-row .row-number { width: 34px; height: 34px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: rgba(234, 91, 26, .12); color: #c24a13; font-weight: 700; }
-        .need-row.is-empty { border-color: #e8eaed; }
-        .item-type-wrap { display: none; }
-        .fill-summary { position: sticky; top: 86px; z-index: 8; border: 1px solid rgba(234, 91, 26, .24); background: rgba(255, 255, 255, .96); backdrop-filter: blur(8px); }
-        .fill-summary .metric { border-right: 1px solid #eceff1; }
-        .fill-summary .metric:last-child { border-right: 0; }
-        .subtotal-preview { background: #f8f9fa; }
+        .history-table-card {
+            --history-bg: var(--scm-surface, #111416);
+            --history-head-bg: var(--scm-surface-strong, #181b1e);
+            --history-border: var(--scm-border, #2b2f33);
+            --history-text: var(--scm-text, #f7f7f7);
+            --history-muted: var(--scm-muted, #a8adb5);
+            border: 1px solid var(--history-border);
+            border-radius: 10px;
+            background: var(--history-bg);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+        }
+        html.scm-theme-light .history-table-card {
+            --history-bg: #ffffff;
+            --history-head-bg: #f9fafb;
+            --history-border: #e5e7eb;
+            --history-text: #1f2937;
+            --history-muted: #6b7280;
+        }
+        html.scm-theme-light .scm-dashboard .panel-card.history-table-card {
+            border-color: #e5e7eb !important;
+            background: #ffffff !important;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .06) !important;
+        }
+        html.scm-theme-light .scm-dashboard .history-table.table-clean thead th {
+            color: #6b7280 !important;
+            background: #f9fafb !important;
+            border-color: #e5e7eb !important;
+        }
+        .history-table-card .table-responsive { scrollbar-color: #cfd4da transparent; }
+        .scm-dashboard .history-table {
+            min-width: 1120px;
+            margin: 0;
+            --bs-table-bg: var(--history-bg) !important;
+            --bs-table-color: var(--history-text) !important;
+            --bs-table-border-color: var(--history-border) !important;
+        }
+        .scm-dashboard .history-table.table-clean thead th {
+            padding: 14px 18px;
+            color: var(--history-muted) !important;
+            background: var(--history-head-bg) !important;
+            border-color: var(--history-border) !important;
+            font-size: .72rem;
+            font-weight: 600;
+            letter-spacing: .035em;
+            vertical-align: middle;
+        }
+        .scm-dashboard .history-table tbody tr { height: 152px; }
+        .scm-dashboard .history-table tbody td {
+            padding: 16px 18px;
+            color: var(--history-text);
+            background: var(--history-bg);
+            border-color: var(--history-border);
+            line-height: 1.5;
+            vertical-align: middle;
+            transition: background-color .16s ease;
+        }
+        .scm-dashboard .history-table tbody tr:hover > td { background: rgba(234, 91, 26, .045); }
+        .scm-dashboard .history-table th:nth-child(1), .scm-dashboard .history-table td:nth-child(1) { min-width: 180px; }
+        .scm-dashboard .history-table th:nth-child(2), .scm-dashboard .history-table td:nth-child(2) { min-width: 250px; }
+        .scm-dashboard .history-table th:nth-child(3), .scm-dashboard .history-table td:nth-child(3) { width: 160px; text-align: center; }
+        .scm-dashboard .history-table th:nth-child(4), .scm-dashboard .history-table td:nth-child(4) { min-width: 320px; }
+        .scm-dashboard .history-table th:nth-child(5), .scm-dashboard .history-table td:nth-child(5) { width: 180px; text-align: center; }
+        .scm-dashboard .history-table th:nth-child(6), .scm-dashboard .history-table td:nth-child(6) { min-width: 145px; white-space: nowrap; }
+        .scm-dashboard .history-table th:nth-child(7), .scm-dashboard .history-table td:nth-child(7) { min-width: 120px; white-space: nowrap; }
+        .scm-dashboard .history-table td:nth-child(2) > .fw-semibold,
+        .scm-dashboard .history-table td:nth-child(4) > .text-muted {
+            display: -webkit-box;
+            overflow: hidden;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+        .scm-dashboard .history-table td:nth-child(4) > .small:not(.text-muted) {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .scm-dashboard .history-table td:nth-child(4) > .small:nth-of-type(n + 4) { display: none; }
+        .scm-dashboard .history-table .jenis-badge,
+        .scm-dashboard .history-table .status-pill {
+            min-height: 32px;
+            padding: 6px 12px;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 8px;
+            color: #374151 !important;
+            background: #ffffff !important;
+            box-shadow: none;
+            font-size: .75rem;
+            font-weight: 600;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        .scm-dashboard .history-table .jenis-badge { min-width: 132px; }
+        .scm-dashboard .history-table .status-pill { min-width: 152px; }
+        .history-pagination-footer {
+            display: grid;
+            grid-template-columns: minmax(0, auto) 1fr minmax(0, auto);
+            align-items: center;
+            gap: 1rem;
+            min-height: 64px;
+            padding: .75rem 1rem;
+            border-top: 1px solid var(--history-border);
+            color: var(--history-muted);
+            background: var(--history-head-bg);
+        }
+        .history-pagination-summary { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; }
+        .history-pagination-summary, .history-pagination-status { font-size: .72rem; white-space: nowrap; }
+        .history-pagination-summary .form-select { width: 92px; min-height: 34px; padding-top: .3rem; padding-bottom: .3rem; font-size: .72rem; }
+        .history-pagination-status { text-align: center; }
+        .history-table-pagination { margin: 0; }
+        .history-table-pagination .page-link {
+            min-width: 34px;
+            min-height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: .35rem .58rem;
+            border-color: var(--history-border) !important;
+            color: var(--history-text) !important;
+            background: var(--history-bg) !important;
+            font-size: .72rem;
+            line-height: 1;
+            transition: color .16s ease, background-color .16s ease, border-color .16s ease;
+        }
+        .history-table-pagination .page-link:hover { color: var(--scm-orange, #ff7900) !important; background: var(--history-head-bg) !important; }
+        .history-table-pagination .page-item.active .page-link {
+            color: #ffffff !important;
+            background: var(--scm-orange, #ff7900) !important;
+            border-color: var(--scm-orange, #ff7900) !important;
+        }
+        .history-table-pagination .page-item.disabled .page-link { color: var(--history-muted) !important; background: var(--history-head-bg) !important; opacity: .62; }
+        html.scm-theme-light .history-table-pagination .page-link { color: #374151 !important; background: #ffffff !important; border-color: #e1e5e8 !important; }
+        html.scm-theme-light .history-table-pagination .page-link:hover { color: #d65b18 !important; background: #f8f9fa !important; }
+        html.scm-theme-light .history-table-pagination .page-item.active .page-link { color: #ffffff !important; background: #ea5b1a !important; border-color: #ea5b1a !important; }
+        html.scm-theme-light .history-table-pagination .page-item.disabled .page-link { color: #8b949e !important; background: #f8f9fa !important; }
+        .kaprodi-request-form {
+            --request-surface: var(--scm-surface, #121415);
+            --request-surface-soft: var(--scm-surface-strong, #181a1b);
+            --request-border: var(--scm-border, #292d30);
+            --request-text: var(--scm-text, #f4f5f6);
+            --request-muted: var(--scm-muted, #9da3aa);
+            --request-hover: rgba(255, 121, 0, .055);
+            color: var(--request-text);
+        }
+        html.scm-theme-light .kaprodi-request-form {
+            --request-surface: #ffffff;
+            --request-surface-soft: #f8f9fa;
+            --request-border: #e1e5e8;
+            --request-text: #22282d;
+            --request-muted: #68727b;
+            --request-hover: rgba(234, 91, 26, .045);
+        }
+        .request-card {
+            overflow: hidden;
+            border: 1px solid var(--request-border);
+            border-radius: 12px;
+            background: var(--request-surface);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, .08);
+            transition: border-color .18s ease, box-shadow .18s ease;
+        }
+        html.scm-theme-light .request-card { box-shadow: 0 8px 22px rgba(36, 43, 48, .045); }
+        .request-card:hover { border-color: color-mix(in srgb, var(--request-border) 65%, var(--scm-orange, #ff7900)); }
+        .request-card-heading { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; }
+        .request-card-icon {
+            width: 38px;
+            height: 38px;
+            flex: 0 0 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 121, 0, .28);
+            border-radius: 9px;
+            color: var(--scm-orange, #ff7900);
+            background: rgba(255, 121, 0, .08);
+        }
+        .request-card-heading h2, .request-items-header h2 { margin: 0; font-size: 1rem; font-weight: 700; }
+        .request-card-heading p, .request-items-header p { margin: .2rem 0 0; color: var(--request-muted); font-size: .75rem; line-height: 1.5; }
+        .request-info-card { padding: 1.35rem; }
+        .request-info-card .form-label { margin-bottom: .48rem; font-size: .79rem; }
+        .request-info-card .form-control, .request-info-card .form-select { min-height: 44px; }
+        .request-info-card textarea.form-control { min-height: 112px; resize: vertical; }
+        .request-items-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.25rem 1.35rem;
+            border-bottom: 1px solid var(--request-border);
+        }
+        .request-row-controls { display: flex; align-items: center; justify-content: flex-end; gap: .65rem; }
+        .bulk-row-control { width: 244px; flex: 0 0 244px; }
+        .bulk-row-control .input-group-text, .bulk-row-control .form-control, .bulk-row-control .btn { min-height: 40px; }
+        .bulk-row-control .form-control { max-width: 64px; text-align: center; }
+        .request-row-controls > .btn { min-height: 40px; white-space: nowrap; }
+        .request-items-body { padding: 1.2rem 1.35rem 1.35rem; }
+        .request-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+            gap: .7rem;
+            margin-bottom: 1rem;
+        }
+        .request-stat-card {
+            min-width: 0;
+            min-height: 86px;
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            padding: .75rem;
+            border: 1px solid var(--request-border);
+            border-radius: 9px;
+            background: var(--request-surface-soft);
+            transition: transform .18s ease, border-color .18s ease, background-color .18s ease;
+        }
+        .request-stat-card:hover { transform: translateY(-2px); border-color: rgba(255, 121, 0, .42); }
+        .request-stat-card.is-accent { border-color: rgba(255, 121, 0, .32); background: rgba(255, 121, 0, .065); }
+        .request-stat-icon {
+            width: 31px;
+            height: 31px;
+            flex: 0 0 31px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--request-border);
+            border-radius: 8px;
+            color: var(--request-muted);
+            background: var(--request-surface);
+        }
+        .request-stat-card.is-accent .request-stat-icon { color: var(--scm-orange, #ff7900); border-color: rgba(255, 121, 0, .3); }
+        .request-stat-label { overflow: hidden; color: var(--request-muted); font-size: .67rem; line-height: 1.25; white-space: nowrap; text-overflow: ellipsis; }
+        .request-stat-value { margin-top: .24rem; color: var(--request-text); font-size: .9rem; font-weight: 700; line-height: 1.2; white-space: nowrap; }
+        .request-stat-card.is-accent .request-stat-value { color: var(--scm-orange, #ff7900); }
+        .need-table-shell { overflow: hidden; border: 1px solid var(--request-border); border-radius: 10px; background: var(--request-surface); }
+        .need-table-scroll { max-height: min(620px, 62vh); overflow: auto; scrollbar-color: #8a9197 transparent; }
+        .need-table-footer {
+            display: grid;
+            grid-template-columns: minmax(0, auto) 1fr minmax(0, auto);
+            align-items: center;
+            gap: 1rem;
+            min-height: 64px;
+            padding: .75rem 1rem;
+            border-top: 1px solid var(--request-border);
+            background: var(--request-surface-soft);
+        }
+        .need-page-size { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; color: var(--request-muted); font-size: .72rem; }
+        .need-page-size .form-select { width: 92px; min-height: 34px; padding-top: .3rem; padding-bottom: .3rem; font-size: .72rem; }
+        .need-pagination-status { color: var(--request-muted); font-size: .72rem; text-align: center; white-space: nowrap; }
+        .need-table-pagination { margin: 0; }
+        .need-table-pagination .page-link {
+            min-width: 34px;
+            min-height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: .35rem .58rem;
+            border-color: var(--request-border) !important;
+            color: var(--request-text) !important;
+            background: var(--request-surface) !important;
+            font-size: .72rem;
+            line-height: 1;
+            transition: color .16s ease, background-color .16s ease, border-color .16s ease;
+        }
+        .need-table-pagination .page-link:hover { color: var(--scm-orange, #ff7900) !important; background: var(--request-surface-soft) !important; }
+        .need-table-pagination .page-item.active .page-link {
+            color: #ffffff !important;
+            background: var(--scm-orange, #ff7900) !important;
+            border-color: var(--scm-orange, #ff7900) !important;
+        }
+        .need-table-pagination .page-item.disabled .page-link { color: var(--request-muted) !important; background: var(--request-surface-soft) !important; opacity: .62; }
+        .need-table-pagination .page-item.is-ellipsis .page-link { cursor: default; color: var(--request-muted) !important; }
+        html.scm-theme-light .need-table-pagination .page-link { color: #374151 !important; background: #ffffff !important; border-color: #e1e5e8 !important; }
+        html.scm-theme-light .need-table-pagination .page-link:hover { color: #d65b18 !important; background: #f8f9fa !important; }
+        html.scm-theme-light .need-table-pagination .page-item.active .page-link { color: #ffffff !important; background: #ea5b1a !important; border-color: #ea5b1a !important; }
+        html.scm-theme-light .need-table-pagination .page-item.disabled .page-link { color: #8b949e !important; background: #f8f9fa !important; }
+        .kaprodi-request-form .need-row.need-page-enter { animation: needRowReveal .16s ease both; }
+        @keyframes needRowReveal { from { opacity: .45; transform: translate3d(0, 3px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+        .need-table-head,
+        .kaprodi-request-form .need-row > .row {
+            display: grid;
+            grid-template-columns: 48px minmax(240px, 1.6fr) 90px 105px 150px 150px minmax(190px, 1.2fr) 40px;
+            gap: .75rem;
+            align-items: center;
+            min-width: 1080px;
+        }
+        .kaprodi-request-form:has(#jenisPengajuan option[value="Barang dan Jasa"]:checked) .need-table-head,
+        .kaprodi-request-form:has(#jenisPengajuan option[value="Barang dan Jasa"]:checked) .need-row > .row {
+            grid-template-columns: 48px 140px minmax(230px, 1.5fr) 90px 105px 150px 150px minmax(180px, 1.1fr) 40px;
+            min-width: 1230px;
+        }
+        .need-table-head {
+            position: sticky;
+            top: 0;
+            z-index: 4;
+            padding: .78rem 1rem;
+            color: var(--request-muted);
+            background: var(--request-surface-soft);
+            border-bottom: 1px solid var(--request-border);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, .04);
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: .035em;
+            text-transform: uppercase;
+        }
+        .need-table-head > span { display: flex; align-items: center; min-height: 22px; }
+        .need-table-head > span:first-child, .need-table-head > span:last-child { justify-content: center; }
+        .need-table-head > .item-type-heading, .item-type-wrap { display: none; }
+        .kaprodi-request-form:has(#jenisPengajuan option[value="Barang dan Jasa"]:checked) .item-type-heading { display: flex; }
+        .need-table-body { display: block; }
+        .scm-dashboard .kaprodi-request-form .need-row {
+            padding: 0 !important;
+            border: 0 !important;
+            border-bottom: 1px solid var(--request-border) !important;
+            border-radius: 0 !important;
+            color: var(--request-text) !important;
+            background: var(--request-surface) !important;
+            box-shadow: none !important;
+            transition: background-color .16s ease;
+        }
+        .scm-dashboard .kaprodi-request-form .need-row:last-child { border-bottom: 0 !important; }
+        .scm-dashboard .kaprodi-request-form .need-row:hover { background: var(--request-hover) !important; }
+        .kaprodi-request-form .need-row > .row { margin: 0; padding: .85rem 1rem; }
+        .kaprodi-request-form .need-row > .row > [class*="col-"] { width: auto; max-width: none; padding: 0; }
+        .kaprodi-request-form .need-row .form-label { display: none; }
+        .kaprodi-request-form .need-row .form-control, .kaprodi-request-form .need-row .form-select { min-height: 42px; font-size: .78rem; }
+        .kaprodi-request-form .need-row .row-number {
+            display: inline-block;
+            width: auto;
+            height: auto;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            color: var(--request-text);
+            background: transparent;
+            box-shadow: none;
+            font-size: .78rem;
+            font-weight: 600;
+            line-height: 1;
+            text-align: center;
+        }
+        .kaprodi-request-form .need-row > .row > :first-child { min-height: 42px; display: flex; align-items: center; justify-content: center; }
+        .kaprodi-request-form .remove-need {
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            justify-self: center;
+            align-self: center;
+            padding: 0;
+            border-radius: 8px;
+        }
+        .kaprodi-request-form .remove-need:disabled { opacity: .35; }
+        .kaprodi-request-form .subtotal-preview { background: var(--request-surface-soft) !important; box-shadow: none !important; }
+        .request-submit-bar {
+            position: sticky;
+            bottom: .75rem;
+            z-index: 9;
+            display: flex;
+            justify-content: flex-end;
+            padding: 1rem 0 .15rem;
+            pointer-events: none;
+        }
+        .request-submit-bar::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            background: linear-gradient(to bottom, transparent, var(--scm-bg, #0b0c0d) 72%);
+            pointer-events: none;
+        }
+        .request-submit-bar .btn { min-height: 46px; padding-inline: 1.35rem; box-shadow: 0 8px 20px rgba(234, 91, 26, .2); pointer-events: auto; }
         .nav-tabs .nav-link { color: #495057; font-weight: 600; }
         .nav-tabs .nav-link.active { color: #ea5b1a; border-bottom-color: #ea5b1a; }
         .notif-bell { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 38px; }
@@ -182,18 +564,74 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         html.scm-theme-light .scm-dashboard-kaprodi .kaprodi-quick-link { background: #f7f8f9; }
         html.scm-theme-light .scm-dashboard-kaprodi .kaprodi-quick-link:hover { color: #1c2024; background: rgba(234, 91, 26, .08); }
         html.scm-theme-light .scm-dashboard-kaprodi .kaprodi-activity-item { border-color: rgba(35, 42, 47, .1); }
-        @media (max-width: 1199.98px) { .kaprodi-stat-grid { grid-template-columns: repeat(4, minmax(145px, 1fr)); overflow-x: auto; padding-bottom: .3rem; } .kaprodi-stat-card { min-width: 145px; } }
-        @media (max-width: 991.98px) { .kaprodi-chart-grid, .kaprodi-bottom-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 1199.98px) {
+            .kaprodi-stat-grid { grid-template-columns: repeat(4, minmax(145px, 1fr)); overflow-x: auto; padding-bottom: .3rem; }
+            .kaprodi-stat-card { min-width: 145px; }
+            .request-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        }
+        @media (max-width: 991.98px) {
+            .kaprodi-chart-grid, .kaprodi-bottom-grid { grid-template-columns: 1fr; }
+            .request-items-header { align-items: flex-start; flex-direction: column; }
+            .request-row-controls { width: 100%; justify-content: flex-start; }
+        }
         @media (max-width: 767.98px) {
             .topbar-actions { width: 100%; }
             .topbar-actions { justify-content: flex-end; }
             .topbar-actions .btn { flex: 0 0 auto; }
             .topbar-actions .notif-bell { flex: 0 0 38px; }
             .summary-card { min-height: auto; }
-            .fill-summary { top: 126px; }
-            .fill-summary .metric { border-right: 0; border-bottom: 1px solid #eceff1; }
+            .history-pagination-footer { grid-template-columns: 1fr; justify-items: center; gap: .65rem; }
+            .history-pagination-footer nav { max-width: 100%; overflow-x: auto; padding-bottom: 2px; }
+            .request-info-card, .request-items-body { padding: 1rem; }
+            .request-items-header { padding: 1rem; }
+            .request-row-controls { flex-wrap: wrap; }
+            .bulk-row-control { width: min(100%, 244px); flex-basis: 244px; }
+            .request-stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+            .request-stat-card { min-height: 78px; padding: .65rem; }
+            .need-table-shell { overflow: visible; border: 0; background: transparent; }
+            .need-table-scroll { max-height: none; overflow: visible; }
+            .need-table-footer { grid-template-columns: 1fr; justify-items: center; gap: .65rem; margin-top: .75rem; border: 1px solid var(--request-border); border-radius: 10px; }
+            .need-page-size { justify-content: center; }
+            .need-table-footer nav { max-width: 100%; overflow-x: auto; padding-bottom: 2px; }
+            .need-table-head { display: none !important; }
+            .need-table-body { display: grid; gap: .75rem; }
+            .scm-dashboard .kaprodi-request-form .need-row {
+                border: 1px solid var(--request-border) !important;
+                border-radius: 10px !important;
+                overflow: hidden;
+            }
+            .kaprodi-request-form .need-row > .row,
+            .kaprodi-request-form:has(#jenisPengajuan option[value="Barang dan Jasa"]:checked) .need-row > .row {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: .85rem;
+                min-width: 0;
+                padding: 1rem;
+            }
+            .kaprodi-request-form .need-row > .row > [class*="col-"] { min-width: 0; }
+            .kaprodi-request-form .need-row .form-label { display: block; min-height: 18px; margin-bottom: .4rem; color: var(--request-muted); font-size: .7rem; }
+            .kaprodi-request-form .need-row > .row > :first-child,
+            .kaprodi-request-form .item-type-wrap,
+            .kaprodi-request-form .item-name-col,
+            .kaprodi-request-form .need-row > .row > :nth-last-child(2) { grid-column: 1 / -1; }
+            .kaprodi-request-form .need-row > .row > :first-child { justify-content: center; }
+            .kaprodi-request-form .need-row > .row > :last-child { grid-column: 2; justify-self: end; }
+            .kaprodi-request-form .remove-need { justify-self: end; }
+            .request-submit-bar { bottom: .35rem; padding-top: .75rem; }
         }
-        @media (max-width: 575.98px) { .kaprodi-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-x: visible; } .kaprodi-stat-card { min-width: 0; min-height: 118px; padding: .8rem; } .kaprodi-stat-icon { margin-bottom: .55rem; } .kaprodi-quick-grid { grid-template-columns: 1fr; } .kaprodi-chart-panel, .kaprodi-activity-panel, .kaprodi-quick-panel { padding: .8rem; } }
+        @media (max-width: 575.98px) {
+            .kaprodi-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-x: visible; }
+            .kaprodi-stat-card { min-width: 0; min-height: 118px; padding: .8rem; }
+            .kaprodi-stat-icon { margin-bottom: .55rem; }
+            .kaprodi-quick-grid { grid-template-columns: 1fr; }
+            .kaprodi-chart-panel, .kaprodi-activity-panel, .kaprodi-quick-panel { padding: .8rem; }
+            .request-row-controls, .request-row-controls > .btn, .bulk-row-control { width: 100%; flex-basis: 100%; }
+            .request-row-controls > .btn { justify-content: center; }
+            .request-stat-card { align-items: flex-start; flex-direction: column; gap: .45rem; min-height: 100px; }
+            .request-stat-label { white-space: normal; }
+            .history-table-pagination .page-link { min-width: 32px; min-height: 32px; padding-inline: .48rem; }
+            .need-table-pagination .page-link { min-width: 32px; min-height: 32px; padding-inline: .48rem; }
+            .request-submit-bar .btn { width: 100%; }
+        }
     </style>
     <link rel="stylesheet" href="<?= base_url('assets/dashboard-theme.css') ?>">
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
@@ -338,8 +776,8 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                             <a class="kaprodi-quick-link" href="<?= base_url('index.php/kaprodi/dashboard?tab=ajukan') ?>"><i class="bi bi-plus-square"></i><span>Ajukan Kebutuhan</span></a>
                             <a class="kaprodi-quick-link" href="<?= base_url('index.php/kaprodi/dashboard?tab=riwayat') ?>"><i class="bi bi-clock-history"></i><span>Riwayat Pengajuan</span></a>
                             <a class="kaprodi-quick-link" href="#kaprodiNotificationButton" data-kaprodi-notifications><i class="bi bi-bell"></i><span>Lihat Notifikasi</span></a>
-                            <a class="kaprodi-quick-link" href="<?= base_url('index.php/kaprodi/pengajuan/export_pengajuan?' . query_kaprodi($filters, 1, 'riwayat', $active_category)) ?>"><i class="bi bi-file-earmark-spreadsheet"></i><span>Preview Laporan</span></a>
-                            <a class="kaprodi-quick-link" href="<?= base_url('index.php/kaprodi/pengajuan/export_pengajuan?' . query_kaprodi($filters, 1, 'riwayat', $active_category) . '&download=1') ?>"><i class="bi bi-download"></i><span>Export Excel</span></a>
+                            <a class="kaprodi-quick-link" href="<?= base_url('index.php/kaprodi/pengajuan/export_pengajuan?' . query_kaprodi($filters, 1, 'riwayat', $active_category, $per_page)) ?>"><i class="bi bi-file-earmark-spreadsheet"></i><span>Preview Laporan</span></a>
+                            <a class="kaprodi-quick-link" href="<?= base_url('index.php/kaprodi/pengajuan/export_pengajuan?' . query_kaprodi($filters, 1, 'riwayat', $active_category, $per_page) . '&download=1') ?>"><i class="bi bi-download"></i><span>Export Excel</span></a>
                         </div>
                     </article>
                 </div>
@@ -360,108 +798,166 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
         <div class="tab-content">
             <section class="tab-pane fade <?= $active_tab === 'ajukan' ? 'show active' : '' ?>" id="tab-ajukan">
-                <form action="<?= base_url('index.php/kaprodi/pengajuan/simpan') ?>" method="post" class="panel-card p-3 p-lg-4 mb-4">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Jenis Pengajuan</label>
-                            <select name="jenis_pengajuan" id="jenisPengajuan" class="form-select" required>
-                                <option value="Barang">Barang</option>
-                                <option value="Jasa">Jasa</option>
-                                <option value="Barang dan Jasa">Barang dan Jasa</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Program Studi</label>
-                            <input type="text" name="nama_prodi" class="form-control" placeholder="Contoh: S1 Desain Komunikasi Visual" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold">Nama Pengajuan</label>
-                            <input type="text" name="nama_pengajuan" class="form-control" placeholder="Contoh: Kebutuhan studio fotografi" required>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold">Keterangan Kebutuhan</label>
-                            <textarea name="kebutuhan_lab" class="form-control" rows="3" placeholder="Jelaskan alasan kebutuhan, prioritas, atau ruangan terkait."></textarea>
-                        </div>
-                    </div>
-
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mt-4 mb-3">
-                        <div>
-                            <h2 class="h6 fw-bold mb-1">Daftar Kebutuhan</h2>
-                            <div class="small text-muted">Harga satuan adalah estimasi awal. Vendor dan negosiasi tetap diproses oleh Kaur Laboratorium.</div>
-                        </div>
-                        <div class="d-flex flex-column flex-sm-row gap-2">
-                            <div class="input-group input-group-sm" style="width: min(100%, 240px);">
-                                <span class="input-group-text">Jumlah baris</span>
-                                <input type="number" id="bulkRows" class="form-control" min="1" max="100" value="1">
-                                <button type="button" class="btn btn-outline-dark" id="generateRows">Buat</button>
-                            </div>
-                            <button type="button" class="btn btn-outline-dark rounded-pill px-3" id="addNeed"><i class="bi bi-plus-lg me-1"></i> Tambah Baris</button>
-                        </div>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2 mb-3">
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" id="removeEmptyRows"><i class="bi bi-filter-circle me-1"></i> Hapus Baris Kosong</button>
-                        <button type="button" class="btn btn-sm btn-outline-danger rounded-pill" id="removeAllRows"><i class="bi bi-trash3 me-1"></i> Hapus Semua</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" id="resetForm"><i class="bi bi-arrow-counterclockwise me-1"></i> Reset Form</button>
-                    </div>
-
-                    <div class="fill-summary rounded-3 p-2 p-lg-3 mb-3">
-                        <div class="row g-0 text-center text-md-start">
-                            <div class="col-6 col-lg-2 metric p-2"><div class="small text-muted">Total Baris</div><div class="fw-bold" id="totalRows">0</div></div>
-                            <div class="col-6 col-lg-2 metric p-2"><div class="small text-muted">Sudah Terisi</div><div class="fw-bold text-success" id="filledRows">0</div></div>
-                            <div class="col-6 col-lg-2 metric p-2"><div class="small text-muted">Masih Kosong</div><div class="fw-bold text-warning" id="emptyRows">0</div></div>
-                            <div class="col-6 col-lg-2 metric p-2"><div class="small text-muted">Sebelum Pajak</div><div class="fw-bold" id="totalBeforeTax">Rp 0</div></div>
-                            <div class="col-6 col-lg-2 metric p-2"><div class="small text-muted">Pajak 20%</div><div class="fw-bold" id="taxValue">Rp 0</div></div>
-                            <div class="col-6 col-lg-2 p-2"><div class="small text-muted">Setelah Pajak</div><div class="fw-bold text-primary" id="totalAfterTax">Rp 0</div></div>
-                        </div>
-                    </div>
-
-                    <div id="needList" class="vstack gap-2">
-                        <div class="need-row">
-                        <div class="row g-2 align-items-end">
-                                <div class="col-2 col-lg-1 text-center">
-                                    <label class="form-label small fw-semibold d-block">No.</label>
-                                    <span class="row-number">1</span>
-                                </div>
-                                <div class="col-10 col-lg-2 item-type-wrap">
-                                    <label class="form-label small fw-semibold">Jenis Item</label>
-                                    <select name="jenis_item[]" class="form-select need-type">
-                                        <option value="Barang">Barang</option>
-                                        <option value="Jasa">Jasa</option>
-                                    </select>
-                                </div>
-                                <div class="col-12 col-lg-3 item-name-col">
-                                    <label class="form-label small fw-semibold need-name-label">Nama Barang</label>
-                                    <input type="text" name="uraian_barang[]" class="form-control need-name" placeholder="Contoh: Kamera mirrorless">
-                                </div>
-                                <div class="col-6 col-lg-1">
-                                    <label class="form-label small fw-semibold">Volume</label>
-                                    <input type="number" name="vol[]" class="form-control need-volume" min="1" step="1" value="1">
-                                </div>
-                                <div class="col-6 col-lg-1">
-                                    <label class="form-label small fw-semibold">Satuan</label>
-                                    <input type="text" name="satuan[]" class="form-control" value="unit">
-                                </div>
-                                <div class="col-md-6 col-lg-2">
-                                    <label class="form-label small fw-semibold">Harga Satuan</label>
-                                    <input type="text" name="harga_penawaran_sat[]" class="form-control money-input need-price" placeholder="Rp 0">
-                                </div>
-                                <div class="col-md-6 col-lg-2">
-                                    <label class="form-label small fw-semibold">Subtotal</label>
-                                    <input type="text" class="form-control subtotal-preview" value="Rp 0" readonly>
-                                </div>
-                                <div class="col-lg-2">
-                                    <label class="form-label small fw-semibold">Link Referensi</label>
-                                    <input type="url" name="link_penawaran[]" class="form-control" placeholder="https://...">
-                                </div>
-                                <div class="col-lg-1 d-grid">
-                                    <button type="button" class="btn btn-outline-danger remove-need" disabled><i class="bi bi-trash"></i></button>
-                                </div>
+                <form action="<?= base_url('index.php/kaprodi/pengajuan/simpan') ?>" method="post" class="kaprodi-request-form mb-4">
+                    <section class="request-card request-info-card mb-4" aria-labelledby="requestInfoTitle">
+                        <div class="request-card-heading">
+                            <span class="request-card-icon"><i class="bi bi-file-earmark-text"></i></span>
+                            <div>
+                                <h2 id="requestInfoTitle">Informasi Pengajuan</h2>
+                                <p>Lengkapi identitas dan alasan kebutuhan sebelum menambahkan daftar item.</p>
                             </div>
                         </div>
-                    </div>
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <label class="form-label fw-semibold">Jenis Pengajuan</label>
+                                <select name="jenis_pengajuan" id="jenisPengajuan" class="form-select" required>
+                                    <option value="Barang">Barang</option>
+                                    <option value="Jasa">Jasa</option>
+                                    <option value="Barang dan Jasa">Barang dan Jasa</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label fw-semibold">Program Studi</label>
+                                <input type="text" name="nama_prodi" class="form-control" placeholder="Contoh: S1 Desain Komunikasi Visual" required>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="form-label fw-semibold">Nama Pengajuan</label>
+                                <input type="text" name="nama_pengajuan" class="form-control" placeholder="Contoh: Kebutuhan studio fotografi" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold">Keterangan Kebutuhan</label>
+                                <textarea name="kebutuhan_lab" class="form-control" rows="3" placeholder="Jelaskan alasan kebutuhan, prioritas, atau ruangan terkait."></textarea>
+                            </div>
+                        </div>
+                    </section>
 
-                    <div class="d-flex justify-content-end mt-4">
-                        <button class="btn btn-fik rounded-pill px-4 fw-semibold"><i class="bi bi-send me-1"></i> Kirim Pengajuan</button>
+                    <section class="request-card request-items-card" aria-labelledby="requestItemsTitle">
+                        <header class="request-items-header">
+                            <div>
+                                <h2 id="requestItemsTitle">Daftar Kebutuhan</h2>
+                                <p>Harga satuan adalah estimasi awal. Vendor dan negosiasi tetap diproses oleh Kaur Laboratorium.</p>
+                            </div>
+                            <div class="request-row-controls">
+                                <div class="input-group input-group-sm bulk-row-control">
+                                    <span class="input-group-text">Jumlah Baris</span>
+                                    <input type="number" id="bulkRows" class="form-control" min="1" max="100" value="1">
+                                    <button type="button" class="btn btn-outline-dark" id="generateRows">Buat</button>
+                                </div>
+                                <button type="button" class="btn btn-outline-dark rounded-pill px-3 d-inline-flex align-items-center" id="addNeed"><i class="bi bi-plus-lg me-1"></i> Tambah Baris</button>
+                                <button type="button" class="btn btn-outline-danger rounded-pill px-3 d-inline-flex align-items-center" id="removeAllRows"><i class="bi bi-trash3 me-1"></i> Hapus Semua</button>
+                            </div>
+                        </header>
+
+                        <div class="request-items-body">
+                            <div class="request-stats-grid" aria-label="Ringkasan pengisian">
+                                <div class="request-stat-card">
+                                    <span class="request-stat-icon"><i class="bi bi-list-ol"></i></span>
+                                    <div><div class="request-stat-label">Total Baris</div><div class="request-stat-value" id="totalRows">0</div></div>
+                                </div>
+                                <div class="request-stat-card">
+                                    <span class="request-stat-icon"><i class="bi bi-check2-circle"></i></span>
+                                    <div><div class="request-stat-label">Sudah Terisi</div><div class="request-stat-value" id="filledRows">0</div></div>
+                                </div>
+                                <div class="request-stat-card">
+                                    <span class="request-stat-icon"><i class="bi bi-circle"></i></span>
+                                    <div><div class="request-stat-label">Masih Kosong</div><div class="request-stat-value" id="emptyRows">0</div></div>
+                                </div>
+                                <div class="request-stat-card">
+                                    <span class="request-stat-icon"><i class="bi bi-calculator"></i></span>
+                                    <div><div class="request-stat-label">Sebelum Pajak</div><div class="request-stat-value" id="totalBeforeTax">Rp 0</div></div>
+                                </div>
+                                <div class="request-stat-card">
+                                    <span class="request-stat-icon"><i class="bi bi-percent"></i></span>
+                                    <div><div class="request-stat-label">Pajak 20%</div><div class="request-stat-value" id="taxValue">Rp 0</div></div>
+                                </div>
+                                <div class="request-stat-card is-accent">
+                                    <span class="request-stat-icon"><i class="bi bi-wallet2"></i></span>
+                                    <div><div class="request-stat-label">Setelah Pajak</div><div class="request-stat-value" id="totalAfterTax">Rp 0</div></div>
+                                </div>
+                            </div>
+
+                            <button type="button" id="removeEmptyRows" hidden aria-hidden="true" tabindex="-1"></button>
+                            <button type="button" id="resetForm" hidden aria-hidden="true" tabindex="-1"></button>
+
+                            <div class="need-table-shell">
+                                <div class="need-table-scroll">
+                                    <div class="need-table-head" aria-hidden="true">
+                                        <span>No.</span>
+                                        <span class="item-type-heading">Jenis Item</span>
+                                        <span>Nama Item / Pekerjaan</span>
+                                        <span>Volume</span>
+                                        <span>Satuan</span>
+                                        <span>Harga Satuan</span>
+                                        <span>Subtotal</span>
+                                        <span>Link Referensi</span>
+                                        <span>Aksi</span>
+                                    </div>
+                                    <div id="needList" class="need-table-body">
+                                        <div class="need-row">
+                                            <div class="row g-2 align-items-end">
+                                                <div class="col-2 col-lg-1 text-center">
+                                                    <span class="row-number">1</span>
+                                                </div>
+                                                <div class="col-10 col-lg-2 item-type-wrap">
+                                                    <label class="form-label small fw-semibold">Jenis Item</label>
+                                                    <select name="jenis_item[]" class="form-select need-type">
+                                                        <option value="Barang">Barang</option>
+                                                        <option value="Jasa">Jasa</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-12 col-lg-3 item-name-col">
+                                                    <label class="form-label small fw-semibold need-name-label">Nama Barang</label>
+                                                    <input type="text" name="uraian_barang[]" class="form-control need-name" placeholder="Contoh: Kamera mirrorless">
+                                                </div>
+                                                <div class="col-6 col-lg-1">
+                                                    <label class="form-label small fw-semibold">Volume</label>
+                                                    <input type="number" name="vol[]" class="form-control need-volume" min="1" step="1" value="1">
+                                                </div>
+                                                <div class="col-6 col-lg-1">
+                                                    <label class="form-label small fw-semibold">Satuan</label>
+                                                    <input type="text" name="satuan[]" class="form-control" value="unit">
+                                                </div>
+                                                <div class="col-md-6 col-lg-2">
+                                                    <label class="form-label small fw-semibold">Harga Satuan</label>
+                                                    <input type="text" name="harga_penawaran_sat[]" class="form-control money-input need-price" placeholder="Rp 0">
+                                                </div>
+                                                <div class="col-md-6 col-lg-2">
+                                                    <label class="form-label small fw-semibold">Subtotal</label>
+                                                    <input type="text" class="form-control subtotal-preview" value="Rp 0" readonly>
+                                                </div>
+                                                <div class="col-lg-2">
+                                                    <label class="form-label small fw-semibold">Link Referensi</label>
+                                                    <input type="url" name="link_penawaran[]" class="form-control" placeholder="https://...">
+                                                </div>
+                                                <div class="col-lg-1 d-grid">
+                                                    <button type="button" class="btn btn-outline-danger remove-need" disabled aria-label="Hapus baris"><i class="bi bi-trash"></i></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <footer class="need-table-footer" aria-label="Navigasi daftar kebutuhan">
+                                    <div class="need-page-size">
+                                        <label for="needPageSize">Tampilkan:</label>
+                                        <select id="needPageSize" class="form-select form-select-sm" aria-label="Jumlah baris per halaman">
+                                            <option value="10" selected>10</option>
+                                            <option value="25">25</option>
+                                            <option value="50">50</option>
+                                            <option value="all">Semua</option>
+                                        </select>
+                                        <span id="needPaginationTotal">Total item: 0</span>
+                                    </div>
+                                    <div class="need-pagination-status" id="needPaginationStatus" aria-live="polite">Halaman: 1 dari 1</div>
+                                    <nav aria-label="Pagination daftar kebutuhan">
+                                        <ul class="pagination pagination-sm need-table-pagination" id="needPagination"></ul>
+                                    </nav>
+                                </footer>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div class="request-submit-bar">
+                        <button class="btn btn-fik rounded-pill fw-semibold"><i class="bi bi-send me-1"></i> Kirim Pengajuan</button>
                     </div>
                 </form>
             </section>
@@ -472,7 +968,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         <h2 class="h5 fw-bold mb-1">Riwayat Pengajuan</h2>
                         <div class="small text-muted">Export mengikuti filter tanggal, jenis, status, dan kata kunci.</div>
                     </div>
-                    <a href="<?= base_url('index.php/kaprodi/pengajuan/export_pengajuan?' . query_kaprodi($filters, 1, 'riwayat', $active_category)) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3 align-self-start"><i class="bi bi-file-earmark-excel me-1"></i> Preview Excel</a>
+                    <a href="<?= base_url('index.php/kaprodi/pengajuan/export_pengajuan?' . query_kaprodi($filters, 1, 'riwayat', $active_category, $per_page)) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3 align-self-start"><i class="bi bi-file-earmark-excel me-1"></i> Preview Excel</a>
                 </div>
                 <div class="d-flex flex-wrap gap-2 mb-3">
                     <?php
@@ -483,7 +979,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     ];
                     foreach ($category_tabs as $category_key => $category_label):
                     ?>
-                        <a class="btn btn-sm rounded-pill <?= $active_category === $category_key ? 'btn-fik' : 'btn-outline-secondary' ?>" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, 1, 'riwayat', $category_key)) ?>">
+                        <a class="btn btn-sm rounded-pill <?= $active_category === $category_key ? 'btn-fik' : 'btn-outline-secondary' ?>" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, 1, 'riwayat', $category_key, $per_page)) ?>">
                             <?= html_escape($category_label) ?>
                         </a>
                     <?php endforeach; ?>
@@ -492,6 +988,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="row g-2 align-items-end">
                         <input type="hidden" name="tab" value="riwayat">
                         <input type="hidden" name="kategori" value="<?= html_escape($active_category) ?>">
+                        <input type="hidden" name="per_page" value="<?= html_escape((string) $per_page) ?>">
                         <div class="col-md-3">
                             <label class="form-label small fw-semibold">Kata Kunci</label>
                             <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, kebutuhan">
@@ -527,9 +1024,9 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     </form>
                 </div>
 
-                <div class="panel-card overflow-hidden">
+                <div class="panel-card overflow-hidden history-table-card">
                     <div class="table-responsive">
-                        <table class="table table-clean align-middle mb-0">
+                        <table class="table table-clean align-middle mb-0 history-table">
                             <thead>
                                 <tr>
                                     <th>Kode</th>
@@ -551,7 +1048,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                             <div class="fw-semibold"><?= html_escape($p->nama_pengajuan) ?></div>
                                             <div class="small text-muted"><?= html_escape($p->nama_prodi) ?></div>
                                         </td>
-                                        <td><span class="badge text-bg-light border jenis-badge"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
+                                        <td><span class="jenis-badge"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
                                         <td style="min-width: 300px;">
                                             <div class="small text-muted mb-1"><?= html_escape($p->kebutuhan_lab ?: '-') ?></div>
                                             <?php foreach (($p->items ?? []) as $item): ?>
@@ -567,15 +1064,25 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                             </tbody>
                         </table>
                     </div>
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 p-3 border-top">
-                        <div class="small text-muted">Menampilkan <?= count($pengajuan ?? []) ?> dari <?= (int) $total_rows ?> data</div>
+                    <div class="history-pagination-footer">
+                        <div class="history-pagination-summary">
+                            <label for="historyPageSize">Tampilkan:</label>
+                            <select id="historyPageSize" class="form-select form-select-sm" aria-label="Jumlah riwayat per halaman">
+                                <option value="10" <?= (string) $per_page === '10' ? 'selected' : '' ?>>10</option>
+                                <option value="25" <?= (string) $per_page === '25' ? 'selected' : '' ?>>25</option>
+                                <option value="50" <?= (string) $per_page === '50' ? 'selected' : '' ?>>50</option>
+                                <option value="all" <?= (string) $per_page === 'all' ? 'selected' : '' ?>>Semua</option>
+                            </select>
+                            <span>Total item: <?= (int) $total_rows ?></span>
+                        </div>
+                        <div class="history-pagination-status">Halaman: <?= (int) $page ?> dari <?= (int) $total_pages ?></div>
                         <nav>
-                            <ul class="pagination pagination-sm mb-0">
-                                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, max(1, $page - 1), 'riwayat', $active_category)) ?>">Prev</a></li>
+                            <ul class="pagination pagination-sm history-table-pagination">
+                                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, max(1, $page - 1), 'riwayat', $active_category, $per_page)) ?>">Previous</a></li>
                                 <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                    <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, $i, 'riwayat', $active_category)) ?>"><?= $i ?></a></li>
+                                    <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, $i, 'riwayat', $active_category, $per_page)) ?>"><?= $i ?></a></li>
                                 <?php endfor; ?>
-                                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, min($total_pages, $page + 1), 'riwayat', $active_category)) ?>">Next</a></li>
+                                <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, min($total_pages, $page + 1), 'riwayat', $active_category, $per_page)) ?>">Next</a></li>
                             </ul>
                         </nav>
                     </div>
@@ -590,7 +1097,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         <div class="need-row">
             <div class="row g-2 align-items-end">
                 <div class="col-2 col-lg-1 text-center">
-                    <label class="form-label small fw-semibold d-block">No.</label>
                     <span class="row-number">1</span>
                 </div>
                 <div class="col-10 col-lg-2 item-type-wrap">
@@ -722,16 +1228,35 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         if (typeof window.kaprodiSyncChartTheme === 'function') window.kaprodiSyncChartTheme();
     </script>
     <script>
+        const historyPageSize = document.getElementById('historyPageSize');
+        if (historyPageSize) {
+            historyPageSize.addEventListener('change', () => {
+                const targetUrl = new URL(window.location.href);
+                targetUrl.searchParams.set('tab', 'riwayat');
+                targetUrl.searchParams.set('page', '1');
+                targetUrl.searchParams.set('per_page', historyPageSize.value);
+                window.location.assign(targetUrl.toString());
+            });
+        }
+
         const needList = document.getElementById('needList');
         const template = document.getElementById('needTemplate');
         const bulkRows = document.getElementById('bulkRows');
         const jenisPengajuan = document.getElementById('jenisPengajuan');
         const requestForm = document.querySelector('form[action*="kaprodi/pengajuan/simpan"]');
+        const needPageSize = document.getElementById('needPageSize');
+        const needPagination = document.getElementById('needPagination');
+        const needPaginationTotal = document.getElementById('needPaginationTotal');
+        const needPaginationStatus = document.getElementById('needPaginationStatus');
+        const needTableScroll = document.querySelector('.need-table-scroll');
         const rupiahFormatter = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 });
 
-        if (!needList || !template || !bulkRows || !jenisPengajuan || !requestForm) {
+        if (!needList || !template || !bulkRows || !jenisPengajuan || !requestForm || !needPageSize || !needPagination || !needPaginationTotal || !needPaginationStatus) {
             // Panel overview tidak memerlukan inisialisasi form pengajuan.
         } else {
+
+        let currentNeedPage = 1;
+        let needRowsPerPage = 10;
 
         function parseMoney(value) {
             return Number(String(value || '').replace(/[^0-9]/g, '')) || 0;
@@ -743,6 +1268,86 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
         function rows() {
             return Array.from(needList.querySelectorAll('.need-row'));
+        }
+
+        function paginationTokens(totalPages, currentPage) {
+            if (totalPages <= 7) {
+                return Array.from({ length: totalPages }, (_, index) => index + 1);
+            }
+            const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+            if (currentPage <= 3) {
+                pages.add(2);
+                pages.add(3);
+                pages.add(4);
+            }
+            if (currentPage >= totalPages - 2) {
+                pages.add(totalPages - 1);
+                pages.add(totalPages - 2);
+                pages.add(totalPages - 3);
+            }
+            const sorted = Array.from(pages).filter((page) => page >= 1 && page <= totalPages).sort((a, b) => a - b);
+            const tokens = [];
+            sorted.forEach((page, index) => {
+                if (index > 0 && page - sorted[index - 1] > 1) tokens.push('ellipsis');
+                tokens.push(page);
+            });
+            return tokens;
+        }
+
+        function appendPaginationItem(label, page, options = {}) {
+            const item = document.createElement('li');
+            item.className = 'page-item';
+            if (options.active) item.classList.add('active');
+            if (options.disabled) item.classList.add('disabled');
+            if (options.ellipsis) item.classList.add('is-ellipsis');
+
+            if (options.ellipsis) {
+                const span = document.createElement('span');
+                span.className = 'page-link';
+                span.textContent = label;
+                item.appendChild(span);
+            } else {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'page-link';
+                button.textContent = label;
+                button.dataset.page = String(page);
+                button.disabled = Boolean(options.disabled);
+                if (options.active) button.setAttribute('aria-current', 'page');
+                item.appendChild(button);
+            }
+            needPagination.appendChild(item);
+        }
+
+        function renderNeedPagination(animateRows = false) {
+            const currentRows = rows();
+            const pageSize = needRowsPerPage === Infinity ? Math.max(currentRows.length, 1) : needRowsPerPage;
+            const totalPages = Math.max(1, Math.ceil(currentRows.length / pageSize));
+            currentNeedPage = Math.min(Math.max(1, currentNeedPage), totalPages);
+            const firstIndex = (currentNeedPage - 1) * pageSize;
+            const lastIndex = firstIndex + pageSize;
+
+            currentRows.forEach((row, index) => {
+                const isVisible = index >= firstIndex && index < lastIndex;
+                row.hidden = !isVisible;
+                row.classList.remove('need-page-enter');
+                if (isVisible && animateRows) {
+                    window.requestAnimationFrame(() => row.classList.add('need-page-enter'));
+                }
+            });
+
+            needPaginationTotal.textContent = `Total item: ${currentRows.length}`;
+            needPaginationStatus.textContent = `Halaman: ${currentNeedPage} dari ${totalPages}`;
+            needPagination.innerHTML = '';
+            appendPaginationItem('Previous', currentNeedPage - 1, { disabled: currentNeedPage === 1 });
+            paginationTokens(totalPages, currentNeedPage).forEach((token) => {
+                if (token === 'ellipsis') {
+                    appendPaginationItem('...', currentNeedPage, { ellipsis: true });
+                    return;
+                }
+                appendPaginationItem(String(token), token, { active: token === currentNeedPage });
+            });
+            appendPaginationItem('Next', currentNeedPage + 1, { disabled: currentNeedPage === totalPages });
         }
 
         function rowHasData(row) {
@@ -785,16 +1390,22 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             });
         }
 
-        function refreshRows() {
+        function refreshRows(options = {}) {
             reindexRows();
             syncTypeFields();
             updateSummary();
+            if (options.showLastPage) {
+                const pageSize = needRowsPerPage === Infinity ? Math.max(rows().length, 1) : needRowsPerPage;
+                currentNeedPage = Math.max(1, Math.ceil(rows().length / pageSize));
+            }
+            renderNeedPagination(Boolean(options.animateRows));
         }
 
         function applyRowCount(target) {
             const requested = Number(target);
             const count = Number.isFinite(requested) ? Math.max(0, Math.min(100, Math.floor(requested))) : rows().length;
             const currentRows = rows();
+            const isGrowing = count > currentRows.length;
             if (count < currentRows.length) {
                 const removedRows = currentRows.slice(count);
                 if (removedRows.some(rowHasData)) {
@@ -808,18 +1419,33 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             } else {
                 for (let i = currentRows.length; i < count; i++) appendEmptyRow();
             }
-            refreshRows();
+            refreshRows({ showLastPage: isGrowing, animateRows: isGrowing });
         }
 
         document.getElementById('addNeed').addEventListener('click', () => {
             appendEmptyRow();
-            refreshRows();
+            refreshRows({ showLastPage: true, animateRows: true });
         });
         document.getElementById('generateRows').addEventListener('click', () => applyRowCount(bulkRows.value));
         bulkRows.addEventListener('change', () => applyRowCount(bulkRows.value));
         jenisPengajuan.addEventListener('change', () => {
             syncTypeFields();
             updateSummary();
+        });
+        needPageSize.addEventListener('change', () => {
+            const oldPageSize = needRowsPerPage === Infinity ? Math.max(rows().length, 1) : needRowsPerPage;
+            const firstVisibleIndex = (currentNeedPage - 1) * oldPageSize;
+            needRowsPerPage = needPageSize.value === 'all' ? Infinity : Math.max(1, Number(needPageSize.value) || 10);
+            const newPageSize = needRowsPerPage === Infinity ? Math.max(rows().length, 1) : needRowsPerPage;
+            currentNeedPage = Math.floor(firstVisibleIndex / newPageSize) + 1;
+            renderNeedPagination(true);
+        });
+        needPagination.addEventListener('click', (event) => {
+            const button = event.target.closest('button[data-page]');
+            if (!button || button.disabled) return;
+            currentNeedPage = Number(button.dataset.page) || 1;
+            renderNeedPagination(true);
+            if (needTableScroll) needTableScroll.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
         needList.addEventListener('click', (event) => {
@@ -855,6 +1481,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             if (!rows().length) return;
             if (!window.confirm('Hapus seluruh baris pengajuan? Data yang sudah diisi akan hilang.')) return;
             needList.innerHTML = '';
+            currentNeedPage = 1;
             refreshRows();
         });
         document.getElementById('resetForm').addEventListener('click', () => {
@@ -863,6 +1490,9 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             jenisPengajuan.value = 'Barang';
             needList.innerHTML = '';
             appendEmptyRow();
+            currentNeedPage = 1;
+            needRowsPerPage = 10;
+            needPageSize.value = '10';
             refreshRows();
         });
         requestForm.addEventListener('submit', (event) => {

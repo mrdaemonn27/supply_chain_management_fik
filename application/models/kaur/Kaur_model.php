@@ -635,8 +635,8 @@ class Kaur_model extends CI_Model {
     private function get_total_deal_summary($tahun = null) {
         $year_condition = $tahun ? ' AND YEAR(p.created_at) = ' . (int) $tahun : '';
         $sql = "SELECT
-                COALESCE(SUM(n.harga_awal * n.volume_awal), 0) AS total_awal,
-                COALESCE(SUM(n.harga_negosiasi * n.volume_negosiasi), 0) AS total_negosiasi
+                COALESCE(SUM(n.harga_awal * n.volume_awal), 0) * 1.20 AS total_awal,
+                COALESCE(SUM(n.harga_negosiasi * n.volume_negosiasi), 0) * 1.20 AS total_negosiasi
             FROM `{$this->negosiasiTable}` n
             INNER JOIN (
                 SELECT id_item, MAX(id_negosiasi) AS max_id
@@ -775,6 +775,36 @@ class Kaur_model extends CI_Model {
             WHERE n.status = 'Deal'";
 
         $params = [];
+        $sql = $this->append_laporan_negosiasi_filters($sql, $params, $filters);
+
+        $sql .= " ORDER BY n.created_at DESC";
+        if ($limit !== null) {
+            $sql .= " LIMIT " . (int) $offset . ", " . (int) $limit;
+        }
+
+        return $this->db->query($sql, $params)->result();
+    }
+
+    public function count_laporan_negosiasi_deal($filters = []) {
+        $sql = "SELECT COUNT(*) AS total
+            FROM `{$this->negosiasiTable}` n
+            INNER JOIN (
+                SELECT id_item, MAX(id_negosiasi) AS max_id
+                FROM `{$this->negosiasiTable}`
+                GROUP BY id_item
+            ) latest ON latest.max_id = n.id_negosiasi
+            INNER JOIN `{$this->kaprodiItemTable}` i ON i.id_item = n.id_item
+            INNER JOIN `{$this->kaprodiTable}` p ON p.id_pengajuan = n.id_pengajuan
+            WHERE n.status = 'Deal'";
+
+        $params = [];
+        $sql = $this->append_laporan_negosiasi_filters($sql, $params, $filters);
+        $row = $this->db->query($sql, $params)->row();
+
+        return $row ? (int) $row->total : 0;
+    }
+
+    private function append_laporan_negosiasi_filters($sql, &$params, $filters) {
         if (!empty($filters['vendor'])) {
             $sql .= " AND n.vendor LIKE ?";
             $params[] = '%' . $filters['vendor'] . '%';
@@ -803,12 +833,7 @@ class Kaur_model extends CI_Model {
             $params[] = $filters['tanggal_sampai'];
         }
 
-        $sql .= " ORDER BY n.created_at DESC";
-        if ($limit !== null) {
-            $sql .= " LIMIT " . (int) $offset . ", " . (int) $limit;
-        }
-
-        return $this->db->query($sql, $params)->result();
+        return $sql;
     }
 
     public function get_dashboard_years() {
@@ -1158,7 +1183,6 @@ class Kaur_model extends CI_Model {
 
     public function calculate_summary($items) {
         $subtotal_penawaran = 0;
-        $subtotal_markup = 0;
         $subtotal_negosiasi = 0;
 
         foreach ($items as $item) {
@@ -1168,16 +1192,16 @@ class Kaur_model extends CI_Model {
             $nego_harga = isset($item->hasil_negosiasi_sat) && $item->hasil_negosiasi_sat !== null ? (float) $item->hasil_negosiasi_sat : 0;
 
             $subtotal_penawaran += $vol * $harga;
-            $subtotal_markup += $vol * ($harga * 1.2);
             $subtotal_negosiasi += $nego_vol * $nego_harga;
         }
 
-        $ppn_penawaran = $subtotal_markup * 0.11;
-        $ppn_negosiasi = $subtotal_negosiasi * 0.11;
-        $total_penawaran = $subtotal_markup + $ppn_penawaran;
-        $total_negosiasi = $subtotal_negosiasi + $ppn_negosiasi;
         $pajak_20 = $subtotal_penawaran * 0.20;
         $total_setelah_pajak = $subtotal_penawaran + $pajak_20;
+        $subtotal_markup = $subtotal_penawaran;
+        $ppn_penawaran = $pajak_20;
+        $ppn_negosiasi = $subtotal_negosiasi * 0.20;
+        $total_penawaran = $total_setelah_pajak;
+        $total_negosiasi = $subtotal_negosiasi + $ppn_negosiasi;
 
         return [
             'subtotal_penawaran' => $subtotal_penawaran,

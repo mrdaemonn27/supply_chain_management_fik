@@ -48,8 +48,17 @@ class Dashboard extends CI_Controller {
         }
         $page = max(1, (int) $this->input->get('page'));
         $requested_tab = trim((string) $this->input->get('tab', true));
-        $limit = 8;
-        $offset = ($page - 1) * $limit;
+        $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
+        if ($requested_per_page === 'all') {
+            $per_page = 'all';
+            $limit = null;
+            $page = 1;
+        } else {
+            $requested_limit = (int) $requested_per_page;
+            $limit = in_array($requested_limit, [10, 25, 50], true) ? $requested_limit : 10;
+            $per_page = (string) $limit;
+        }
+        $offset = $limit === null ? 0 : (($page - 1) * $limit);
         $id_user = $this->session->userdata('id_user');
         $has_filter = (bool) array_filter($filters, static function ($value) {
             return $value !== '' && $value !== null;
@@ -60,6 +69,7 @@ class Dashboard extends CI_Controller {
         $data['active_category'] = $kategori;
         $data['page'] = $page;
         $data['limit'] = $limit;
+        $data['per_page'] = $per_page;
         $data['active_tab'] = in_array($requested_tab, ['panel', 'ajukan', 'riwayat'], true)
             ? $requested_tab
             : (($page > 1 || $has_filter) ? 'riwayat' : 'panel');
@@ -69,7 +79,12 @@ class Dashboard extends CI_Controller {
             $data['pengajuan'] = [];
         } else {
             $data['total_rows'] = $this->Kaprodi_model->count_filtered_by_user($id_user, $filters);
-            $data['total_pages'] = max(1, (int) ceil($data['total_rows'] / $limit));
+            $data['total_pages'] = $limit === null ? 1 : max(1, (int) ceil($data['total_rows'] / $limit));
+            if ($page > $data['total_pages']) {
+                $page = $data['total_pages'];
+                $offset = $limit === null ? 0 : (($page - 1) * $limit);
+                $data['page'] = $page;
+            }
             $data['pengajuan'] = $this->Kaprodi_model->get_filtered_by_user($id_user, $filters, $limit, $offset);
         }
         $data['status_options'] = $this->Kaprodi_model->get_status_options();

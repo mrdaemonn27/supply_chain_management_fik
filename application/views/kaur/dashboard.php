@@ -22,7 +22,7 @@ function status_class_kaur($status) {
     ];
     return $map[$status] ?? 'status-pengajuan';
 }
-function query_kaur($filters, $page) {
+function query_kaur($filters, $page, $per_page = null) {
     $params = [];
     foreach ((array) $filters as $key => $value) {
         if ($value !== '' && $value !== null) {
@@ -30,6 +30,9 @@ function query_kaur($filters, $page) {
         }
     }
     $params['page'] = $page;
+    if ($per_page !== null && $per_page !== '') {
+        $params['per_page'] = $per_page;
+    }
     return http_build_query($params);
 }
 function terbilang_kaur($number) {
@@ -132,6 +135,547 @@ function kaur_module_url($module) {
         .status-inventory, .status-selesai { background: rgba(32, 201, 151, .14); color: #087f5b; }
         .status-ditolak { background: rgba(220, 53, 69, .12); color: #dc3545; }
         .section-anchor { scroll-margin-top: 92px; }
+        .kaur-submission-table-card {
+            --submission-bg: var(--scm-surface, #111416);
+            --submission-head-bg: var(--scm-surface-strong, #181b1e);
+            --submission-border: var(--scm-border, #2b2f33);
+            --submission-text: var(--scm-text, #f7f7f7);
+            --submission-muted: var(--scm-muted, #a8adb5);
+            overflow: hidden;
+            border: 1px solid var(--submission-border);
+            border-radius: 10px;
+            background: var(--submission-bg);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+        }
+        html.scm-theme-light .kaur-submission-table-card {
+            --submission-bg: #ffffff;
+            --submission-head-bg: #f9fafb;
+            --submission-border: #e5e7eb;
+            --submission-text: #1f2937;
+            --submission-muted: #6b7280;
+        }
+        html.scm-theme-light .scm-dashboard .panel-card.kaur-submission-table-card {
+            border-color: #e5e7eb !important;
+            background: #ffffff !important;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .06) !important;
+        }
+        .kaur-submission-table-card .table-responsive { scrollbar-color: #cfd4da transparent; }
+        .scm-dashboard .kaur-submission-table {
+            min-width: 1120px;
+            margin: 0;
+            --bs-table-bg: var(--submission-bg) !important;
+            --bs-table-color: var(--submission-text) !important;
+            --bs-table-border-color: var(--submission-border) !important;
+        }
+        .scm-dashboard .kaur-submission-table.table-clean thead th {
+            padding: 14px 18px;
+            color: var(--submission-muted) !important;
+            background: var(--submission-head-bg) !important;
+            border-color: var(--submission-border) !important;
+            font-size: .72rem;
+            font-weight: 600;
+            letter-spacing: .035em;
+            vertical-align: middle;
+        }
+        html.scm-theme-light .scm-dashboard .kaur-submission-table.table-clean thead th {
+            color: #6b7280 !important;
+            background: #f9fafb !important;
+            border-color: #e5e7eb !important;
+        }
+        .scm-dashboard .kaur-submission-table tbody tr { height: 152px; }
+        .scm-dashboard .kaur-submission-table tbody td {
+            padding: 16px 18px;
+            color: var(--submission-text);
+            background: var(--submission-bg);
+            border-color: var(--submission-border);
+            line-height: 1.5;
+            vertical-align: middle;
+            transition: background-color .16s ease;
+        }
+        .scm-dashboard .kaur-submission-table tbody tr:hover > td { background: rgba(234, 91, 26, .045); }
+        .scm-dashboard .kaur-submission-table th:nth-child(1), .scm-dashboard .kaur-submission-table td:nth-child(1) { min-width: 185px; }
+        .scm-dashboard .kaur-submission-table th:nth-child(2), .scm-dashboard .kaur-submission-table td:nth-child(2) { min-width: 250px; }
+        .scm-dashboard .kaur-submission-table th:nth-child(3), .scm-dashboard .kaur-submission-table td:nth-child(3) { width: 160px; text-align: center; }
+        .scm-dashboard .kaur-submission-table th:nth-child(4), .scm-dashboard .kaur-submission-table td:nth-child(4) { min-width: 360px; }
+        .scm-dashboard .kaur-submission-table th:nth-child(5), .scm-dashboard .kaur-submission-table td:nth-child(5) { width: 180px; text-align: center; }
+        .scm-dashboard .kaur-submission-table th:nth-child(6), .scm-dashboard .kaur-submission-table td:nth-child(6) { min-width: 145px; white-space: nowrap; }
+        .scm-dashboard .kaur-submission-table th:nth-child(7), .scm-dashboard .kaur-submission-table td:nth-child(7) { min-width: 120px; white-space: nowrap; }
+        .scm-dashboard .kaur-submission-table td:nth-child(2) > .small,
+        .scm-dashboard .kaur-submission-table td:nth-child(4) > .text-muted {
+            display: -webkit-box;
+            overflow: hidden;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 2;
+        }
+        .scm-dashboard .kaur-submission-table td:nth-child(4) > .small:not(.text-muted) {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .scm-dashboard .kaur-submission-table td:nth-child(4) > .small:nth-of-type(n + 4) { display: none; }
+        .scm-dashboard .kaur-submission-table .kaur-kind-badge,
+        .scm-dashboard .kaur-submission-table .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 32px;
+            padding: 6px 12px;
+            border: 1px solid #e5e7eb !important;
+            border-radius: 8px;
+            color: #374151 !important;
+            background: #ffffff !important;
+            box-shadow: none;
+            font-size: .75rem;
+            font-weight: 600;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        .scm-dashboard .kaur-submission-table .kaur-kind-badge { min-width: 132px; }
+        .scm-dashboard .kaur-submission-table .status-pill { min-width: 152px; }
+        .kaur-submission-pagination-footer {
+            display: grid;
+            grid-template-columns: minmax(0, auto) 1fr minmax(0, auto);
+            align-items: center;
+            gap: 1rem;
+            min-height: 64px;
+            padding: .75rem 1rem;
+            border-top: 1px solid var(--submission-border);
+            color: var(--submission-muted);
+            background: var(--submission-head-bg);
+        }
+        .kaur-submission-pagination-summary { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; }
+        .kaur-submission-pagination-summary, .kaur-submission-pagination-status { font-size: .72rem; white-space: nowrap; }
+        .kaur-submission-pagination-summary .form-select { width: 92px; min-height: 34px; padding-top: .3rem; padding-bottom: .3rem; font-size: .72rem; }
+        .kaur-submission-pagination-status { text-align: center; }
+        .kaur-submission-pagination { margin: 0; }
+        .scm-dashboard .kaur-submission-table-card .kaur-submission-pagination .page-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            min-height: 34px;
+            padding: .35rem .58rem;
+            border-color: var(--submission-border) !important;
+            color: var(--submission-text) !important;
+            background: var(--submission-bg) !important;
+            font-size: .72rem;
+            line-height: 1;
+            transition: color .16s ease, background-color .16s ease, border-color .16s ease;
+        }
+        .scm-dashboard .kaur-submission-table-card .kaur-submission-pagination .page-link:hover { color: var(--scm-orange, #ff7900) !important; background: var(--submission-head-bg) !important; }
+        .scm-dashboard .kaur-submission-table-card .kaur-submission-pagination .page-item.active .page-link {
+            color: #ffffff !important;
+            background: var(--scm-orange, #ff7900) !important;
+            border-color: var(--scm-orange, #ff7900) !important;
+        }
+        .scm-dashboard .kaur-submission-table-card .kaur-submission-pagination .page-item.disabled .page-link { color: var(--submission-muted) !important; background: var(--submission-head-bg) !important; opacity: .62; }
+        .kaur-report-table-header { padding: 22px 22px 16px; }
+        .scm-dashboard .kaur-report-table {
+            min-width: 1380px;
+            margin: 0;
+            --bs-table-bg: var(--submission-bg) !important;
+            --bs-table-color: var(--submission-text) !important;
+            --bs-table-border-color: var(--submission-border) !important;
+        }
+        .scm-dashboard .kaur-report-table.table-clean thead th {
+            padding: 13px 14px;
+            color: var(--submission-muted) !important;
+            background: var(--submission-head-bg) !important;
+            border-color: var(--submission-border) !important;
+            font-size: .7rem;
+            font-weight: 600;
+            letter-spacing: .035em;
+            vertical-align: middle;
+        }
+        .scm-dashboard .kaur-report-table tbody td {
+            padding: 14px;
+            color: var(--submission-text);
+            background: var(--submission-bg);
+            border-color: var(--submission-border);
+            line-height: 1.45;
+            vertical-align: middle;
+            transition: background-color .16s ease;
+        }
+        .scm-dashboard .kaur-report-table tbody tr:hover > td { background: rgba(234, 91, 26, .045); }
+        .scm-dashboard .kaur-report-table th:nth-child(1), .scm-dashboard .kaur-report-table td:nth-child(1) { min-width: 245px; }
+        .scm-dashboard .kaur-report-table th:nth-child(2), .scm-dashboard .kaur-report-table td:nth-child(2) { min-width: 230px; }
+        .scm-dashboard .kaur-report-table th:nth-child(3), .scm-dashboard .kaur-report-table td:nth-child(3) { min-width: 190px; }
+        .scm-dashboard .kaur-report-table th:nth-child(4), .scm-dashboard .kaur-report-table td:nth-child(4),
+        .scm-dashboard .kaur-report-table th:nth-child(5), .scm-dashboard .kaur-report-table td:nth-child(5),
+        .scm-dashboard .kaur-report-table th:nth-child(6), .scm-dashboard .kaur-report-table td:nth-child(6) { min-width: 130px; white-space: nowrap; }
+        .scm-dashboard .kaur-report-table th:nth-child(7), .scm-dashboard .kaur-report-table td:nth-child(7) { min-width: 105px; }
+        .scm-dashboard .kaur-report-table th:nth-child(8), .scm-dashboard .kaur-report-table td:nth-child(8) { min-width: 145px; }
+        .scm-dashboard .kaur-report-table th:nth-child(9), .scm-dashboard .kaur-report-table td:nth-child(9) { min-width: 210px; }
+        .negotiation-request-list {
+            --negotiation-bg: var(--scm-surface, #121415);
+            --negotiation-soft: var(--scm-surface-strong, #181a1b);
+            --negotiation-border: var(--scm-border, #292d30);
+            --negotiation-text: var(--scm-text, #f4f5f6);
+            --negotiation-muted: var(--scm-muted, #9ca3aa);
+            display: grid;
+            gap: 14px;
+        }
+        html.scm-theme-light .negotiation-request-list {
+            --negotiation-bg: #ffffff;
+            --negotiation-soft: #f9fafb;
+            --negotiation-border: #e5e7eb;
+            --negotiation-text: #1f2937;
+            --negotiation-muted: #6b7280;
+        }
+        .scm-dashboard .negotiation-request-card {
+            overflow: hidden;
+            border: 1px solid var(--negotiation-border) !important;
+            border-radius: 8px;
+            color: var(--negotiation-text) !important;
+            background: var(--negotiation-bg) !important;
+            box-shadow: 0 8px 22px rgba(15, 23, 42, .05) !important;
+            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+        .scm-dashboard .negotiation-request-card:hover {
+            border-color: rgba(234, 91, 26, .34) !important;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, .08) !important;
+            transform: translateY(-1px);
+        }
+        .negotiation-request-header { padding: 18px 20px 16px; }
+        .negotiation-request-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+        .negotiation-request-code { color: var(--negotiation-text); font-size: .72rem; font-weight: 600; letter-spacing: .025em; }
+        .negotiation-request-title { margin: 4px 0 0; color: var(--negotiation-text); font-size: 1rem; font-weight: 700; line-height: 1.4; }
+        .negotiation-request-heading .status-pill {
+            justify-content: center;
+            min-width: 138px;
+            min-height: 32px;
+            border: 1px solid var(--negotiation-border);
+            border-radius: 8px;
+            color: var(--negotiation-text) !important;
+            background: var(--negotiation-soft) !important;
+        }
+        .negotiation-request-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; margin-top: 13px; color: var(--negotiation-muted); font-size: .76rem; font-weight: 500; }
+        .negotiation-request-meta span { display: inline-flex; align-items: center; gap: 6px; }
+        .negotiation-request-meta i { color: var(--negotiation-muted); }
+        html.scm-theme-light .negotiation-request-code { color: #1f2937; }
+        html.scm-theme-light .negotiation-request-meta,
+        html.scm-theme-light .negotiation-request-meta i { color: #4b5563; }
+        .negotiation-detail-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            min-height: 48px;
+            padding: 10px 20px;
+            border: 0;
+            border-top: 1px solid var(--negotiation-border);
+            color: var(--negotiation-text);
+            background: var(--negotiation-soft);
+            font-size: .78rem;
+            font-weight: 600;
+            text-align: left;
+            transition: color .16s ease, background-color .16s ease;
+        }
+        .negotiation-detail-toggle:hover { color: var(--scm-orange, #ea5b1a); background: rgba(234, 91, 26, .055); }
+        .negotiation-detail-toggle i { transition: transform .2s ease; }
+        .negotiation-detail-toggle[aria-expanded="true"] i { transform: rotate(180deg); }
+        .negotiation-detail-body { border-top: 1px solid var(--negotiation-border); }
+        .negotiation-detail-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding: 16px 20px; background: var(--negotiation-bg); }
+        .negotiation-detail-toolbar h3 { margin: 0; color: var(--negotiation-text); font-size: .88rem; font-weight: 700; }
+        .negotiation-detail-toolbar p { margin: 4px 0 0; color: var(--negotiation-muted); font-size: .72rem; }
+        .negotiation-group-status-wrap { flex: 0 0 210px; }
+        .negotiation-group-status-wrap label { display: block; margin-bottom: 5px; color: var(--negotiation-muted); font-size: .68rem; font-weight: 600; }
+        .negotiation-items-scroll { overflow: visible; }
+        .negotiation-items-table {
+            display: grid;
+            gap: 16px;
+            padding: 0 20px 20px;
+        }
+        .scm-dashboard .negotiation-form {
+            margin: 0;
+            padding: 20px;
+            border: 1px solid var(--negotiation-border);
+            border-radius: 8px;
+            color: var(--negotiation-text);
+            background: var(--negotiation-soft);
+            box-shadow: 0 4px 14px rgba(15, 23, 42, .035);
+            transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+        }
+        .scm-dashboard .negotiation-form:hover {
+            border-color: rgba(234, 91, 26, .32);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, .06);
+            transform: translateY(-1px);
+        }
+        .negotiation-item-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 18px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--negotiation-border);
+        }
+        .negotiation-item-name { min-width: 0; }
+        .negotiation-item-name strong { display: block; overflow-wrap: anywhere; font-size: .86rem; line-height: 1.45; }
+        .negotiation-item-name span { display: block; margin-top: 3px; color: var(--negotiation-muted); font-size: .69rem; }
+        .negotiation-item-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 32px;
+            width: 32px;
+            height: 32px;
+            border: 1px solid rgba(234, 91, 26, .28);
+            border-radius: 8px;
+            color: var(--scm-orange, #ea5b1a);
+            background: rgba(234, 91, 26, .07);
+            font-size: .72rem;
+            font-weight: 700;
+        }
+        .negotiation-form-grid { --bs-gutter-x: 16px; --bs-gutter-y: 16px; }
+        .negotiation-field { min-width: 0; }
+        .negotiation-field-label { display: block; margin-bottom: 6px; color: var(--negotiation-text); font-size: .7rem; font-weight: 600; }
+        .negotiation-field .form-control,
+        .negotiation-field .form-select { min-height: 42px; padding: .5rem .7rem; font-size: .74rem; }
+        .negotiation-field .form-control:disabled,
+        .negotiation-field .form-control[readonly] { color: var(--negotiation-muted) !important; background: var(--negotiation-bg) !important; border-color: var(--negotiation-border) !important; opacity: .9; }
+        .negotiation-field .form-text { margin-top: 5px; color: var(--negotiation-muted); font-size: .63rem; }
+        .negotiation-form-actions { display: flex; justify-content: flex-end; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--negotiation-border); }
+        .negotiation-save-btn { min-width: 118px; min-height: 40px; white-space: nowrap; font-size: .74rem; }
+        .negotiation-pagination-shell { margin-top: 14px; }
+        .negotiation-pagination-shell .kaur-submission-pagination-footer { border-top: 0; }
+        @media (max-width: 767.98px) {
+            .negotiation-request-header { padding: 16px; }
+            .negotiation-request-heading { flex-direction: column; gap: 10px; }
+            .negotiation-request-heading .status-pill { align-self: flex-start; }
+            .negotiation-detail-toggle { padding-inline: 16px; }
+            .negotiation-detail-toolbar { align-items: stretch; flex-direction: column; padding: 14px 16px; }
+            .negotiation-group-status-wrap { flex-basis: auto; width: 100%; }
+            .negotiation-items-table { padding: 0 16px 16px; }
+            .scm-dashboard .negotiation-form { padding: 16px; }
+        }
+        @media (max-width: 575.98px) {
+            .negotiation-item-header { align-items: flex-start; }
+            .negotiation-form-actions { display: block; }
+            .negotiation-save-btn { width: 100%; }
+        }
+        .approval-table-card {
+            --approval-bg: var(--scm-surface, #111416);
+            --approval-head-bg: var(--scm-surface-strong, #181b1e);
+            --approval-border: var(--scm-border, #2b2f33);
+            --approval-text: var(--scm-text, #f7f7f7);
+            --approval-muted: var(--scm-muted, #a8adb5);
+            overflow: hidden;
+            border: 1px solid var(--approval-border) !important;
+            border-radius: 10px;
+            color: var(--approval-text);
+            background: var(--approval-bg) !important;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .06) !important;
+        }
+        html.scm-theme-light .approval-table-card {
+            --approval-bg: #ffffff;
+            --approval-head-bg: #f9fafb;
+            --approval-border: #e5e7eb;
+            --approval-text: #1f2937;
+            --approval-muted: #6b7280;
+            border-color: #e5e7eb !important;
+            background: #ffffff !important;
+        }
+        .approval-table-heading { padding: 20px 22px 16px; }
+        .approval-table-heading h2 { color: var(--approval-text); }
+        .approval-table-heading .text-muted { color: var(--approval-muted) !important; }
+        .approval-table-card .table-responsive { scrollbar-color: #cfd4da transparent; }
+        .scm-dashboard .approval-table {
+            min-width: 1380px;
+            margin: 0;
+            --bs-table-bg: var(--approval-bg) !important;
+            --bs-table-color: var(--approval-text) !important;
+            --bs-table-border-color: var(--approval-border) !important;
+        }
+        .scm-dashboard .approval-table.table-clean thead th {
+            padding: 14px 16px;
+            color: var(--approval-muted) !important;
+            background: var(--approval-head-bg) !important;
+            border-color: var(--approval-border) !important;
+            font-size: .7rem;
+            font-weight: 600;
+            letter-spacing: .035em;
+            vertical-align: middle;
+        }
+        .scm-dashboard .approval-table tbody tr { height: 76px; }
+        .scm-dashboard .approval-table tbody td {
+            padding: 14px 16px;
+            color: var(--approval-text);
+            background: var(--approval-bg);
+            border-color: var(--approval-border);
+            font-size: .78rem;
+            line-height: 1.45;
+            vertical-align: middle;
+            transition: background-color .16s ease;
+        }
+        .scm-dashboard .approval-table tbody tr:hover > td { background: rgba(234, 91, 26, .04); }
+        .scm-dashboard .approval-table th:nth-child(1), .scm-dashboard .approval-table td:nth-child(1) { min-width: 215px; }
+        .scm-dashboard .approval-table th:nth-child(2), .scm-dashboard .approval-table td:nth-child(2) { min-width: 145px; white-space: nowrap; }
+        .scm-dashboard .approval-table th:nth-child(3), .scm-dashboard .approval-table td:nth-child(3) { min-width: 170px; }
+        .scm-dashboard .approval-table th:nth-child(4), .scm-dashboard .approval-table td:nth-child(4) { width: 165px; text-align: center; }
+        .scm-dashboard .approval-table th:nth-child(5), .scm-dashboard .approval-table td:nth-child(5) { min-width: 230px; }
+        .scm-dashboard .approval-table th:nth-child(6), .scm-dashboard .approval-table td:nth-child(6) { min-width: 155px; white-space: nowrap; }
+        .scm-dashboard .approval-table th:nth-child(7), .scm-dashboard .approval-table td:nth-child(7),
+        .scm-dashboard .approval-table th:nth-child(8), .scm-dashboard .approval-table td:nth-child(8) { width: 175px; text-align: center; }
+        .scm-dashboard .approval-table th:nth-child(9), .scm-dashboard .approval-table td:nth-child(9) { width: 125px; text-align: right; }
+        .scm-dashboard .approval-table .approval-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 148px;
+            height: 34px;
+            padding: 6px 12px;
+            border: 1px solid var(--approval-border) !important;
+            border-radius: 8px;
+            color: var(--approval-text) !important;
+            background: var(--approval-bg) !important;
+            font-size: .7rem;
+            font-weight: 600;
+            line-height: 1.2;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+        html.scm-theme-light .scm-dashboard .approval-table .approval-badge { color: #374151 !important; background: #ffffff !important; border-color: #e5e7eb !important; }
+        .approval-detail-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 96px;
+            min-height: 36px;
+            border-width: 1px;
+            font-size: .72rem;
+            transition: color .16s ease, background-color .16s ease, border-color .16s ease, transform .16s ease;
+        }
+        .approval-detail-btn:hover { transform: translateY(-1px); }
+        .approval-table-card .kaur-submission-pagination-footer { border-top-color: var(--approval-border); color: var(--approval-muted); background: var(--approval-head-bg); }
+        .approval-detail-modal .approval-detail-items-table { min-width: 960px; margin-bottom: 18px; }
+        .approval-detail-modal .approval-detail-items-table th,
+        .approval-detail-modal .approval-detail-items-table td { padding: 9px 10px; vertical-align: middle; }
+        .approval-detail-item { display: flex; align-items: center; gap: 8px; min-width: 300px; }
+        .approval-detail-item-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 84px;
+            width: 84px;
+            height: 28px;
+            padding: 4px 8px;
+            border: 1px solid var(--scm-border, #2b2f33);
+            border-radius: 8px;
+            color: var(--scm-text, #f7f7f7);
+            background: var(--scm-surface-strong, #181b1e);
+            font-size: .68rem;
+            font-weight: 600;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+        }
+        html.scm-theme-light .approval-detail-item-badge { color: #374151; background: #ffffff; border-color: #e5e7eb; }
+        @media (max-width: 767.98px) {
+            .approval-table-heading { padding: 18px 16px 14px; }
+            .scm-dashboard .approval-table tbody tr { height: 72px; }
+        }
+        .bast-table-card {
+            --bast-bg: var(--scm-surface, #111416);
+            --bast-head-bg: var(--scm-surface-strong, #181b1e);
+            --bast-border: var(--scm-border, #2b2f33);
+            --bast-text: var(--scm-text, #f7f7f7);
+            --bast-muted: var(--scm-muted, #a8adb5);
+            overflow: hidden;
+            border: 1px solid var(--bast-border) !important;
+            border-radius: 10px;
+            color: var(--bast-text);
+            background: var(--bast-bg) !important;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .06) !important;
+        }
+        html.scm-theme-light .bast-table-card {
+            --bast-bg: #ffffff;
+            --bast-head-bg: #f9fafb;
+            --bast-border: #e5e7eb;
+            --bast-text: #1f2937;
+            --bast-muted: #6b7280;
+            border-color: #e5e7eb !important;
+            background: #ffffff !important;
+        }
+        .bast-table-toolbar { padding: 20px 22px 16px; }
+        .bast-table-toolbar h2 { color: var(--bast-text); }
+        .bast-table-toolbar .text-muted { color: var(--bast-muted) !important; }
+        .bast-summary-badge {
+            min-height: 32px;
+            padding: 7px 12px;
+            border: 1px solid var(--bast-border);
+            border-radius: 8px;
+            color: var(--bast-text);
+            background: var(--bast-head-bg);
+            font-size: .7rem;
+            font-weight: 600;
+        }
+        .bast-table-card .table-responsive { scrollbar-color: #cfd4da transparent; }
+        .scm-dashboard .bast-table {
+            min-width: 1240px;
+            margin: 0;
+            --bs-table-bg: var(--bast-bg) !important;
+            --bs-table-color: var(--bast-text) !important;
+            --bs-table-border-color: var(--bast-border) !important;
+        }
+        .scm-dashboard .bast-table.table-clean thead th {
+            padding: 14px 16px;
+            color: var(--bast-muted) !important;
+            background: var(--bast-head-bg) !important;
+            border-color: var(--bast-border) !important;
+            font-size: .7rem;
+            font-weight: 600;
+            letter-spacing: .035em;
+            vertical-align: middle;
+        }
+        .scm-dashboard .bast-table tbody tr { height: 76px; }
+        .scm-dashboard .bast-table tbody td {
+            padding: 14px 16px;
+            color: var(--bast-text);
+            background: var(--bast-bg);
+            border-color: var(--bast-border);
+            font-size: .78rem;
+            line-height: 1.45;
+            vertical-align: middle;
+            transition: background-color .16s ease;
+        }
+        .scm-dashboard .bast-table tbody tr:hover > td { background: rgba(234, 91, 26, .04); }
+        .scm-dashboard .bast-table th:nth-child(1), .scm-dashboard .bast-table td:nth-child(1) { min-width: 215px; }
+        .scm-dashboard .bast-table th:nth-child(2), .scm-dashboard .bast-table td:nth-child(2) { min-width: 300px; }
+        .scm-dashboard .bast-table th:nth-child(3), .scm-dashboard .bast-table td:nth-child(3) { width: 160px; text-align: center; }
+        .scm-dashboard .bast-table th:nth-child(4), .scm-dashboard .bast-table td:nth-child(4) { min-width: 140px; }
+        .scm-dashboard .bast-table th:nth-child(5), .scm-dashboard .bast-table td:nth-child(5) { min-width: 145px; white-space: nowrap; }
+        .scm-dashboard .bast-table th:nth-child(6), .scm-dashboard .bast-table td:nth-child(6) { width: 165px; text-align: center; }
+        .scm-dashboard .bast-table th:nth-child(7), .scm-dashboard .bast-table td:nth-child(7) { min-width: 330px; text-align: right; }
+        .bast-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 132px;
+            height: 34px;
+            padding: 6px 12px;
+            border: 1px solid var(--bast-border) !important;
+            border-radius: 8px;
+            color: var(--bast-text) !important;
+            background: var(--bast-bg) !important;
+            font-size: .7rem;
+            font-weight: 600;
+            line-height: 1.2;
+            text-align: center;
+            white-space: nowrap;
+        }
+        html.scm-theme-light .bast-badge { color: #374151 !important; background: #ffffff !important; border-color: #e5e7eb !important; }
+        .bast-actions { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+        .bast-action-btn { display: inline-flex; align-items: center; justify-content: center; min-height: 36px; font-size: .72rem; transition: transform .16s ease, color .16s ease, background-color .16s ease, border-color .16s ease; }
+        .bast-action-btn:hover { transform: translateY(-1px); }
+        .bast-table-card .kaur-submission-pagination-footer { border-top-color: var(--bast-border); color: var(--bast-muted); background: var(--bast-head-bg); }
+        @media (max-width: 767.98px) {
+            .bast-table-toolbar { padding: 18px 16px 14px; }
+            .scm-dashboard .bast-table tbody tr { height: 72px; }
+        }
         .item-card { border: 1px solid #e8eaed; border-radius: 8px; background: #fff; }
         .mini-label { font-size: .74rem; color: #6c757d; font-weight: 600; }
         .progress { height: 10px; border-radius: 999px; }
@@ -143,6 +687,8 @@ function kaur_module_url($module) {
             .topbar-actions .notif-bell { flex: 0 0 38px; }
             .summary-card { min-height: auto; }
             .module-strip { top: 126px; }
+            .kaur-submission-pagination-footer { grid-template-columns: 1fr; justify-items: center; gap: .65rem; }
+            .kaur-submission-pagination-footer nav { max-width: 100%; overflow-x: auto; padding-bottom: 2px; }
         }
 
         .scm-dashboard-kaur .dashboard-content { background: var(--scm-bg); }
@@ -534,7 +1080,8 @@ function kaur_module_url($module) {
         <?php endif; ?>
 
         <?php if ($active_module === 'pengajuan'): ?>
-        <section id="pengajuan" class="section-anchor panel-card p-3 p-lg-4 mb-4">
+        <section id="pengajuan" class="section-anchor mb-4">
+            <div class="panel-card p-3 p-lg-4 mb-3">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
                 <div>
                     <h2 class="h5 fw-bold mb-1">Pengajuan Kaprodi</h2>
@@ -543,6 +1090,7 @@ function kaur_module_url($module) {
                 <a href="<?= base_url('index.php/kaur/pengajuan/export_pengajuan_acc?' . query_kaur($filters, 1)) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3 align-self-start"><i class="bi bi-file-earmark-excel me-1"></i> Export Pengajuan ACC</a>
             </div>
             <form method="get" action="<?= kaur_module_url('pengajuan') ?>" class="row g-2 align-items-end mb-3">
+                <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
                 <div class="col-md-3">
                     <label class="form-label small fw-semibold">Kata Kunci</label>
                     <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, barang">
@@ -569,9 +1117,11 @@ function kaur_module_url($module) {
                 <div class="col-md-2"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
                 <div class="col-md-1 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
             </form>
+            </div>
 
+            <div class="panel-card kaur-submission-table-card">
             <div class="table-responsive">
-                <table class="table table-clean align-middle">
+                <table class="table table-clean align-middle mb-0 kaur-submission-table">
                     <thead><tr><th>Kode</th><th>Prodi</th><th>Jenis</th><th>Kebutuhan</th><th>Status</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
                     <tbody>
                         <?php if (empty($pengajuan_kaprodi)): ?>
@@ -580,11 +1130,11 @@ function kaur_module_url($module) {
                             <tr>
                                 <td class="fw-semibold"><?= html_escape($p->kode_pengajuan) ?></td>
                                 <td><div class="fw-semibold"><?= html_escape($p->nama_prodi) ?></div><div class="small text-muted"><?= html_escape($p->nama_pengajuan) ?></div></td>
-                                <td><span class="badge text-bg-light border"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
+                                <td><span class="kaur-kind-badge"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
                                 <td style="min-width: 280px;">
                                     <div class="small text-muted mb-1"><?= html_escape($p->kebutuhan_lab ?: '-') ?></div>
                                     <?php foreach (($p->items ?? []) as $item): ?>
-                                        <div class="small"><i class="bi bi-dot"></i><span class="badge text-bg-light border me-1"><?= html_escape($item->jenis_item ?? 'Barang') ?></span><?= html_escape($item->uraian_barang) ?> - <?= num_kaur($item->vol) ?> <?= html_escape($item->satuan) ?></div>
+                                        <div class="small"><i class="bi bi-dot"></i><?= html_escape($item->uraian_barang) ?> - <?= num_kaur($item->vol) ?> <?= html_escape($item->satuan) ?></div>
                                     <?php endforeach; ?>
                                 </td>
                                 <td><span class="status-pill <?= status_class_kaur($p->status) ?>"><?= html_escape($p->status) ?></span></td>
@@ -595,17 +1145,28 @@ function kaur_module_url($module) {
                     </tbody>
                 </table>
             </div>
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 pt-2 border-top">
-                <div class="small text-muted">Menampilkan <?= count($pengajuan_kaprodi ?? []) ?> dari <?= (int) $total_rows ?> data</div>
+            <div class="kaur-submission-pagination-footer">
+                <div class="kaur-submission-pagination-summary">
+                    <label for="kaurSubmissionPageSize">Tampilkan:</label>
+                    <select id="kaurSubmissionPageSize" class="form-select form-select-sm" aria-label="Jumlah pengajuan per halaman">
+                        <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
+                        <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
+                        <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
+                        <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                    </select>
+                    <span>Total item: <?= (int) $total_rows ?></span>
+                </div>
+                <div class="kaur-submission-pagination-status">Halaman: <?= (int) $page ?> dari <?= (int) $total_pages ?></div>
                 <nav>
-                    <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, max(1, $page - 1)) ?>">Prev</a></li>
+                    <ul class="pagination pagination-sm kaur-submission-pagination">
+                        <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, max(1, $page - 1), $per_page ?? '10') ?>">Previous</a></li>
                         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                            <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, $i) ?>"><?= $i ?></a></li>
+                            <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
                         <?php endfor; ?>
-                        <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, min($total_pages, $page + 1)) ?>">Next</a></li>
+                        <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, min($total_pages, $page + 1), $per_page ?? '10') ?>">Next</a></li>
                     </ul>
                 </nav>
+            </div>
             </div>
         </section>
         <?php endif; ?>
@@ -620,6 +1181,7 @@ function kaur_module_url($module) {
             </div>
             <div class="panel-card p-3 p-lg-4 mb-3">
                 <form method="get" action="<?= kaur_module_url('negosiasi') ?>" class="row g-2 align-items-end">
+                    <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
                     <div class="col-md-3">
                         <label class="form-label small fw-semibold">Kata Kunci</label>
                         <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, item">
@@ -651,75 +1213,135 @@ function kaur_module_url($module) {
                     <div class="col-md-1 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
                 </form>
             </div>
-            <div class="vstack gap-3">
+            <div class="negotiation-request-list">
                 <?php if (empty($pengajuan_kaprodi)): ?>
                     <div class="panel-card p-4 text-center text-muted">Belum ada data untuk dinegosiasikan.</div>
                 <?php else: foreach ($pengajuan_kaprodi as $p): ?>
-                    <div class="panel-card p-3 p-lg-4">
-                        <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
-                            <div>
-                                <div class="fw-bold"><?= html_escape($p->kode_pengajuan) ?> - <?= html_escape($p->nama_pengajuan) ?></div>
-                                <div class="small text-muted"><?= html_escape($p->nama_prodi) ?> - <?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></div>
-                            </div>
-                            <span class="status-pill <?= status_class_kaur($p->status) ?> align-self-start"><?= html_escape($p->status) ?></span>
-                        </div>
-                        <div class="row g-3">
-                            <?php foreach (($p->items ?? []) as $item):
-                                $latest = $item->latest_negosiasi ?? null;
-                                $harga_awal_referensi = (float) ($item->harga_awal_referensi ?? $item->harga_penawaran_sat ?? 0);
-                                $volume_awal_referensi = (float) ($item->volume_awal_referensi ?? $item->vol ?? 0);
-                                $harga_akhir = $latest ? (float) $latest->harga_negosiasi : 0;
-                                $volume_akhir = $latest ? (float) $latest->volume_negosiasi : $volume_awal_referensi;
-                                $total_negosiasi_item = $harga_akhir * $volume_akhir;
-                                $status_negosiasi = $latest && in_array($latest->status, ['Sedang Negosiasi', 'Deal', 'Ditolak'], true) ? $latest->status : 'Sedang Negosiasi';
-                            ?>
-                                <div class="col-12">
-                                    <form class="item-card p-3 negotiation-form" method="post" action="<?= base_url('index.php/kaur/pengajuan/simpan_negosiasi/'.$p->id_pengajuan.'/'.$item->id_item) ?>">
-                                        <div class="row g-2 align-items-end">
-                                            <div class="col-lg-3">
-                                                <div class="mini-label">Item</div>
-                                                <div class="fw-semibold"><span class="badge text-bg-light border me-1"><?= html_escape($item->jenis_item ?? 'Barang') ?></span><?= html_escape($item->uraian_barang) ?></div>
-                                                <div class="small text-muted">Referensi dari pengajuan Kaprodi</div>
-                                            </div>
-                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Vendor</label><input type="text" name="vendor" class="form-control" value="<?= html_escape($latest->vendor ?? '') ?>" required></div>
-                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Harga Awal</label><input type="text" name="harga_awal" class="form-control" value="<?= rp_kaur($harga_awal_referensi) ?>" disabled readonly aria-readonly="true"><div class="form-text">Dari Kaprodi</div></div>
-                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Harga Setelah Negosiasi</label><input type="text" name="harga_negosiasi" class="form-control money-input negotiation-price" value="<?= $latest && $harga_akhir > 0 ? rp_kaur($harga_akhir) : '' ?>" placeholder="Rp 0" required></div>
-                                            <div class="col-md-6 col-lg-1"><label class="form-label small fw-semibold">Volume Awal</label><input type="number" name="volume_awal" class="form-control" value="<?= html_escape($volume_awal_referensi) ?>" disabled readonly aria-readonly="true"><div class="form-text"><?= html_escape($item->satuan) ?></div></div>
-                                            <div class="col-md-6 col-lg-1"><label class="form-label small fw-semibold">Volume Setelah Negosiasi</label><input type="number" name="volume_negosiasi" class="form-control negotiation-volume" min="0.01" step="0.01" value="<?= html_escape($volume_akhir) ?>" required><div class="form-text"><?= html_escape($item->satuan) ?></div></div>
-                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Total Hasil</label><input type="text" class="form-control negotiation-total fw-semibold" value="<?= rp_kaur($total_negosiasi_item) ?>" readonly aria-readonly="true"><div class="form-text">Volume akhir x harga akhir</div></div>
-                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Garansi</label><input type="text" name="garansi" class="form-control" value="<?= html_escape($latest->garansi ?? '') ?>" placeholder="Contoh: 1 tahun"></div>
-                                            <div class="col-md-6 col-lg-2"><label class="form-label small fw-semibold">Status</label><select name="status" class="form-select"><?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?><option value="<?= $s ?>" <?= ($status_negosiasi === $s) ? 'selected' : '' ?>><?= $s ?></option><?php endforeach; ?></select></div>
-                                            <div class="col-lg-8"><label class="form-label small fw-semibold">Catatan</label><input type="text" name="catatan" class="form-control" value="<?= html_escape($latest->catatan ?? '') ?>" placeholder="Catatan hasil negosiasi"></div>
-                                            <div class="col-lg-2 d-grid"><button class="btn btn-fik"><i class="bi bi-save me-1"></i> Simpan</button></div>
-                                        </div>
-                                    </form>
+                    <?php
+                        $negotiation_items = (array) ($p->items ?? []);
+                        $negotiation_statuses = [];
+                        foreach ($negotiation_items as $status_item) {
+                            $latest_status = $status_item->latest_negosiasi->status ?? 'Sedang Negosiasi';
+                            if (in_array($latest_status, ['Sedang Negosiasi', 'Deal', 'Ditolak'], true)) {
+                                $negotiation_statuses[] = $latest_status;
+                            }
+                        }
+                        $unique_negotiation_statuses = array_values(array_unique($negotiation_statuses));
+                        $group_negotiation_status = count($unique_negotiation_statuses) === 1 ? $unique_negotiation_statuses[0] : 'Sedang Negosiasi';
+                        $collapse_id = 'negotiation-detail-' . (int) $p->id_pengajuan;
+                        $total_estimate = (float) ($p->summary['total_penawaran'] ?? $p->summary['total_setelah_pajak'] ?? 0);
+                    ?>
+                    <article class="panel-card negotiation-request-card" data-negotiation-group>
+                        <div class="negotiation-request-header">
+                            <div class="negotiation-request-heading">
+                                <div>
+                                    <div class="negotiation-request-code"><?= html_escape($p->kode_pengajuan) ?></div>
+                                    <h3 class="negotiation-request-title"><?= html_escape($p->nama_pengajuan) ?></h3>
                                 </div>
-                            <?php endforeach; ?>
+                                <span class="status-pill <?= status_class_kaur($p->status) ?>"><?= html_escape($p->status) ?></span>
+                            </div>
+                            <div class="negotiation-request-meta">
+                                <span><i class="bi bi-mortarboard"></i><?= html_escape($p->nama_prodi) ?></span>
+                                <span><i class="bi bi-box-seam"></i><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span>
+                                <span><i class="bi bi-list-check"></i><?= count($negotiation_items) ?> item</span>
+                                <span><i class="bi bi-cash-stack"></i>Total estimasi <?= rp_kaur($total_estimate) ?></span>
+                            </div>
                         </div>
-                    </div>
+                        <button class="negotiation-detail-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#<?= $collapse_id ?>" aria-expanded="false" aria-controls="<?= $collapse_id ?>">
+                            <span><i class="bi bi-table me-2"></i>Lihat Detail Barang/Jasa</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="collapse" id="<?= $collapse_id ?>">
+                            <div class="negotiation-detail-body">
+                                <div class="negotiation-detail-toolbar">
+                                    <div>
+                                        <h3>Rincian Negosiasi</h3>
+                                        <p>Harga dan volume awal berasal dari pengajuan Kaprodi.</p>
+                                    </div>
+                                    <div class="negotiation-group-status-wrap">
+                                        <label for="group-status-<?= (int) $p->id_pengajuan ?>">Status Negosiasi</label>
+                                        <select id="group-status-<?= (int) $p->id_pengajuan ?>" class="form-select form-select-sm negotiation-group-status">
+                                            <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
+                                                <option value="<?= $s ?>" <?= $group_negotiation_status === $s ? 'selected' : '' ?>><?= $s ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="negotiation-items-scroll">
+                                    <div class="negotiation-items-table" aria-label="Rincian item negosiasi <?= html_escape($p->kode_pengajuan) ?>">
+                                        <?php foreach ($negotiation_items as $item_index => $item):
+                                            $latest = $item->latest_negosiasi ?? null;
+                                            $harga_awal_referensi = (float) ($item->harga_awal_referensi ?? $item->harga_penawaran_sat ?? 0);
+                                            $volume_awal_referensi = (float) ($item->volume_awal_referensi ?? $item->vol ?? 0);
+                                            $harga_akhir = $latest ? (float) $latest->harga_negosiasi : 0;
+                                            $volume_akhir = $latest ? (float) $latest->volume_negosiasi : $volume_awal_referensi;
+                                            $total_negosiasi_item = $harga_akhir * $volume_akhir;
+                                            $status_negosiasi = $latest && in_array($latest->status, ['Sedang Negosiasi', 'Deal', 'Ditolak'], true) ? $latest->status : 'Sedang Negosiasi';
+                                        ?>
+                                            <form class="negotiation-form" method="post" action="<?= base_url('index.php/kaur/pengajuan/simpan_negosiasi/'.$p->id_pengajuan.'/'.$item->id_item) ?>">
+                                                <input type="hidden" name="status" class="negotiation-item-status" value="<?= html_escape($status_negosiasi) ?>">
+                                                <div class="negotiation-item-header">
+                                                    <div class="d-flex align-items-center gap-3 min-w-0">
+                                                        <span class="negotiation-item-number"><?= (int) $item_index + 1 ?></span>
+                                                        <div class="negotiation-item-name"><strong><?= html_escape($item->uraian_barang) ?></strong><span><?= html_escape($item->jenis_item ?? 'Barang') ?> - <?= html_escape($item->satuan) ?></span></div>
+                                                    </div>
+                                                </div>
+                                                <div class="row negotiation-form-grid">
+                                                    <div class="col-lg-4 col-md-6 negotiation-field"><label class="negotiation-field-label">Vendor</label><input type="text" name="vendor" class="form-control" value="<?= html_escape($latest->vendor ?? '') ?>" required></div>
+                                                    <div class="col-lg-4 col-md-6 negotiation-field"><label class="negotiation-field-label">Harga Awal</label><input type="text" name="harga_awal" class="form-control" value="<?= rp_kaur($harga_awal_referensi) ?>" disabled readonly aria-readonly="true"><div class="form-text">Referensi dari pengajuan Kaprodi</div></div>
+                                                    <div class="col-lg-4 col-md-6 negotiation-field"><label class="negotiation-field-label">Harga Negosiasi</label><input type="text" name="harga_negosiasi" class="form-control money-input negotiation-price" value="<?= $latest && $harga_akhir > 0 ? rp_kaur($harga_akhir) : '' ?>" placeholder="Rp 0" required></div>
+                                                    <div class="col-lg-4 col-md-6 negotiation-field"><label class="negotiation-field-label">Volume Awal</label><input type="number" name="volume_awal" class="form-control" value="<?= html_escape($volume_awal_referensi) ?>" disabled readonly aria-readonly="true"><div class="form-text"><?= html_escape($item->satuan) ?> - Referensi dari Kaprodi</div></div>
+                                                    <div class="col-lg-4 col-md-6 negotiation-field"><label class="negotiation-field-label">Volume Negosiasi</label><input type="number" name="volume_negosiasi" class="form-control negotiation-volume" min="0.01" step="0.01" value="<?= html_escape($volume_akhir) ?>" required><div class="form-text"><?= html_escape($item->satuan) ?></div></div>
+                                                    <div class="col-lg-4 col-md-6 negotiation-field"><label class="negotiation-field-label">Total Hasil Negosiasi</label><input type="text" class="form-control negotiation-total fw-semibold" value="<?= rp_kaur($total_negosiasi_item) ?>" readonly aria-readonly="true"></div>
+                                                    <div class="col-12 negotiation-field"><label class="negotiation-field-label">Garansi</label><input type="text" name="garansi" class="form-control" value="<?= html_escape($latest->garansi ?? '') ?>" placeholder="Contoh: 1 tahun"></div>
+                                                    <div class="col-12 negotiation-field"><label class="negotiation-field-label">Catatan</label><input type="text" name="catatan" class="form-control" value="<?= html_escape($latest->catatan ?? '') ?>" placeholder="Catatan hasil negosiasi"></div>
+                                                </div>
+                                                <div class="negotiation-form-actions"><button class="btn btn-fik negotiation-save-btn" type="submit"><i class="bi bi-save me-1"></i>Simpan</button></div>
+                                            </form>
+                                        <?php endforeach; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
                 <?php endforeach; endif; ?>
             </div>
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 pt-3">
-                <div class="small text-muted">Menampilkan <?= count($pengajuan_kaprodi ?? []) ?> dari <?= (int) $total_rows ?> data</div>
-                <nav>
-                    <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, max(1, $page - 1)) ?>">Prev</a></li>
-                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                            <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, $i) ?>"><?= $i ?></a></li>
-                        <?php endfor; ?>
-                        <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, min($total_pages, $page + 1)) ?>">Next</a></li>
-                    </ul>
-                </nav>
+            <div class="kaur-submission-table-card negotiation-pagination-shell">
+                <div class="kaur-submission-pagination-footer">
+                    <div class="kaur-submission-pagination-summary">
+                        <label for="kaurNegotiationPageSize">Tampilkan:</label>
+                        <select id="kaurNegotiationPageSize" class="form-select form-select-sm" aria-label="Jumlah pengajuan negosiasi per halaman">
+                            <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
+                            <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
+                            <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
+                            <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                        </select>
+                        <span>Total item: <?= (int) $total_rows ?></span>
+                    </div>
+                    <div class="kaur-submission-pagination-status">Halaman: <?= (int) $page ?> dari <?= (int) $total_pages ?></div>
+                    <nav>
+                        <ul class="pagination pagination-sm kaur-submission-pagination">
+                            <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, max(1, $page - 1), $per_page ?? '10') ?>">Previous</a></li>
+                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+                                <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
+                            <?php endfor; ?>
+                            <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, min($total_pages, $page + 1), $per_page ?? '10') ?>">Next</a></li>
+                        </ul>
+                    </nav>
+                </div>
             </div>
         </section>
         <?php endif; ?>
 
         <?php if ($active_module === 'approval'): ?>
-        <section id="approval" class="section-anchor panel-card p-3 p-lg-4 mb-4">
-            <h2 class="h5 fw-bold mb-1">Approval Kaur</h2>
-            <div class="text-muted small mb-3">Kaur dapat menyetujui, meminta revisi, atau menolak pengajuan sesuai kebutuhan proses bisnis.</div>
+        <section id="approval" class="section-anchor mb-4">
+            <div class="panel-card kaur-submission-table-card approval-table-card">
+            <div class="approval-table-heading">
+                <h2 class="h5 fw-bold mb-1">Approval Kaur</h2>
+                <div class="text-muted small">Kaur dapat menyetujui, meminta revisi, atau menolak pengajuan sesuai kebutuhan proses bisnis.</div>
+            </div>
             <div class="table-responsive">
-                <table class="table table-clean align-middle">
+                <table class="table table-clean align-middle mb-0 approval-table">
                     <thead><tr><th>No. Pengajuan</th><th>Tanggal</th><th>Program Studi</th><th>Jenis</th><th>Vendor</th><th>Total Harga</th><th>Status Negosiasi</th><th>Status Approval</th><th class="text-end">Aksi</th></tr></thead>
                     <tbody>
                     <?php if (empty($pengajuan_kaprodi)): ?>
@@ -745,28 +1367,39 @@ function kaur_module_url($module) {
                             <td class="fw-semibold"><?= html_escape($p->kode_pengajuan) ?></td>
                             <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($p->created_at)) ?></td>
                             <td><?= html_escape($p->nama_prodi) ?></td>
-                            <td><span class="badge text-bg-light border"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
+                            <td><span class="approval-badge"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
                             <td><?= html_escape($vendor_label) ?></td>
                             <td><?= rp_kaur($total_harga) ?></td>
-                            <td><span class="status-pill <?= status_class_kaur($nego_label) ?>"><?= html_escape($nego_label) ?></span></td>
-                            <td><span class="status-pill <?= status_class_kaur($p->status) ?>"><?= html_escape($p->status) ?></span></td>
-                            <td class="text-end"><button class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#approvalModal<?= (int) $p->id_pengajuan ?>"><i class="bi bi-eye me-1"></i> Detail</button></td>
+                            <td><span class="approval-badge"><?= html_escape($nego_label) ?></span></td>
+                            <td><span class="approval-badge"><?= html_escape($p->status) ?></span></td>
+                            <td class="text-end"><button class="btn btn-sm btn-outline-success rounded-pill px-3 approval-detail-btn" data-bs-toggle="modal" data-bs-target="#approvalModal<?= (int) $p->id_pengajuan ?>"><i class="bi bi-eye me-1"></i> Detail</button></td>
                         </tr>
                     <?php endforeach; endif; ?>
                     </tbody>
                 </table>
             </div>
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 pt-2 border-top">
-                <div class="small text-muted">Menampilkan <?= count($pengajuan_kaprodi ?? []) ?> dari <?= (int) $total_rows ?> data</div>
+            <div class="kaur-submission-pagination-footer">
+                <div class="kaur-submission-pagination-summary">
+                    <label for="kaurApprovalPageSize">Tampilkan:</label>
+                    <select id="kaurApprovalPageSize" class="form-select form-select-sm" aria-label="Jumlah approval per halaman">
+                        <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
+                        <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
+                        <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
+                        <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                    </select>
+                    <span>Total item: <?= (int) $total_rows ?></span>
+                </div>
+                <div class="kaur-submission-pagination-status">Halaman: <?= (int) $page ?> dari <?= (int) $total_pages ?></div>
                 <nav>
-                    <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, max(1, $page - 1)) ?>">Prev</a></li>
+                    <ul class="pagination pagination-sm kaur-submission-pagination">
+                        <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, max(1, $page - 1), $per_page ?? '10') ?>">Previous</a></li>
                         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                            <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, $i) ?>"><?= $i ?></a></li>
+                            <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
                         <?php endfor; ?>
-                        <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, min($total_pages, $page + 1)) ?>">Next</a></li>
+                        <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, min($total_pages, $page + 1), $per_page ?? '10') ?>">Next</a></li>
                     </ul>
                 </nav>
+            </div>
             </div>
         </section>
         <?php foreach (($pengajuan_kaprodi ?? []) as $p): ?>
@@ -780,25 +1413,25 @@ function kaur_module_url($module) {
                 }
                 $auto_approved = (($p->status ?? '') === 'Approval');
             ?>
-            <div class="modal fade" id="approvalModal<?= (int) $p->id_pengajuan ?>" tabindex="-1" aria-hidden="true">
+            <div class="modal fade approval-detail-modal" id="approvalModal<?= (int) $p->id_pengajuan ?>" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-xl modal-dialog-scrollable">
                     <form class="modal-content" method="post" action="<?= base_url('index.php/kaur/pengajuan/approval/'.$p->id_pengajuan.'/approve') ?>">
                         <div class="modal-header">
                             <div>
                                 <h5 class="modal-title fw-bold"><?= html_escape($p->kode_pengajuan) ?> - <?= html_escape($p->nama_pengajuan) ?></h5>
-                                <div class="small text-muted"><?= html_escape($p->nama_prodi) ?> · <?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></div>
+                                <div class="small text-muted"><?= html_escape($p->nama_prodi) ?> - <?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></div>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
                             <div class="mb-3"><div class="mini-label">Kebutuhan</div><div><?= html_escape($p->kebutuhan_lab ?: '-') ?></div></div>
                             <div class="table-responsive">
-                                <table class="table table-sm table-bordered align-middle">
+                                <table class="table table-sm table-bordered align-middle approval-detail-items-table">
                                     <thead class="table-light"><tr><th>Item</th><th>Volume</th><th>Harga Awal</th><th>Vendor</th><th>Harga Negosiasi</th><th>Status</th><th>Garansi</th><th>Catatan</th></tr></thead>
                                     <tbody>
                                         <?php foreach (($p->items ?? []) as $item): $latest = $item->latest_negosiasi ?? null; ?>
                                             <tr>
-                                                <td><span class="badge text-bg-light border me-1"><?= html_escape($item->jenis_item ?? 'Barang') ?></span><?= html_escape($item->uraian_barang) ?></td>
+                                                <td><div class="approval-detail-item"><span class="approval-detail-item-badge"><?= html_escape($item->jenis_item ?? 'Barang') ?></span><span><?= html_escape($item->uraian_barang) ?></span></div></td>
                                                 <td><?= num_kaur($item->volume_awal_referensi ?? $item->vol) ?> <?= html_escape($item->satuan) ?></td>
                                                 <td><?= rp_kaur($item->harga_awal_referensi ?? $item->harga_penawaran_sat ?? 0) ?></td>
                                                 <td><?= html_escape($latest->vendor ?? '-') ?></td>
@@ -883,20 +1516,30 @@ function kaur_module_url($module) {
                     $bast_rows[] = $b;
                 }
             }
+            $total_rows_bast = count($bast_rows);
+            $total_pages_bast = $limit === null ? 1 : max(1, (int) ceil($total_rows_bast / $limit));
+            if ($page > $total_pages_bast) { $page = $total_pages_bast; }
+            $bast_pending_count = count(array_filter($bast_rows, fn($row) => empty($row->nomor_bast)));
+            if ($limit !== null) {
+                $bast_rows = array_slice($bast_rows, ($page - 1) * $limit, $limit);
+            }
             $bast_years = $bast_years ?? [(int) date('Y')];
             $bast_signer_nama = $bast_signer_nama ?? (($this->session->userdata('nama') ?? null) ?: 'Kaur. Pencatatan & Pengelolaan Aset');
             $bast_signer_jabatan = $bast_signer_jabatan ?? 'Kaur. Pencatatan & Pengelolaan Aset';
         ?>
-        <section id="bast" class="section-anchor panel-card p-3 p-lg-4 mb-4">
+        <section id="bast" class="section-anchor mb-4">
+            <div class="panel-card kaur-submission-table-card bast-table-card">
+            <div class="bast-table-toolbar">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
                 <div>
                     <h2 class="h5 fw-bold mb-1">BAST (Berita Acara Serah Terima)</h2>
                     <div class="text-muted small">Cari, unggah dokumen BAST dari Logistik, atau langsung buat/cetak BAST dari data pengajuan.</div>
                 </div>
-                <span class="badge text-bg-warning align-self-start"><?= count(array_filter($bast_rows, fn($r) => empty($r->nomor_bast))) ?> menunggu BAST</span>
+                <span class="bast-summary-badge align-self-start"><?= (int) $bast_pending_count ?> menunggu BAST</span>
             </div>
 
             <form method="get" action="<?= kaur_module_url('bast') ?>" class="row g-2 align-items-end mb-3">
+                <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
                 <div class="col-md-3">
                     <label class="form-label small fw-semibold">Kata Kunci</label>
                     <input type="text" name="q" class="form-control" list="bastAutocompleteList" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, nomor BAST" autocomplete="off">
@@ -935,9 +1578,10 @@ function kaur_module_url($module) {
                 <div class="col-md-2"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
                 <div class="col-md-1 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
             </form>
+            </div>
 
             <div class="table-responsive">
-                <table class="table table-clean align-middle">
+                <table class="table table-clean align-middle mb-0 bast-table">
                     <thead><tr><th>Kode Pengajuan</th><th>Prodi / Kegiatan</th><th>Jenis</th><th>Nomor BAST</th><th>Tanggal BAST</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
                     <tbody>
                         <?php if (empty($bast_rows)): ?>
@@ -958,19 +1602,19 @@ function kaur_module_url($module) {
                             <tr>
                                 <td class="fw-semibold"><?= html_escape($b->kode_pengajuan ?? '-') ?></td>
                                 <td><div class="fw-semibold"><?= html_escape($b->nama_prodi ?? '-') ?></div><div class="small text-muted"><?= html_escape($b->nama_pengajuan ?? '-') ?></div></td>
-                                <td><span class="badge text-bg-light border"><?= html_escape($b->jenis_pengajuan ?? 'Barang') ?></span></td>
+                                <td><span class="bast-badge"><?= html_escape($b->jenis_pengajuan ?? 'Barang') ?></span></td>
                                 <td><?= html_escape($b->nomor_bast ?? '-') ?></td>
                                 <td class="small text-muted"><?= !empty($b->tanggal_bast) ? date('d/m/Y', strtotime($b->tanggal_bast)) : '-' ?></td>
-                                <td><span class="status-pill <?= $has_bast ? 'status-bast' : 'status-pengajuan' ?>"><?= $has_bast ? 'Sudah BAST' : 'Menunggu BAST' ?></span></td>
+                                <td><span class="bast-badge"><?= $has_bast ? 'Sudah BAST' : 'Menunggu BAST' ?></span></td>
                                 <td class="text-end">
-                                    <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                                    <div class="bast-actions">
                                         <?php if (!empty($b->file_bast)): ?>
-                                            <a href="<?= base_url($b->file_bast) ?>" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-file-earmark-text me-1"></i> File</a>
+                                            <a href="<?= base_url($b->file_bast) ?>" target="_blank" class="btn btn-sm btn-outline-secondary rounded-pill px-3 bast-action-btn"><i class="bi bi-file-earmark-text me-1"></i> File</a>
                                         <?php endif; ?>
                                         <?php if (!empty($b->id_pengajuan)): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#bastUploadModal<?= (int) $b->id_pengajuan ?>"><i class="bi bi-upload me-1"></i> <?= $has_bast ? 'Ganti File' : 'Upload' ?></button>
+                                            <button type="button" class="btn btn-sm btn-outline-success rounded-pill px-3 bast-action-btn" data-bs-toggle="modal" data-bs-target="#bastUploadModal<?= (int) $b->id_pengajuan ?>"><i class="bi bi-upload me-1"></i> <?= $has_bast ? 'Ganti File' : 'Upload' ?></button>
                                         <?php endif; ?>
-                                        <button type="button" class="btn btn-sm btn-fik rounded-pill px-3 btn-generate-bast"
+                                        <button type="button" class="btn btn-sm btn-fik rounded-pill px-3 btn-generate-bast bast-action-btn"
                                             data-nomor="<?= html_escape($b->nomor_bast ?: 'FIK/' . date('y') . '/---') ?>"
                                             data-spk="<?= html_escape($b->spk_no ?? $b->kode_pengajuan ?? '-') ?>"
                                             data-hari="<?= html_escape($terbilang['hari']) ?>"
@@ -993,19 +1637,28 @@ function kaur_module_url($module) {
                     </tbody>
                 </table>
             </div>
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 pt-2 border-top">
-                <div class="small text-muted">Menampilkan <?= count($bast_rows) ?> dari <?= (int) ($total_rows_bast ?? count($bast_rows)) ?> data</div>
-                <?php if (!empty($total_pages_bast) && $total_pages_bast > 1): ?>
+            <div class="kaur-submission-pagination-footer">
+                <div class="kaur-submission-pagination-summary">
+                    <label for="kaurBastPageSize">Tampilkan:</label>
+                    <select id="kaurBastPageSize" class="form-select form-select-sm" aria-label="Jumlah data BAST per halaman">
+                        <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
+                        <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
+                        <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
+                        <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                    </select>
+                    <span>Total item: <?= (int) $total_rows_bast ?></span>
+                </div>
+                <div class="kaur-submission-pagination-status">Halaman: <?= (int) $page ?> dari <?= (int) $total_pages_bast ?></div>
                 <nav>
-                    <ul class="pagination pagination-sm mb-0">
-                        <li class="page-item <?= ($page ?? 1) <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, max(1, ($page ?? 1) - 1)) ?>">Prev</a></li>
+                    <ul class="pagination pagination-sm kaur-submission-pagination">
+                        <li class="page-item <?= ($page ?? 1) <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, max(1, ($page ?? 1) - 1), $per_page ?? '10') ?>">Previous</a></li>
                         <?php for ($i = 1; $i <= $total_pages_bast; $i++): ?>
-                            <li class="page-item <?= $i === (int) ($page ?? 1) ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, $i) ?>"><?= $i ?></a></li>
+                            <li class="page-item <?= $i === (int) ($page ?? 1) ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
                         <?php endfor; ?>
-                        <li class="page-item <?= ($page ?? 1) >= $total_pages_bast ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, min($total_pages_bast, ($page ?? 1) + 1)) ?>">Next</a></li>
+                        <li class="page-item <?= ($page ?? 1) >= $total_pages_bast ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, min($total_pages_bast, ($page ?? 1) + 1), $per_page ?? '10') ?>">Next</a></li>
                     </ul>
                 </nav>
-                <?php endif; ?>
+            </div>
             </div>
         </section>
 
@@ -1053,11 +1706,14 @@ function kaur_module_url($module) {
         <?php endif; ?>
 
         <?php if ($active_module === 'laporan'): ?>
-        <section id="laporan" class="section-anchor panel-card p-3 p-lg-4 mb-4">
-            <h2 class="h5 fw-bold mb-1">Laporan Hasil Negosiasi</h2>
-            <div class="text-muted small mb-3">Hanya data dengan status Deal yang tampil sebagai dokumentasi resmi hasil akhir.</div>
+        <section id="laporan" class="section-anchor mb-4">
+            <div class="panel-card kaur-submission-table-card">
+            <div class="kaur-report-table-header">
+                <h2 class="h5 fw-bold mb-1">Laporan Hasil Negosiasi</h2>
+                <div class="text-muted small">Hanya data dengan status Deal yang tampil sebagai dokumentasi resmi hasil akhir.</div>
+            </div>
             <div class="table-responsive">
-                <table class="table table-clean align-middle">
+                <table class="table table-clean align-middle kaur-report-table">
                     <thead><tr><th>Pengajuan</th><th>Item</th><th>Vendor</th><th>Harga Awal</th><th>Harga Akhir</th><th>Selisih</th><th>Volume</th><th>Garansi</th><th>Catatan</th></tr></thead>
                     <tbody>
                         <?php if (empty($laporan_negosiasi)): ?>
@@ -1077,6 +1733,29 @@ function kaur_module_url($module) {
                         <?php endforeach; endif; ?>
                     </tbody>
                 </table>
+            </div>
+            <div class="kaur-submission-pagination-footer">
+                <div class="kaur-submission-pagination-summary">
+                    <label for="kaurReportPageSize">Tampilkan:</label>
+                    <select id="kaurReportPageSize" class="form-select form-select-sm" aria-label="Jumlah laporan negosiasi per halaman">
+                        <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
+                        <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
+                        <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
+                        <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                    </select>
+                    <span>Total item: <?= (int) ($total_rows_laporan ?? 0) ?></span>
+                </div>
+                <div class="kaur-submission-pagination-status">Halaman: <?= (int) ($page ?? 1) ?> dari <?= (int) ($total_pages_laporan ?? 1) ?></div>
+                <nav aria-label="Pagination laporan hasil negosiasi">
+                    <ul class="pagination pagination-sm kaur-submission-pagination">
+                        <li class="page-item <?= ($page ?? 1) <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('laporan') . '?' . query_kaur($filters, max(1, ($page ?? 1) - 1), $per_page ?? '10') ?>">Previous</a></li>
+                        <?php for ($i = 1; $i <= ($total_pages_laporan ?? 1); $i++): ?>
+                            <li class="page-item <?= $i === (int) ($page ?? 1) ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('laporan') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
+                        <?php endfor; ?>
+                        <li class="page-item <?= ($page ?? 1) >= ($total_pages_laporan ?? 1) ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('laporan') . '?' . query_kaur($filters, min(($total_pages_laporan ?? 1), ($page ?? 1) + 1), $per_page ?? '10') ?>">Next</a></li>
+                    </ul>
+                </nav>
+            </div>
             </div>
         </section>
         <?php endif; ?>
@@ -1260,6 +1939,16 @@ function kaur_module_url($module) {
             });
             updateNegotiationTotal(form);
         });
+
+        document.querySelectorAll('[data-negotiation-group]').forEach((group) => {
+            const statusSelect = group.querySelector('.negotiation-group-status');
+            if (!statusSelect) return;
+            statusSelect.addEventListener('change', () => {
+                group.querySelectorAll('.negotiation-item-status').forEach((input) => {
+                    input.value = statusSelect.value;
+                });
+            });
+        });
     </script>
     <script>
         (() => {
@@ -1361,6 +2050,18 @@ function kaur_module_url($module) {
                     printWindow.onload = () => printWindow.print();
                 });
             }
+        })();
+    </script>
+    <script>
+        (() => {
+            const pageSize = document.querySelector('#kaurSubmissionPageSize, #kaurNegotiationPageSize, #kaurApprovalPageSize, #kaurBastPageSize, #kaurReportPageSize');
+            if (!pageSize) return;
+            pageSize.addEventListener('change', () => {
+                const targetUrl = new URL(window.location.href);
+                targetUrl.searchParams.set('page', '1');
+                targetUrl.searchParams.set('per_page', pageSize.value);
+                window.location.assign(targetUrl.toString());
+            });
         })();
     </script>
 </body>

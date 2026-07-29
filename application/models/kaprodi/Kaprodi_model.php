@@ -228,7 +228,6 @@ class Kaprodi_model extends CI_Model {
 
     public function calculate_summary($items) {
         $subtotal_penawaran = 0;
-        $subtotal_markup = 0;
         $subtotal_negosiasi = 0;
 
         foreach ($items as $item) {
@@ -238,15 +237,15 @@ class Kaprodi_model extends CI_Model {
             $nego_harga = isset($item->hasil_negosiasi_sat) && $item->hasil_negosiasi_sat !== null ? (float) $item->hasil_negosiasi_sat : 0;
 
             $subtotal_penawaran += $vol * $harga;
-            $subtotal_markup += $vol * ($harga * 1.2);
             $subtotal_negosiasi += $nego_vol * $nego_harga;
         }
 
         $pajak_20 = $subtotal_penawaran * 0.20;
         $total_setelah_pajak = $subtotal_penawaran + $pajak_20;
-        $ppn_penawaran = $subtotal_markup * 0.11;
-        $ppn_negosiasi = $subtotal_negosiasi * 0.11;
-        $total_penawaran = $subtotal_markup + $ppn_penawaran;
+        $subtotal_markup = $subtotal_penawaran;
+        $ppn_penawaran = $pajak_20;
+        $ppn_negosiasi = $subtotal_negosiasi * 0.20;
+        $total_penawaran = $total_setelah_pajak;
         $total_negosiasi = $subtotal_negosiasi + $ppn_negosiasi;
 
         return [

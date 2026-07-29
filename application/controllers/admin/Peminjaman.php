@@ -53,18 +53,29 @@ class Peminjaman extends CI_Controller {
         }
 
         $page = max(1, (int) $this->input->get('page', true));
-        $per_page = 10;
+        $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
+        if ($requested_per_page === 'all') {
+            $per_page = 'all';
+            $page = 1;
+        } else {
+            $requested_limit = (int) $requested_per_page;
+            $per_page = in_array($requested_limit, [10, 25, 50], true) ? $requested_limit : 10;
+        }
         $rows = $this->Peminjaman_model->search_peminjaman($filters);
+        $total_rows = count($rows);
+        $total_pages = $per_page === 'all' ? 1 : max(1, (int) ceil($total_rows / $per_page));
+        $page = min($page, $total_pages);
+        $visible_rows = $per_page === 'all' ? $rows : array_slice($rows, ($page - 1) * $per_page, $per_page);
 
         $data['title'] = 'Data Peminjaman';
         $data['filters'] = $filters;
         $data['status_options'] = array_merge([''], $allowed_status);
-        $data['peminjaman'] = array_slice($rows, ($page - 1) * $per_page, $per_page);
+        $data['peminjaman'] = $visible_rows;
         $data['pagination'] = [
             'page' => $page,
             'per_page' => $per_page,
-            'total' => count($rows),
-            'total_pages' => max(1, (int) ceil(count($rows) / $per_page)),
+            'total' => $total_rows,
+            'total_pages' => $total_pages,
         ];
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);

@@ -74,12 +74,27 @@ class Dashboard extends CI_Controller {
             'jenis_pengajuan' => trim((string) $this->input->get('jenis_pengajuan', true)),
             'vendor' => trim((string) $this->input->get('vendor', true)),
             'status_negosiasi' => trim((string) $this->input->get('status_negosiasi', true)),
+            'status_bast' => trim((string) $this->input->get('status_bast', true)),
+            'tahun' => trim((string) $this->input->get('tahun', true)),
             'tanggal_dari' => trim((string) $this->input->get('tanggal_dari', true)),
             'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
         ];
         $page = max(1, (int) $this->input->get('page'));
+        $per_page = '8';
         $limit = 8;
-        $offset = ($page - 1) * $limit;
+        if (in_array($active_module, ['pengajuan', 'negosiasi', 'approval', 'bast', 'laporan'], true)) {
+            $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
+            if ($requested_per_page === 'all') {
+                $per_page = 'all';
+                $limit = null;
+                $page = 1;
+            } else {
+                $requested_limit = (int) $requested_per_page;
+                $limit = in_array($requested_limit, [10, 25, 50], true) ? $requested_limit : 10;
+                $per_page = (string) $limit;
+            }
+        }
+        $offset = $limit === null ? 0 : (($page - 1) * $limit);
 
         $titles = [
             'overview' => 'Dashboard Kaur Laboratorium',
@@ -97,8 +112,9 @@ class Dashboard extends CI_Controller {
         $data['filters'] = $filters;
         $data['page'] = $page;
         $data['limit'] = $limit;
+        $data['per_page'] = $per_page;
         $data['total_rows'] = $this->Kaur_model->count_kaprodi_pengajuan($filters);
-        $data['total_pages'] = max(1, (int) ceil($data['total_rows'] / $limit));
+        $data['total_pages'] = $limit === null ? 1 : max(1, (int) ceil($data['total_rows'] / $limit));
         $data['pengajuan_kaprodi'] = $this->Kaur_model->get_kaprodi_pengajuan($filters, $limit, $offset);
         $data['dashboard_year'] = $dashboard_year;
         $data['dashboard_years'] = $dashboard_years;
@@ -108,9 +124,19 @@ class Dashboard extends CI_Controller {
         $data['dashboard_status_breakdown'] = $this->Kaur_model->get_dashboard_status_breakdown($dashboard_year);
         $data['dashboard_negotiation'] = $this->Kaur_model->get_dashboard_negotiation_summary($dashboard_year);
         $data['dashboard_activity'] = $this->Kaur_model->get_dashboard_recent_activity(12);
-        $data['laporan_negosiasi'] = $this->Kaur_model->get_laporan_negosiasi_deal($filters, 20);
-        $data['bast_ready'] = $this->Kaur_model->get_bast_ready_pengajuan(12);
-        $data['bast_list'] = $this->Kaur_model->get_bast_list(12);
+        $data['total_rows_laporan'] = $this->Kaur_model->count_laporan_negosiasi_deal($filters);
+        $data['total_pages_laporan'] = $limit === null ? 1 : max(1, (int) ceil($data['total_rows_laporan'] / $limit));
+        if ($active_module === 'laporan' && $page > $data['total_pages_laporan']) {
+            $page = $data['total_pages_laporan'];
+            $offset = $limit === null ? 0 : (($page - 1) * $limit);
+            $data['page'] = $page;
+        }
+        $laporan_limit = $active_module === 'laporan' ? $limit : 20;
+        $laporan_offset = $active_module === 'laporan' ? $offset : 0;
+        $data['laporan_negosiasi'] = $this->Kaur_model->get_laporan_negosiasi_deal($filters, $laporan_limit, $laporan_offset);
+        $bast_source_limit = $active_module === 'bast' ? null : 12;
+        $data['bast_ready'] = $this->Kaur_model->get_bast_ready_pengajuan($bast_source_limit);
+        $data['bast_list'] = $this->Kaur_model->get_bast_list($bast_source_limit);
         $data['peminjaman_pending_kaur'] = $this->Peminjaman_model->get_pending_kaur();
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('kaur', null);
