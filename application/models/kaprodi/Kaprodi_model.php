@@ -240,17 +240,17 @@ class Kaprodi_model extends CI_Model {
             $subtotal_negosiasi += $nego_vol * $nego_harga;
         }
 
-        $pajak_20 = $subtotal_penawaran * 0.20;
-        $total_setelah_pajak = $subtotal_penawaran + $pajak_20;
+        $pajak = $subtotal_penawaran * SCM_TAX_RATE;
+        $total_setelah_pajak = $subtotal_penawaran + $pajak;
         $subtotal_markup = $subtotal_penawaran;
-        $ppn_penawaran = $pajak_20;
-        $ppn_negosiasi = $subtotal_negosiasi * 0.20;
+        $ppn_penawaran = $pajak;
+        $ppn_negosiasi = $subtotal_negosiasi * SCM_TAX_RATE;
         $total_penawaran = $total_setelah_pajak;
         $total_negosiasi = $subtotal_negosiasi + $ppn_negosiasi;
 
         return [
             'subtotal_penawaran' => $subtotal_penawaran,
-            'pajak_20' => $pajak_20,
+            'pajak_20' => $pajak,
             'total_setelah_pajak' => $total_setelah_pajak,
             'subtotal_markup' => $subtotal_markup,
             'ppn_penawaran' => $ppn_penawaran,

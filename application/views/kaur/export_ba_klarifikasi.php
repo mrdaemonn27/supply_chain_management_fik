@@ -166,9 +166,9 @@ $role_label = $role_label ?? 'Kaur Laboratorium';
             </tr>
         <?php endforeach; endif; ?>
         <?php
-        $ppn_penawaran = $sub_penawaran * 0.20;
+        $ppn_penawaran = $sub_penawaran * SCM_TAX_RATE;
         $total_penawaran = $sub_penawaran + $ppn_penawaran;
-        $ppn_negosiasi = $sub_negosiasi * 0.20;
+        $ppn_negosiasi = $sub_negosiasi * SCM_TAX_RATE;
         $total_negosiasi = $sub_negosiasi + $ppn_negosiasi;
         ?>
         <tr>
@@ -179,9 +179,9 @@ $role_label = $role_label ?? 'Kaur Laboratorium';
             <td></td>
         </tr>
         <tr>
-            <td colspan="5" class="right bold">Pajak 20% :</td>
+            <td colspan="5" class="right bold">Pajak <?= (int) SCM_TAX_PERCENT ?>% :</td>
             <td class="right bold"><?= ba_excel_rp($ppn_penawaran) ?></td>
-            <td colspan="3" class="right bold">Pajak 20% :</td>
+            <td colspan="3" class="right bold">Pajak <?= (int) SCM_TAX_PERCENT ?>% :</td>
             <td class="right bold"><?= $show_result ? ba_excel_rp($ppn_negosiasi) : '' ?></td>
             <td></td>
         </tr>

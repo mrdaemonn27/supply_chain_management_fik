@@ -36,13 +36,13 @@ function excel_kaur_num($value) { return rtrim(rtrim(number_format((float) $valu
             <th rowspan="2">Alokasi Sisa</th>
         </tr>
         <tr>
-            <th>Harga Sat</th><th>Jmlh Harga</th><th>Pajak 20%</th><th>Link</th>
+            <th>Harga Sat</th><th>Jmlh Harga</th><th>Pajak <?= (int) SCM_TAX_PERCENT ?>%</th><th>Link</th>
             <th>Vol</th><th>Harga Sat</th><th>Jmlh Harga</th>
         </tr>
         <?php foreach($pengajuan->items as $i => $item): ?>
             <?php
             $jumlah_penawaran = (float)$item->vol * (float)$item->harga_penawaran_sat;
-            $jumlah_pajak = $jumlah_penawaran * 0.20;
+            $jumlah_pajak = $jumlah_penawaran * SCM_TAX_RATE;
             $nego_vol = $item->hasil_negosiasi_vol !== null ? (float)$item->hasil_negosiasi_vol : (float)$item->vol;
             $nego_sat = $item->hasil_negosiasi_sat !== null ? (float)$item->hasil_negosiasi_sat : 0;
             $jumlah_nego = $nego_vol * $nego_sat;
@@ -65,7 +65,7 @@ function excel_kaur_num($value) { return rtrim(rtrim(number_format((float) $valu
             </tr>
         <?php endforeach; ?>
         <tr><td colspan="5" class="right bold">Sub Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['subtotal_penawaran']) ?></td><td colspan="2"></td><td colspan="3" class="right bold">Sub Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['subtotal_negosiasi']) ?></td><td colspan="2"></td></tr>
-        <tr><td colspan="5" class="right bold">Pajak 20%</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['ppn_penawaran']) ?></td><td colspan="2"></td><td colspan="3" class="right bold">Pajak 20%</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['ppn_negosiasi']) ?></td><td colspan="2"></td></tr>
+        <tr><td colspan="5" class="right bold">Pajak <?= (int) SCM_TAX_PERCENT ?>%</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['ppn_penawaran']) ?></td><td colspan="2"></td><td colspan="3" class="right bold">Pajak <?= (int) SCM_TAX_PERCENT ?>%</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['ppn_negosiasi']) ?></td><td colspan="2"></td></tr>
         <tr><td colspan="5" class="right bold">Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['total_penawaran']) ?></td><td colspan="2"></td><td colspan="3" class="right bold">Total</td><td class="right bold"><?= excel_kaur_rp($pengajuan->summary['total_negosiasi']) ?></td><td colspan="2"></td></tr>
         <tr><td colspan="14" class="no-border"></td></tr>
         <tr><td colspan="7" class="no-border">BAST Tahap 1: <?= html_escape($pengajuan->bast_nomor ?: '-') ?></td><td colspan="7" class="no-border">Anak Perusahaan: <?= html_escape($pengajuan->anak_perusahaan ?: '-') ?></td></tr>

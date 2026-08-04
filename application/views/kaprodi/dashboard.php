@@ -868,7 +868,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                 </div>
                                 <div class="request-stat-card">
                                     <span class="request-stat-icon"><i class="bi bi-percent"></i></span>
-                                    <div><div class="request-stat-label">Pajak 20%</div><div class="request-stat-value" id="taxValue">Rp 0</div></div>
+                                    <div><div class="request-stat-label">Pajak <?= (int) SCM_TAX_PERCENT ?>%</div><div class="request-stat-value" id="taxValue">Rp 0</div></div>
                                 </div>
                                 <div class="request-stat-card is-accent">
                                     <span class="request-stat-icon"><i class="bi bi-wallet2"></i></span>
@@ -1519,7 +1519,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     subtotalInput.value = formatMoney(subtotal);
                 }
             });
-            const tax = total * 0.20;
+            const tax = total * <?= json_encode(SCM_TAX_RATE) ?>;
             document.getElementById('totalRows').textContent = currentRows.length;
             document.getElementById('filledRows').textContent = filled;
             document.getElementById('emptyRows').textContent = Math.max(0, currentRows.length - filled);

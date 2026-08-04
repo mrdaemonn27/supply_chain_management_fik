@@ -15,6 +15,16 @@ defined('SHOW_DEBUG_BACKTRACE') OR define('SHOW_DEBUG_BACKTRACE', TRUE);
 
 /*
 |--------------------------------------------------------------------------
+| SCM Tax
+|--------------------------------------------------------------------------
+| One source of truth for procurement tax calculations across Kaprodi,
+| Kaur, previews, and spreadsheet exports.
+*/
+defined('SCM_TAX_RATE')    OR define('SCM_TAX_RATE', 0.11);
+defined('SCM_TAX_PERCENT') OR define('SCM_TAX_PERCENT', 11);
+
+/*
+|--------------------------------------------------------------------------
 | File and Directory Modes
 |--------------------------------------------------------------------------
 |

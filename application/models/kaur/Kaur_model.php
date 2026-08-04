@@ -634,9 +634,10 @@ class Kaur_model extends CI_Model {
 
     private function get_total_deal_summary($tahun = null) {
         $year_condition = $tahun ? ' AND YEAR(p.created_at) = ' . (int) $tahun : '';
+        $tax_multiplier = 1 + SCM_TAX_RATE;
         $sql = "SELECT
-                COALESCE(SUM(n.harga_awal * n.volume_awal), 0) * 1.20 AS total_awal,
-                COALESCE(SUM(n.harga_negosiasi * n.volume_negosiasi), 0) * 1.20 AS total_negosiasi
+                COALESCE(SUM(n.harga_awal * n.volume_awal), 0) * ? AS total_awal,
+                COALESCE(SUM(n.harga_negosiasi * n.volume_negosiasi), 0) * ? AS total_negosiasi
             FROM `{$this->negosiasiTable}` n
             INNER JOIN (
                 SELECT id_item, MAX(id_negosiasi) AS max_id
@@ -645,7 +646,7 @@ class Kaur_model extends CI_Model {
             ) latest ON latest.max_id = n.id_negosiasi
             INNER JOIN `{$this->kaprodiTable}` p ON p.id_pengajuan = n.id_pengajuan
             WHERE n.status = 'Deal'{$year_condition}";
-        $row = $this->db->query($sql)->row();
+        $row = $this->db->query($sql, [$tax_multiplier, $tax_multiplier])->row();
         return [
             'total_awal' => $row ? (float) $row->total_awal : 0,
             'total_negosiasi' => $row ? (float) $row->total_negosiasi : 0,
@@ -1195,17 +1196,17 @@ class Kaur_model extends CI_Model {
             $subtotal_negosiasi += $nego_vol * $nego_harga;
         }
 
-        $pajak_20 = $subtotal_penawaran * 0.20;
-        $total_setelah_pajak = $subtotal_penawaran + $pajak_20;
+        $pajak = $subtotal_penawaran * SCM_TAX_RATE;
+        $total_setelah_pajak = $subtotal_penawaran + $pajak;
         $subtotal_markup = $subtotal_penawaran;
-        $ppn_penawaran = $pajak_20;
-        $ppn_negosiasi = $subtotal_negosiasi * 0.20;
+        $ppn_penawaran = $pajak;
+        $ppn_negosiasi = $subtotal_negosiasi * SCM_TAX_RATE;
         $total_penawaran = $total_setelah_pajak;
         $total_negosiasi = $subtotal_negosiasi + $ppn_negosiasi;
 
         return [
             'subtotal_penawaran' => $subtotal_penawaran,
-            'pajak_20' => $pajak_20,
+            'pajak_20' => $pajak,
             'total_setelah_pajak' => $total_setelah_pajak,
             'subtotal_markup' => $subtotal_markup,
             'ppn_penawaran' => $ppn_penawaran,
