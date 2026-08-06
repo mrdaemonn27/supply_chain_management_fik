@@ -295,8 +295,18 @@ if (!function_exists('scm_xlsx_parse_tables')) {
 }
 
 if (!function_exists('scm_xlsx_binary')) {
-    function scm_xlsx_binary($html) {
-        if (!class_exists('ZipArchive')) {
+    function scm_xlsx_binary($html, &$error = null) {
+        $error = null;
+
+        if (!class_exists('DOMDocument')) {
+            $error = 'Ekstensi DOM PHP belum aktif sehingga isi laporan XLSX tidak dapat diproses.';
+            return false;
+        }
+
+        // ZipArchive adalah pilihan utama. PharData menjadi fallback agar export
+        // tetap bekerja pada instalasi XAMPP yang extension=zip-nya belum aktif.
+        if (!class_exists('ZipArchive') && !class_exists('PharData')) {
+            $error = 'Ekstensi ZIP PHP belum aktif dan fallback PharData tidak tersedia sehingga file XLSX tidak dapat dibuat.';
             return false;
         }
 
@@ -499,32 +509,68 @@ if (!function_exists('scm_xlsx_binary')) {
             . '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
             . '</styleSheet>';
 
+        $archive_entries = [
+            '[Content_Types].xml' => $content_types,
+            '_rels/.rels' => $root_rels,
+            'xl/workbook.xml' => $workbook,
+            'xl/_rels/workbook.xml.rels' => $workbook_rels,
+            'xl/styles.xml' => $styles,
+        ];
+        foreach ($sheets_xml as $i => $xml) {
+            $archive_entries['xl/worksheets/sheet' . ($i + 1) . '.xml'] = $xml;
+        }
+
         $temporary = tempnam(sys_get_temp_dir(), 'scm_xlsx_');
-        $zip = new ZipArchive();
-        if ($zip->open($temporary, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+        if ($temporary === false) {
+            $error = 'Folder temporary PHP tidak dapat digunakan untuk membuat file XLSX.';
             return false;
         }
-        $zip->addFromString('[Content_Types].xml', $content_types);
-        $zip->addFromString('_rels/.rels', $root_rels);
-        $zip->addFromString('xl/workbook.xml', $workbook);
-        $zip->addFromString('xl/_rels/workbook.xml.rels', $workbook_rels);
-        $zip->addFromString('xl/styles.xml', $styles);
-        foreach ($sheets_xml as $i => $xml) {
-            $zip->addFromString('xl/worksheets/sheet' . ($i + 1) . '.xml', $xml);
+
+        if (class_exists('ZipArchive')) {
+            $zip = new ZipArchive();
+            if ($zip->open($temporary, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                @unlink($temporary);
+                $error = 'Arsip XLSX tidak dapat dibuat pada folder temporary PHP.';
+                return false;
+            }
+            foreach ($archive_entries as $path => $contents) {
+                $zip->addFromString($path, $contents);
+            }
+            $zip->close();
+        } else {
+            // PharData mengenali format dari ekstensi file, sehingga file kosong
+            // buatan tempnam dihapus lalu nama unik yang sama diberi akhiran .zip.
+            @unlink($temporary);
+            $temporary .= '.zip';
+            try {
+                $zip = new PharData($temporary, 0, null, Phar::ZIP);
+                foreach ($archive_entries as $path => $contents) {
+                    $zip->addFromString($path, $contents);
+                }
+                unset($zip);
+            } catch (Exception $exception) {
+                @unlink($temporary);
+                $error = 'Fallback PharData gagal membuat arsip XLSX: ' . $exception->getMessage();
+                return false;
+            }
         }
-        $zip->close();
 
         $binary = file_get_contents($temporary);
         @unlink($temporary);
+        if ($binary === false) {
+            $error = 'File XLSX sementara gagal dibaca.';
+            return false;
+        }
         return $binary;
     }
 }
 
 if (!function_exists('scm_download_xlsx')) {
     function scm_download_xlsx($filename, $html) {
-        $binary = scm_xlsx_binary($html);
+        $error = null;
+        $binary = scm_xlsx_binary($html, $error);
         if ($binary === false) {
-            show_error('Ekstensi ZipArchive atau DOMDocument PHP belum aktif sehingga file XLSX tidak dapat dibuat.', 500);
+            show_error($error ?: 'File XLSX tidak dapat dibuat.', 500);
         }
         while (ob_get_level() > 0) {
             ob_end_clean();

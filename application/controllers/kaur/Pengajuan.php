@@ -81,6 +81,80 @@ class Pengajuan extends CI_Controller {
         redirect('kaur/dashboard/negosiasi');
     }
 
+    public function simpan_status_pengajuan($id_pengajuan) {
+        $pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
+        if (!$pengajuan) {
+            $this->session->set_flashdata('error', 'Pengajuan Kaprodi tidak ditemukan.');
+            redirect('kaur/dashboard/negosiasi');
+        }
+
+        $status = trim($this->input->post('status_pengajuan', true));
+        if (!in_array($status, ['Sedang Negosiasi', 'Deal', 'Ditolak'], true)) {
+            $this->session->set_flashdata('error', 'Status negosiasi tidak valid.');
+            redirect('kaur/dashboard/negosiasi');
+        }
+
+        $items = (array) ($pengajuan->items ?? []);
+        if (empty($items)) {
+            $this->session->set_flashdata('error', 'Pengajuan ini belum memiliki item untuk dinegosiasikan.');
+            redirect('kaur/dashboard/negosiasi');
+        }
+
+        $updated = 0;
+        $skipped = 0;
+        foreach ($items as $item) {
+            $latest = $item->latest_negosiasi ?? null;
+            $vendor = trim((string) ($latest->vendor ?? ''));
+            $harga_negosiasi = (float) ($latest->harga_negosiasi ?? 0);
+            $volume_negosiasi = (float) ($latest->volume_negosiasi ?? ($item->volume_awal_referensi ?? $item->vol ?? 0));
+
+            // Item yang belum pernah dinegosiasikan (belum ada vendor/harga) dilewati
+            // supaya tidak lolos validasi save_negosiasi dengan data kosong/tidak valid.
+            if ($vendor === '' || $harga_negosiasi <= 0 || $volume_negosiasi <= 0) {
+                $skipped++;
+                continue;
+            }
+
+            $ok = $this->Kaur_model->save_negosiasi($id_pengajuan, $item->id_item, [
+                'vendor' => $vendor,
+                'harga_negosiasi' => $harga_negosiasi,
+                'volume_negosiasi' => $volume_negosiasi,
+                'garansi' => trim((string) ($latest->garansi ?? '')),
+                'catatan' => trim((string) ($latest->catatan ?? '')),
+                'status' => $status,
+                'created_by' => $this->session->userdata('id_user'),
+            ]);
+            if ($ok) {
+                $updated++;
+            }
+        }
+
+        if ($updated === 0) {
+            $this->session->set_flashdata('error', 'Belum ada item dengan data negosiasi lengkap (vendor, harga, volume) untuk diperbarui statusnya.');
+            redirect('kaur/dashboard/negosiasi');
+        }
+
+        $message = "Status negosiasi berhasil diperbarui untuk {$updated} item.";
+        if ($skipped > 0) {
+            $message .= " {$skipped} item dilewati karena belum memiliki data negosiasi (vendor/harga/volume).";
+        }
+        $this->session->set_flashdata('success', $message);
+
+        $updated_pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
+        if ($updated_pengajuan && $updated_pengajuan->status === 'Approval') {
+            $this->Peminjaman_model->create_notifikasi(
+                null,
+                $pengajuan->id_user,
+                'Negosiasi selesai',
+                'Negosiasi pengajuan ' . $pengajuan->nama_pengajuan . ' selesai dan otomatis berstatus Approval.',
+                null,
+                'kaprodi_pengajuan',
+                $id_pengajuan
+            );
+        }
+        redirect('kaur/dashboard/negosiasi');
+    }
+
     public function approval($id_pengajuan, $aksi = 'approve') {
         $pengajuan = $this->Kaur_model->get_kaprodi_by_id($id_pengajuan);
         if (!$pengajuan) {
@@ -89,7 +163,7 @@ class Pengajuan extends CI_Controller {
         }
 
         if ($aksi === 'approve' && !$this->Kaur_model->kaprodi_all_items_deal($id_pengajuan)) {
-            $this->session->set_flashdata('error', 'Pengajuan baru bisa disetujui setelah seluruh item berstatus Deal pada tahap negosiasi.');
+            $this->session->set_flashdata('error', 'Pengajuan baru bisa disetujui setelah setiap item berstatus final (Deal atau Ditolak), dengan minimal satu item Deal.');
             redirect('kaur/dashboard/approval');
         }
 

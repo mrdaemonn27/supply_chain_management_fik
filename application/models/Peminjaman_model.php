@@ -244,6 +244,11 @@ class Peminjaman_model extends CI_Model {
             $this->db->like('peminjam.nama_peminjam', $search, 'both');
             $this->db->or_like('peminjam.nim_nip', $search, 'both');
             $this->db->or_like('p.keperluan', $search, 'both');
+            $this->db->or_where("p.id_aset IN (
+                SELECT a.id_aset FROM `aset` a
+                WHERE a.nama_aset LIKE " . $this->db->escape($search) . "
+                   OR a.kode_aset LIKE " . $this->db->escape($search) . "
+            )", null, false);
             $this->db->group_end();
         }
         
@@ -251,13 +256,33 @@ class Peminjaman_model extends CI_Model {
         if (!empty($filters['tanggal'])) {
             $this->db->where('DATE(p.tanggal_pinjam)', $filters['tanggal']);
         }
+        if (!empty($filters['tanggal_dari'])) {
+            $this->db->where('DATE(p.tanggal_pinjam) >=', $filters['tanggal_dari']);
+        }
+        if (!empty($filters['tanggal_sampai'])) {
+            $this->db->where('DATE(p.tanggal_pinjam) <=', $filters['tanggal_sampai']);
+        }
         
         $this->db->group_by('COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman))', false);
         
-        // ========== INI YANG PALING PENTING ==========
-        // Urutkan dari yang TERBARU ke TERLAMA
-        $this->db->order_by('MAX(p.tanggal_pinjam)', 'DESC');
-        $this->db->order_by('MAX(p.id_peminjaman)', 'DESC');
+        // ========== SORTING ==========
+        // Default: terbaru ke terlama. Bisa dioverride lewat filters['sort_by'] / filters['sort_dir'].
+        $sort_map = [
+            'nama_peminjam' => 'nama_peminjam',
+            'tanggal_pinjam' => 'tanggal_pinjam',
+            'tanggal_kembali' => 'tanggal_kembali_rencana',
+            'status' => 'status',
+        ];
+        $sort_key = $filters['sort_by'] ?? '';
+        $sort_dir = strtoupper((string) ($filters['sort_dir'] ?? '')) === 'ASC' ? 'ASC' : 'DESC';
+
+        if (isset($sort_map[$sort_key])) {
+            $this->db->order_by($sort_map[$sort_key], $sort_dir);
+            $this->db->order_by('id_peminjaman', 'DESC');
+        } else {
+            $this->db->order_by('tanggal_pinjam', 'DESC');
+            $this->db->order_by('id_peminjaman', 'DESC');
+        }
         // ============================================
         
         $query = $this->db->get();
@@ -560,8 +585,12 @@ class Peminjaman_model extends CI_Model {
         );
     }
 
-    public function get_pending_kaur() {
-        return $this->search_peminjaman(['status' => 'Menunggu ACC Kaur']);
+    public function get_pending_kaur($filters = []) {
+        $filters['status'] = 'Menunggu ACC Kaur';
+        if (!empty($filters['q']) && empty($filters['pencarian'])) {
+            $filters['pencarian'] = $filters['q'];
+        }
+        return $this->search_peminjaman($filters);
     }
 
     public function get_qr_payload($group_id) {

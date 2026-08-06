@@ -311,8 +311,7 @@ class Kaur_model extends CI_Model {
         $this->db->from($this->kaprodiTable);
         $this->db->join('users', 'users.id_user = kaprodi_pengajuan.id_user', 'left');
         $this->apply_kaprodi_filters($filters);
-        $this->db->order_by('kaprodi_pengajuan.updated_at', 'DESC');
-        $this->db->order_by('kaprodi_pengajuan.created_at', 'DESC');
+        $this->apply_kaprodi_sort($filters);
         if ($limit !== null) {
             $this->db->limit((int) $limit, (int) $offset);
         }
@@ -400,6 +399,26 @@ class Kaur_model extends CI_Model {
         }
     }
 
+    private function apply_kaprodi_sort($filters) {
+        $sort_map = [
+            'kode' => 'kaprodi_pengajuan.kode_pengajuan',
+            'tanggal' => 'kaprodi_pengajuan.created_at',
+            'prodi' => 'kaprodi_pengajuan.nama_prodi',
+            'jenis' => 'kaprodi_pengajuan.jenis_pengajuan',
+            'status' => 'kaprodi_pengajuan.status',
+        ];
+        $sort_key = $filters['sort_by'] ?? '';
+        $sort_dir = strtoupper((string) ($filters['sort_dir'] ?? '')) === 'ASC' ? 'ASC' : 'DESC';
+
+        if (isset($sort_map[$sort_key])) {
+            $this->db->order_by($sort_map[$sort_key], $sort_dir);
+            $this->db->order_by('kaprodi_pengajuan.created_at', 'DESC');
+        } else {
+            $this->db->order_by('kaprodi_pengajuan.updated_at', 'DESC');
+            $this->db->order_by('kaprodi_pengajuan.created_at', 'DESC');
+        }
+    }
+
     public function get_kaprodi_by_id($id_pengajuan) {
         $pengajuan = $this->db->get_where($this->kaprodiTable, ['id_pengajuan' => $id_pengajuan])->row();
         if (!$pengajuan) {
@@ -447,14 +466,19 @@ class Kaur_model extends CI_Model {
             return false;
         }
 
+        $has_deal = false;
         foreach ($items as $item) {
             $latest = $this->get_latest_negosiasi($item->id_item);
-            if (!$latest || $latest->status !== 'Deal') {
+            $status = $latest->status ?? null;
+            if (!in_array($status, ['Deal', 'Ditolak'], true)) {
                 return false;
+            }
+            if ($status === 'Deal') {
+                $has_deal = true;
             }
         }
 
-        return true;
+        return $has_deal;
     }
 
     public function get_kaprodi_items($id_pengajuan) {
@@ -552,21 +576,26 @@ class Kaur_model extends CI_Model {
         }
 
         $has_negosiasi = false;
-        $all_deal = true;
+        $has_pending = false;
+        $has_deal = false;
         $all_rejected = true;
         foreach ($items as $item) {
             $latest = $this->get_latest_negosiasi($item->id_item);
             if (!$latest) {
-                $all_deal = false;
+                $has_pending = true;
                 $all_rejected = false;
                 continue;
             }
 
             $has_negosiasi = true;
-            if ($latest->status !== 'Deal') {
-                $all_deal = false;
-            }
-            if ($latest->status !== 'Ditolak') {
+            if ($latest->status === 'Deal') {
+                $has_deal = true;
+                $all_rejected = false;
+            } elseif ($latest->status === 'Ditolak') {
+                // Item selesai (final) sebagai ditolak - tidak menahan status pengajuan.
+            } else {
+                // 'Sedang Negosiasi' atau status lain masih menunggu keputusan.
+                $has_pending = true;
                 $all_rejected = false;
             }
         }
@@ -575,7 +604,9 @@ class Kaur_model extends CI_Model {
             return true;
         }
 
-        if ($all_deal) {
+        // Semua item sudah final (Deal/Ditolak) dan minimal satu Deal -> siap Approval,
+        // walaupun ada item lain yang ditolak.
+        if (!$has_pending && $has_deal) {
             return $this->update_kaprodi_status($id_pengajuan, 'Approval');
         }
 
@@ -697,6 +728,10 @@ class Kaur_model extends CI_Model {
 
         foreach ($pengajuan->items as $item) {
             if (($item->jenis_item ?? 'Barang') !== 'Barang') {
+                continue;
+            }
+            // Item yang statusnya Ditolak tidak jadi diadakan, jangan dimasukkan ke inventory.
+            if (($item->latest_negosiasi->status ?? null) === 'Ditolak') {
                 continue;
             }
             $exists = $this->db
@@ -1189,10 +1224,16 @@ class Kaur_model extends CI_Model {
         foreach ($items as $item) {
             $vol = (float) ($item->vol ?? 0);
             $harga = (float) ($item->harga_penawaran_sat ?? 0);
+            $subtotal_penawaran += $vol * $harga;
+
+            // Item yang statusnya Ditolak dikeluarkan dari total negosiasi karena tidak jadi diadakan.
+            $status = $item->latest_negosiasi->status ?? null;
+            if ($status === 'Ditolak') {
+                continue;
+            }
+
             $nego_vol = isset($item->hasil_negosiasi_vol) && $item->hasil_negosiasi_vol !== null ? (float) $item->hasil_negosiasi_vol : $vol;
             $nego_harga = isset($item->hasil_negosiasi_sat) && $item->hasil_negosiasi_sat !== null ? (float) $item->hasil_negosiasi_sat : 0;
-
-            $subtotal_penawaran += $vol * $harga;
             $subtotal_negosiasi += $nego_vol * $nego_harga;
         }
 

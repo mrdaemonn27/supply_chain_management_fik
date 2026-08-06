@@ -78,6 +78,8 @@ class Dashboard extends CI_Controller {
             'tahun' => trim((string) $this->input->get('tahun', true)),
             'tanggal_dari' => trim((string) $this->input->get('tanggal_dari', true)),
             'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
+            'sort_by' => trim((string) $this->input->get('sort_by', true)),
+            'sort_dir' => trim((string) $this->input->get('sort_dir', true)),
         ];
         $page = max(1, (int) $this->input->get('page'));
         $per_page = '8';
@@ -137,7 +139,7 @@ class Dashboard extends CI_Controller {
         $bast_source_limit = $active_module === 'bast' ? null : 12;
         $data['bast_ready'] = $this->Kaur_model->get_bast_ready_pengajuan($bast_source_limit);
         $data['bast_list'] = $this->Kaur_model->get_bast_list($bast_source_limit);
-        $data['peminjaman_pending_kaur'] = $this->Peminjaman_model->get_pending_kaur();
+        $data['peminjaman_pending_kaur'] = $this->Peminjaman_model->get_pending_kaur($filters);
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('kaur', null);
         $data['pengajuan'] = $this->Kaur_model->get_all_by_user($id_user);

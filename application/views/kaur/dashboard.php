@@ -35,6 +35,25 @@ function query_kaur($filters, $page, $per_page = null) {
     }
     return http_build_query($params);
 }
+function sort_url_kaur($module, $filters, $field, $page = 1, $per_page = null) {
+    $current_sort = $filters['sort_by'] ?? '';
+    $current_dir = $filters['sort_dir'] ?? '';
+    $next_dir = ($current_sort === $field && strtoupper($current_dir) === 'ASC') ? 'desc' : 'asc';
+    $new_filters = $filters;
+    $new_filters['sort_by'] = $field;
+    $new_filters['sort_dir'] = $next_dir;
+    return kaur_module_url($module) . '?' . query_kaur($new_filters, $page, $per_page);
+}
+function sort_icon_kaur($filters, $field) {
+    $current_sort = $filters['sort_by'] ?? '';
+    $current_dir = strtoupper((string) ($filters['sort_dir'] ?? ''));
+    if ($current_sort !== $field) {
+        return '<i class="bi bi-arrow-down-up text-muted ms-1" style="font-size:.75rem;"></i>';
+    }
+    return $current_dir === 'ASC'
+        ? '<i class="bi bi-sort-up-alt ms-1" style="font-size:.8rem;"></i>'
+        : '<i class="bi bi-sort-down ms-1" style="font-size:.8rem;"></i>';
+}
 function terbilang_kaur($number) {
     $number = (int) $number;
     $words = ['', 'SATU', 'DUA', 'TIGA', 'EMPAT', 'LIMA', 'ENAM', 'TUJUH', 'DELAPAN', 'SEMBILAN', 'SEPULUH', 'SEBELAS'];
@@ -380,8 +399,14 @@ function kaur_module_url($module) {
         .negotiation-detail-toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; padding: 16px 20px; background: var(--negotiation-bg); }
         .negotiation-detail-toolbar h3 { margin: 0; color: var(--negotiation-text); font-size: .88rem; font-weight: 700; }
         .negotiation-detail-toolbar p { margin: 4px 0 0; color: var(--negotiation-muted); font-size: .72rem; }
-        .negotiation-group-status-wrap { flex: 0 0 210px; }
+        .negotiation-group-status-wrap { flex: 0 0 260px; }
         .negotiation-group-status-wrap label { display: block; margin-bottom: 5px; color: var(--negotiation-muted); font-size: .68rem; font-weight: 600; }
+        .negotiation-group-status-form { display: flex; gap: 8px; align-items: stretch; }
+        .negotiation-group-status-form .negotiation-group-status { flex: 1 1 auto; min-width: 0; }
+        .negotiation-group-save-btn { flex: 0 0 auto; white-space: nowrap; font-size: .74rem; min-height: 34px; }
+        .approval-item-rejected { opacity: .55; }
+        .approval-item-rejected td { text-decoration: line-through; text-decoration-color: rgba(220, 53, 69, .45); }
+        .approval-item-rejected .status-pill { text-decoration: none; }
         .negotiation-items-scroll { overflow: visible; }
         .negotiation-items-table {
             display: grid;
@@ -648,8 +673,7 @@ function kaur_module_url($module) {
         .scm-dashboard .bast-table th:nth-child(3), .scm-dashboard .bast-table td:nth-child(3) { width: 160px; text-align: center; }
         .scm-dashboard .bast-table th:nth-child(4), .scm-dashboard .bast-table td:nth-child(4) { min-width: 140px; }
         .scm-dashboard .bast-table th:nth-child(5), .scm-dashboard .bast-table td:nth-child(5) { min-width: 145px; white-space: nowrap; }
-        .scm-dashboard .bast-table th:nth-child(6), .scm-dashboard .bast-table td:nth-child(6) { width: 165px; text-align: center; }
-        .scm-dashboard .bast-table th:nth-child(7), .scm-dashboard .bast-table td:nth-child(7) { min-width: 330px; text-align: right; }
+        .scm-dashboard .bast-table th:nth-child(6), .scm-dashboard .bast-table td:nth-child(6) { min-width: 330px; text-align: right; }
         .bast-badge {
             display: inline-flex;
             align-items: center;
@@ -1007,9 +1031,29 @@ function kaur_module_url($module) {
                     <span class="badge text-bg-warning align-self-start"><?= count($peminjaman_pending_kaur ?? []) ?> menunggu ACC</span>
                 </div>
             </div>
+            <form method="get" action="<?= kaur_module_url('peminjaman') ?>" class="row g-2 align-items-end mb-3">
+                <input type="hidden" name="sort_by" value="<?= html_escape($filters['sort_by'] ?? '') ?>">
+                <input type="hidden" name="sort_dir" value="<?= html_escape($filters['sort_dir'] ?? '') ?>">
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Kata Kunci</label>
+                    <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Nama peminjam, NIM/NIP, nama barang, keperluan">
+                </div>
+                <div class="col-md-3"><label class="form-label small fw-semibold">Tanggal Pinjam Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
+                <div class="col-md-3"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
+                <div class="col-md-2 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
+            </form>
             <div class="table-responsive">
                 <table class="table table-clean align-middle">
-                    <thead><tr><th>No. Peminjaman</th><th>Nama Peminjam</th><th>Barang</th><th>Laboratorium</th><th>Tanggal Pinjam</th><th>Tanggal Kembali</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+                    <thead><tr>
+                        <th>No. Peminjaman</th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'nama_peminjam') ?>" class="text-decoration-none text-dark">Nama Peminjam <?= sort_icon_kaur($filters, 'nama_peminjam') ?></a></th>
+                        <th>Barang</th>
+                        <th>Laboratorium</th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'tanggal_pinjam') ?>" class="text-decoration-none text-dark">Tanggal Pinjam <?= sort_icon_kaur($filters, 'tanggal_pinjam') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'tanggal_kembali') ?>" class="text-decoration-none text-dark">Tanggal Kembali <?= sort_icon_kaur($filters, 'tanggal_kembali') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'status') ?>" class="text-decoration-none text-dark">Status <?= sort_icon_kaur($filters, 'status') ?></a></th>
+                        <th class="text-end">Aksi</th>
+                    </tr></thead>
                     <tbody>
                     <?php if(empty($peminjaman_pending_kaur)): ?>
                         <tr><td colspan="8" class="text-center text-muted py-5">Tidak ada peminjaman yang menunggu ACC Kaur.</td></tr>
@@ -1260,11 +1304,14 @@ function kaur_module_url($module) {
                                     </div>
                                     <div class="negotiation-group-status-wrap">
                                         <label for="group-status-<?= (int) $p->id_pengajuan ?>">Status Negosiasi</label>
-                                        <select id="group-status-<?= (int) $p->id_pengajuan ?>" class="form-select form-select-sm negotiation-group-status">
-                                            <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
-                                                <option value="<?= $s ?>" <?= $group_negotiation_status === $s ? 'selected' : '' ?>><?= $s ?></option>
-                                            <?php endforeach; ?>
-                                        </select>
+                                        <form class="negotiation-group-status-form" method="post" action="<?= base_url('index.php/kaur/pengajuan/simpan_status_pengajuan/'.$p->id_pengajuan) ?>">
+                                            <select id="group-status-<?= (int) $p->id_pengajuan ?>" name="status_pengajuan" class="form-select form-select-sm negotiation-group-status">
+                                                <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
+                                                    <option value="<?= $s ?>" <?= $group_negotiation_status === $s ? 'selected' : '' ?>><?= $s ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <button type="submit" class="btn btn-fik btn-sm negotiation-group-save-btn" title="Terapkan status ini ke semua item pada pengajuan ini"><i class="bi bi-save me-1"></i>Simpan</button>
+                                        </form>
                                     </div>
                                 </div>
                                 <div class="negotiation-items-scroll">
@@ -1279,7 +1326,6 @@ function kaur_module_url($module) {
                                             $status_negosiasi = $latest && in_array($latest->status, ['Sedang Negosiasi', 'Deal', 'Ditolak'], true) ? $latest->status : 'Sedang Negosiasi';
                                         ?>
                                             <form class="negotiation-form" method="post" action="<?= base_url('index.php/kaur/pengajuan/simpan_negosiasi/'.$p->id_pengajuan.'/'.$item->id_item) ?>">
-                                                <input type="hidden" name="status" class="negotiation-item-status" value="<?= html_escape($status_negosiasi) ?>">
                                                 <div class="negotiation-item-header">
                                                     <div class="d-flex align-items-center gap-3 min-w-0">
                                                         <span class="negotiation-item-number"><?= (int) $item_index + 1 ?></span>
@@ -1287,6 +1333,14 @@ function kaur_module_url($module) {
                                                     </div>
                                                 </div>
                                                 <div class="row negotiation-form-grid">
+                                                    <div class="col-lg-4 col-md-6 negotiation-field">
+                                                        <label class="negotiation-field-label">Status Item</label>
+                                                        <select name="status" class="form-select negotiation-item-status">
+                                                            <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
+                                                                <option value="<?= $s ?>" <?= $status_negosiasi === $s ? 'selected' : '' ?>><?= $s ?></option>
+                                                            <?php endforeach; ?>
+                                                        </select>
+                                                    </div>
                                                     <div class="col-lg-4 col-md-6 negotiation-field"><label class="negotiation-field-label">Vendor</label><input type="text" name="vendor" class="form-control" value="<?= html_escape($latest->vendor ?? '') ?>" required></div>
                                                     <div class="col-lg-4 col-md-6 negotiation-field"><label class="negotiation-field-label">Harga Awal</label><input type="text" name="harga_awal" class="form-control" value="<?= rp_kaur($harga_awal_referensi) ?>" disabled readonly aria-readonly="true"><div class="form-text">Referensi dari pengajuan Kaprodi</div></div>
                                                     <div class="col-lg-4 col-md-6 negotiation-field"><label class="negotiation-field-label">Harga Negosiasi</label><input type="text" name="harga_negosiasi" class="form-control money-input negotiation-price" value="<?= $latest && $harga_akhir > 0 ? rp_kaur($harga_akhir) : '' ?>" placeholder="Rp 0" required></div>
@@ -1335,14 +1389,66 @@ function kaur_module_url($module) {
 
         <?php if ($active_module === 'approval'): ?>
         <section id="approval" class="section-anchor mb-4">
-            <div class="panel-card kaur-submission-table-card approval-table-card">
-            <div class="approval-table-heading">
+            <div class="panel-card p-3 p-lg-4 mb-3">
+            <div class="approval-table-heading mb-3">
                 <h2 class="h5 fw-bold mb-1">Approval Kaur</h2>
                 <div class="text-muted small">Kaur dapat menyetujui, meminta revisi, atau menolak pengajuan sesuai kebutuhan proses bisnis.</div>
             </div>
+            <form method="get" action="<?= kaur_module_url('approval') ?>" class="row g-2 align-items-end">
+                <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
+                <input type="hidden" name="sort_by" value="<?= html_escape($filters['sort_by'] ?? '') ?>">
+                <input type="hidden" name="sort_dir" value="<?= html_escape($filters['sort_dir'] ?? '') ?>">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold">Kata Kunci</label>
+                    <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, barang">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Jenis</label>
+                    <select name="jenis_pengajuan" class="form-select">
+                        <option value="">Semua</option>
+                        <option value="Barang" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang') ? 'selected' : '' ?>>Barang</option>
+                        <option value="Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option>
+                        <option value="Barang dan Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang dan Jasa') ? 'selected' : '' ?>>Barang dan Jasa</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Status Approval</label>
+                    <select name="status" class="form-select">
+                        <option value="">Semua</option>
+                        <?php foreach (['Deal','Disetujui','Approval','BAST','Selesai','Ditolak'] as $status): ?>
+                            <option value="<?= $status ?>" <?= (($filters['status'] ?? '') === $status) ? 'selected' : '' ?>><?= $status ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Status Negosiasi</label>
+                    <select name="status_negosiasi" class="form-select">
+                        <option value="">Semua</option>
+                        <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
+                            <option value="<?= $s ?>" <?= (($filters['status_negosiasi'] ?? '') === $s) ? 'selected' : '' ?>><?= $s ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2"><label class="form-label small fw-semibold">Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
+                <div class="col-md-2"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
+                <div class="col-md-1 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
+            </form>
+            </div>
+
+            <div class="panel-card kaur-submission-table-card approval-table-card">
             <div class="table-responsive">
                 <table class="table table-clean align-middle mb-0 approval-table">
-                    <thead><tr><th>No. Pengajuan</th><th>Tanggal</th><th>Program Studi</th><th>Jenis</th><th>Vendor</th><th>Total Harga</th><th>Status Negosiasi</th><th>Status Approval</th><th class="text-end">Aksi</th></tr></thead>
+                    <thead><tr>
+                        <th><a href="<?= sort_url_kaur('approval', $filters, 'kode', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">No. Pengajuan <?= sort_icon_kaur($filters, 'kode') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('approval', $filters, 'tanggal', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">Tanggal <?= sort_icon_kaur($filters, 'tanggal') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('approval', $filters, 'prodi', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">Program Studi <?= sort_icon_kaur($filters, 'prodi') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('approval', $filters, 'jenis', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">Jenis <?= sort_icon_kaur($filters, 'jenis') ?></a></th>
+                        <th>Vendor</th>
+                        <th>Total Harga</th>
+                        <th>Status Negosiasi</th>
+                        <th><a href="<?= sort_url_kaur('approval', $filters, 'status', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">Status Approval <?= sort_icon_kaur($filters, 'status') ?></a></th>
+                        <th class="text-end">Aksi</th>
+                    </tr></thead>
                     <tbody>
                     <?php if (empty($pengajuan_kaprodi)): ?>
                         <tr><td colspan="9" class="text-center text-muted py-5">Belum ada pengajuan untuk approval.</td></tr>
@@ -1351,14 +1457,18 @@ function kaur_module_url($module) {
                             $vendors = [];
                             $nego_statuses = [];
                             $can_approve = !empty($p->items);
+                            $has_deal_item = false;
                             foreach (($p->items ?? []) as $approval_item) {
                                 $latest = $approval_item->latest_negosiasi ?? null;
                                 if ($latest) {
                                     if (!empty($latest->vendor)) { $vendors[] = $latest->vendor; }
                                     $nego_statuses[] = $latest->status;
                                 }
-                                if (!$latest || $latest->status !== 'Deal') { $can_approve = false; }
+                                $item_status = $latest->status ?? null;
+                                if (!in_array($item_status, ['Deal', 'Ditolak'], true)) { $can_approve = false; }
+                                if ($item_status === 'Deal') { $has_deal_item = true; }
                             }
+                            $can_approve = $can_approve && $has_deal_item;
                             $vendor_label = $vendors ? implode(', ', array_unique($vendors)) : '-';
                             $nego_label = $nego_statuses ? implode(', ', array_unique($nego_statuses)) : 'Belum Negosiasi';
                             $total_harga = ($p->summary['total_negosiasi'] ?? 0) > 0 ? $p->summary['total_negosiasi'] : ($p->summary['total_setelah_pajak'] ?? $p->summary['total_penawaran'] ?? 0);
@@ -1405,12 +1515,18 @@ function kaur_module_url($module) {
         <?php foreach (($pengajuan_kaprodi ?? []) as $p): ?>
             <?php
                 $can_approve_modal = !empty($p->items);
+                $has_deal_item = false;
                 foreach (($p->items ?? []) as $approval_item) {
-                    if (empty($approval_item->latest_negosiasi) || $approval_item->latest_negosiasi->status !== 'Deal') {
+                    $item_status = $approval_item->latest_negosiasi->status ?? null;
+                    if (!in_array($item_status, ['Deal', 'Ditolak'], true)) {
                         $can_approve_modal = false;
                         break;
                     }
+                    if ($item_status === 'Deal') {
+                        $has_deal_item = true;
+                    }
                 }
+                $can_approve_modal = $can_approve_modal && $has_deal_item;
                 $auto_approved = (($p->status ?? '') === 'Approval');
             ?>
             <div class="modal fade approval-detail-modal" id="approvalModal<?= (int) $p->id_pengajuan ?>" tabindex="-1" aria-hidden="true">
@@ -1429,14 +1545,14 @@ function kaur_module_url($module) {
                                 <table class="table table-sm table-bordered align-middle approval-detail-items-table">
                                     <thead class="table-light"><tr><th>Item</th><th>Volume</th><th>Harga Awal</th><th>Vendor</th><th>Harga Negosiasi</th><th>Status</th><th>Garansi</th><th>Catatan</th></tr></thead>
                                     <tbody>
-                                        <?php foreach (($p->items ?? []) as $item): $latest = $item->latest_negosiasi ?? null; ?>
-                                            <tr>
+                                        <?php foreach (($p->items ?? []) as $item): $latest = $item->latest_negosiasi ?? null; $item_status = $latest->status ?? null; ?>
+                                            <tr class="<?= $item_status === 'Ditolak' ? 'approval-item-rejected' : '' ?>">
                                                 <td><div class="approval-detail-item"><span class="approval-detail-item-badge"><?= html_escape($item->jenis_item ?? 'Barang') ?></span><span><?= html_escape($item->uraian_barang) ?></span></div></td>
                                                 <td><?= num_kaur($item->volume_awal_referensi ?? $item->vol) ?> <?= html_escape($item->satuan) ?></td>
                                                 <td><?= rp_kaur($item->harga_awal_referensi ?? $item->harga_penawaran_sat ?? 0) ?></td>
                                                 <td><?= html_escape($latest->vendor ?? '-') ?></td>
                                                 <td><?= $latest ? rp_kaur($latest->harga_negosiasi) : '-' ?></td>
-                                                <td><?= html_escape($latest->status ?? 'Belum Negosiasi') ?></td>
+                                                <td><span class="status-pill <?= status_class_kaur($item_status ?? '') ?>"><?= html_escape($item_status ?? 'Belum Negosiasi') ?></span></td>
                                                 <td><?= html_escape($latest->garansi ?? '-') ?></td>
                                                 <td><?= html_escape($latest->catatan ?? '-') ?></td>
                                             </tr>
@@ -1446,7 +1562,7 @@ function kaur_module_url($module) {
                             </div>
                             <label class="form-label small fw-semibold">Catatan Approval / Revisi</label>
                             <textarea name="catatan_approval" class="form-control" rows="3" placeholder="Catatan approval, revisi, atau alasan penolakan."><?= html_escape($p->catatan_approval ?? '') ?></textarea>
-                            <?php if ($auto_approved): ?><div class="alert alert-success py-2 small mt-2 mb-0"><i class="bi bi-check-circle me-1"></i> Semua item sudah Deal. Pengajuan otomatis berstatus Approval dan dapat dilanjutkan ke Alokasi Anggaran/BAST.</div><?php elseif (!$can_approve_modal): ?><div class="small text-warning mt-2"><i class="bi bi-exclamation-triangle me-1"></i> Pengajuan aktif setelah semua item negosiasi berstatus Deal.</div><?php endif; ?>
+                            <?php if ($auto_approved): ?><div class="alert alert-success py-2 small mt-2 mb-0"><i class="bi bi-check-circle me-1"></i> Seluruh item sudah selesai dinegosiasikan. Pengajuan otomatis berstatus Approval dan dapat dilanjutkan ke Alokasi Anggaran/BAST.</div><?php elseif (!$can_approve_modal): ?><div class="small text-warning mt-2"><i class="bi bi-exclamation-triangle me-1"></i> Pengajuan bisa disetujui setelah setiap item berstatus final (Deal atau Ditolak), dengan minimal satu item Deal.</div><?php endif; ?>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Tutup</button>
@@ -1540,7 +1656,7 @@ function kaur_module_url($module) {
 
             <form method="get" action="<?= kaur_module_url('bast') ?>" class="row g-2 align-items-end mb-3">
                 <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small fw-semibold">Kata Kunci</label>
                     <input type="text" name="q" class="form-control" list="bastAutocompleteList" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, nomor BAST" autocomplete="off">
                     <datalist id="bastAutocompleteList">
@@ -1557,21 +1673,13 @@ function kaur_module_url($module) {
                         <?php endforeach; ?>
                     </datalist>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <label class="form-label small fw-semibold">Tahun</label>
                     <select name="tahun" class="form-select">
                         <option value="">Semua</option>
                         <?php foreach ($bast_years as $year_opt): ?>
                             <option value="<?= (int) $year_opt ?>" <?= ((string) ($filters['tahun'] ?? '') === (string) $year_opt) ? 'selected' : '' ?>><?= (int) $year_opt ?></option>
                         <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-semibold">Status</label>
-                    <select name="status_bast" class="form-select">
-                        <option value="">Semua</option>
-                        <option value="menunggu" <?= (($filters['status_bast'] ?? '') === 'menunggu') ? 'selected' : '' ?>>Menunggu BAST</option>
-                        <option value="selesai" <?= (($filters['status_bast'] ?? '') === 'selesai') ? 'selected' : '' ?>>Sudah BAST</option>
                     </select>
                 </div>
                 <div class="col-md-2"><label class="form-label small fw-semibold">Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
@@ -1582,10 +1690,10 @@ function kaur_module_url($module) {
 
             <div class="table-responsive">
                 <table class="table table-clean align-middle mb-0 bast-table">
-                    <thead><tr><th>Kode Pengajuan</th><th>Prodi / Kegiatan</th><th>Jenis</th><th>Nomor BAST</th><th>Tanggal BAST</th><th>Status</th><th class="text-end">Aksi</th></tr></thead>
+                    <thead><tr><th>Kode Pengajuan</th><th>Prodi / Kegiatan</th><th>Jenis</th><th>Nomor BAST</th><th>Tanggal BAST</th><th class="text-end">Aksi</th></tr></thead>
                     <tbody>
                         <?php if (empty($bast_rows)): ?>
-                            <tr><td colspan="7" class="text-center text-muted py-5">Belum ada pengajuan yang siap BAST sesuai filter.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-5">Belum ada pengajuan yang siap BAST sesuai filter.</td></tr>
                         <?php else: foreach ($bast_rows as $b): ?>
                             <?php
                                 $has_bast = !empty($b->nomor_bast);
@@ -1605,7 +1713,6 @@ function kaur_module_url($module) {
                                 <td><span class="bast-badge"><?= html_escape($b->jenis_pengajuan ?? 'Barang') ?></span></td>
                                 <td><?= html_escape($b->nomor_bast ?? '-') ?></td>
                                 <td class="small text-muted"><?= !empty($b->tanggal_bast) ? date('d/m/Y', strtotime($b->tanggal_bast)) : '-' ?></td>
-                                <td><span class="bast-badge"><?= $has_bast ? 'Sudah BAST' : 'Menunggu BAST' ?></span></td>
                                 <td class="text-end">
                                     <div class="bast-actions">
                                         <?php if (!empty($b->file_bast)): ?>
@@ -1694,7 +1801,8 @@ function kaur_module_url($module) {
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
-                        <div id="bastPreviewArea" class="border rounded-3 p-3" style="font-family: 'Times New Roman', serif; font-size: .92rem;"></div>
+                        <div class="small text-muted mb-2"><i class="bi bi-info-circle me-1"></i> Klik pada "Sesuai" atau "Tidak Sesuai" di setiap baris untuk menandai hasil serah terima sebelum mencetak.</div>
+                        <div id="bastPreviewArea" class="border rounded-3 p-3" style="font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: .92rem;"></div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Tutup</button>
@@ -1957,67 +2065,86 @@ function kaur_module_url($module) {
             const modalEl = document.getElementById('bastGenerateModal');
             if (!previewArea || !modalEl) return;
             const bsModal = window.bootstrap ? window.bootstrap.Modal.getOrCreateInstance(modalEl) : null;
-            let currentHtml = '';
+            let currentData = null;
 
             const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+            const buildBastHeader = (data) => `
+                <div style="text-align:right;font-size:.85rem;">No : ${escapeHtml(data.nomor)}</div>
+                <h5 style="text-align:center;font-weight:700;letter-spacing:.4px;margin:10px 0 2px;">BERITA ACARA SERAH TERIMA (BAST)</h5>
+                <div style="text-align:center;margin-bottom:14px;">(Pengiriman Aset)</div>
+                <p style="text-align:justify;">Pada hari ini <b>${escapeHtml(data.hari)}</b> tanggal <b>${escapeHtml(data.tanggalKata)}</b> Bulan <b>${escapeHtml(data.bulanKata)}</b> Tahun <b>${escapeHtml(data.tahunKata)}</b>, bertempat di kantor Universitas Telkom, Jl. Telekomunikasi No. 1 Terusan Buah Batu Bandung, ruangan <b>${escapeHtml(data.ruangan)}</b> telah dilakukan <b>SERAH TERIMA BARANG</b> (SPK No : <b>${escapeHtml(data.spk)}</b>) antara pihak <b>PENCATATAN &amp; PENGELOLAAN ASET</b> dengan <b>${escapeHtml(data.prodi)} - ${escapeHtml(data.kegiatan)}</b>.</p>
+                <p style="margin-bottom:6px;">Adapun rincian barang yang diserahterimakan secara lengkap sebagai berikut:</p>
+            `;
+
+            const tableOpen = `<table style="width:100%;border-collapse:collapse;margin:10px 0 4px;font-size:.85rem;">
+                <thead>
+                    <tr>
+                        <th style="border:1px solid #333;padding:6px;font-weight:700;">No</th>
+                        <th style="border:1px solid #333;padding:6px;font-weight:700;">Uraian dan Spesifikasi Barang</th>
+                        <th style="border:1px solid #333;padding:6px;font-weight:700;">Vol</th>
+                        <th style="border:1px solid #333;padding:6px;font-weight:700;">Sat</th>
+                        <th style="border:1px solid #333;padding:6px;font-weight:700;">Hasil Serah Terima</th>
+                        <th style="border:1px solid #333;padding:6px;font-weight:700;">Keterangan</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+            const tableClose = `</tbody></table>`;
+            const emptyRow = `<tr><td colspan="6" style="border:1px solid #333;padding:10px;text-align:center;">Belum ada rincian barang.</td></tr>`;
+
+            const parseItems = (data) => {
+                try { return JSON.parse(data.items || '[]'); } catch (e) { return []; }
+            };
+
+            // Preview interaktif: setiap baris punya radio "Sesuai" / "Tidak Sesuai" yang bisa diklik.
             const buildBastHtml = (data) => {
-                let items = [];
-                try { items = JSON.parse(data.items || '[]'); } catch (e) { items = []; }
+                const items = parseItems(data);
                 const rows = items.map((item, index) => `
                     <tr>
                         <td style="border:1px solid #333;padding:6px;text-align:center;">${index + 1}.</td>
                         <td style="border:1px solid #333;padding:6px;">${escapeHtml(item.uraian)}</td>
                         <td style="border:1px solid #333;padding:6px;text-align:center;">${Number(item.vol || 0).toLocaleString('id-ID')}</td>
                         <td style="border:1px solid #333;padding:6px;text-align:center;">${escapeHtml(item.satuan)}</td>
-                        <td style="border:1px solid #333;padding:6px;text-align:center;">&#9744; sesuai / &#9744; tidak sesuai</td>
+                        <td style="border:1px solid #333;padding:6px;text-align:center;white-space:nowrap;">
+                            <label style="margin-right:10px;cursor:pointer;font-weight:400;">
+                                <input type="radio" name="hasil_row_${index}" value="sesuai" checked> Sesuai
+                            </label>
+                            <label style="cursor:pointer;font-weight:400;">
+                                <input type="radio" name="hasil_row_${index}" value="tidak_sesuai"> Tidak Sesuai
+                            </label>
+                        </td>
                         <td style="border:1px solid #333;padding:6px;"></td>
-                    </tr>`).join('') || '<tr><td colspan="6" style="border:1px solid #333;padding:10px;text-align:center;">Belum ada rincian barang.</td></tr>';
+                    </tr>`).join('') || emptyRow;
 
-                return `
-                    <div style="text-align:right;font-size:.85rem;">No : ${escapeHtml(data.nomor)}</div>
-                    <h5 style="text-align:center;font-weight:700;margin:10px 0 2px;">BERITA ACARA SERAH TERIMA (BAST)</h5>
-                    <div style="text-align:center;margin-bottom:14px;">(Pengiriman Aset)</div>
-                    <p style="text-align:justify;">Pada hari <b>${escapeHtml(data.hari)}</b> tanggal <b>${escapeHtml(data.tanggalKata)}</b> Bulan <b>${escapeHtml(data.bulanKata)}</b> Tahun <b>${escapeHtml(data.tahunKata)}</b>, bertempat di kantor, ruangan <b>${escapeHtml(data.ruangan)}</b> telah dilakukan SERAH TERIMA BARANG (SPK No : <b>${escapeHtml(data.spk)}</b>) antara pihak PENCATATAN &amp; PENGELOLAAN ASET dengan <b>${escapeHtml(data.prodi)}</b> - ${escapeHtml(data.kegiatan)}.</p>
-                    <p>Adapun rincian barang yang diserahterimakan secara lengkap sebagai berikut:</p>
-                    <table style="width:100%;border-collapse:collapse;margin:10px 0;font-size:.85rem;">
-                        <thead>
-                            <tr>
-                                <th style="border:1px solid #333;padding:6px;">No</th>
-                                <th style="border:1px solid #333;padding:6px;">Uraian dan Spesifikasi Barang</th>
-                                <th style="border:1px solid #333;padding:6px;">Vol</th>
-                                <th style="border:1px solid #333;padding:6px;">Sat</th>
-                                <th style="border:1px solid #333;padding:6px;">Hasil Serah Terima</th>
-                                <th style="border:1px solid #333;padding:6px;">Keterangan</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
-                    <p style="font-size:.8rem;">*Pilih sesuai kondisi riil saat serah terima</p>
-                    <p>Demikian Berita Acara ini dibuat dengan sebenarnya.</p>
-                    <div style="display:flex;justify-content:space-between;margin-top:26px;font-size:.9rem;">
-                        <div style="width:46%;">
-                            <div>Yang Menyerahkan,</div>
-                            <div style="height:64px;"></div>
-                            <div style="border-top:1px solid #333;padding-top:4px;">
-                                <div><b>${escapeHtml(data.kaurNama)}</b></div>
-                                <div>${escapeHtml(data.kaurJabatan)}</div>
-                            </div>
-                        </div>
-                        <div style="width:46%;">
-                            <div>Yang Menerima,</div>
-                            <div style="height:64px;"></div>
-                            <div style="border-top:1px solid #333;padding-top:4px;">
-                                <div><b>${escapeHtml(data.kaprodiNama || '.............................')}</b></div>
-                                <div>Kaprodi ${escapeHtml(data.prodi)}</div>
-                            </div>
-                        </div>
-                    </div>`;
+                return buildBastHeader(data) + tableOpen + rows + tableClose;
+            };
+
+            // Versi statis untuk dicetak: pilihan radio yang sedang aktif di preview
+            // dikonversi jadi tanda centang, tanpa elemen interaktif.
+            const buildBastPrintHtml = (data) => {
+                const items = parseItems(data);
+                const rows = items.map((item, index) => {
+                    const selected = previewArea.querySelector(`input[name="hasil_row_${index}"]:checked`);
+                    const value = selected ? selected.value : '';
+                    const sesuaiMark = value === 'sesuai' ? '&#9745;' : '&#9744;';
+                    const tidakMark = value === 'tidak_sesuai' ? '&#9745;' : '&#9744;';
+                    return `
+                        <tr>
+                            <td style="border:1px solid #333;padding:6px;text-align:center;">${index + 1}.</td>
+                            <td style="border:1px solid #333;padding:6px;">${escapeHtml(item.uraian)}</td>
+                            <td style="border:1px solid #333;padding:6px;text-align:center;">${Number(item.vol || 0).toLocaleString('id-ID')}</td>
+                            <td style="border:1px solid #333;padding:6px;text-align:center;">${escapeHtml(item.satuan)}</td>
+                            <td style="border:1px solid #333;padding:6px;text-align:center;white-space:nowrap;">${sesuaiMark} Sesuai&nbsp;&nbsp;/&nbsp;&nbsp;${tidakMark} Tidak Sesuai</td>
+                            <td style="border:1px solid #333;padding:6px;"></td>
+                        </tr>`;
+                }).join('') || emptyRow;
+
+                return buildBastHeader(data) + tableOpen + rows + tableClose;
             };
 
             document.querySelectorAll('.btn-generate-bast').forEach((btn) => {
                 btn.addEventListener('click', () => {
-                    const data = {
+                    currentData = {
                         nomor: btn.dataset.nomor,
                         spk: btn.dataset.spk,
                         hari: btn.dataset.hari,
@@ -2032,19 +2159,20 @@ function kaur_module_url($module) {
                         kaprodiNama: btn.dataset.kaprodiNama,
                         items: btn.dataset.items,
                     };
-                    currentHtml = buildBastHtml(data);
-                    previewArea.innerHTML = currentHtml;
+                    previewArea.innerHTML = buildBastHtml(currentData);
                     if (bsModal) bsModal.show();
                 });
             });
 
             if (printBtn) {
                 printBtn.addEventListener('click', () => {
+                    if (!currentData) return;
+                    const printHtml = buildBastPrintHtml(currentData);
                     const printWindow = window.open('', '_blank', 'width=850,height=1000');
                     if (!printWindow) return;
                     printWindow.document.write(`<!DOCTYPE html><html><head><title>BAST</title>
-                        <style>body{font-family:'Times New Roman', serif;padding:32px;color:#111;}</style>
-                        </head><body>${currentHtml}</body></html>`);
+                        <style>body{font-family:'Calibri','Segoe UI',Arial,sans-serif;padding:32px;color:#111;}</style>
+                        </head><body>${printHtml}</body></html>`);
                     printWindow.document.close();
                     printWindow.focus();
                     printWindow.onload = () => printWindow.print();
