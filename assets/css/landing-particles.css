@@ -1,0 +1,502 @@
+/* Landing particle hero only. Kept isolated from every authenticated page. */
+html,
+body {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+.particle-hero {
+    position: relative;
+    z-index: 4;
+    display: grid;
+    min-height: 100svh;
+    padding: calc(var(--nav-h) + 34px) var(--gutter) 38px;
+    overflow: clip;
+    isolation: isolate;
+    color: #f8fafc;
+    background:
+        radial-gradient(ellipse at 50% 42%, rgba(37, 99, 235, .12), transparent 38%),
+        radial-gradient(ellipse at 58% 68%, rgba(124, 58, 237, .055), transparent 30%),
+        linear-gradient(180deg, #03050a 0%, #03040a 58%, #060710 100%);
+}
+
+.particle-hero::before,
+.particle-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.particle-hero::before {
+    background:
+        linear-gradient(180deg, rgba(0, 0, 0, .18), transparent 24%, transparent 70%, rgba(0, 0, 0, .62)),
+        radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, .5) 100%);
+}
+
+.particle-hero::after {
+    opacity: .18;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.24'/%3E%3C/svg%3E");
+    mix-blend-mode: soft-light;
+}
+
+.particle-hero__canvas,
+.particle-hero__fallback,
+.particle-hero__mist {
+    position: absolute;
+    inset: 0;
+}
+
+.particle-hero__canvas {
+    z-index: 1;
+    cursor: crosshair;
+    touch-action: pan-y;
+}
+
+.particle-hero__canvas canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.particle-hero__fallback {
+    z-index: 0;
+    display: block;
+    background:
+        radial-gradient(ellipse at 50% 40%, rgba(37, 99, 235, .13), transparent 36%),
+        linear-gradient(180deg, #03050a, #060710);
+    transition: opacity .65s ease, visibility .65s ease;
+}
+
+.particle-hero.is-particle-ready .particle-hero__fallback {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.particle-hero__mist {
+    z-index: 3;
+    top: auto;
+    bottom: -2px;
+    height: 100%;
+    opacity: 0;
+    pointer-events: none;
+    transform: none;
+    transform-origin: 50% 100%;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, .02) 18%,
+        rgba(255, 255, 255, .1) 38%,
+        rgba(255, 255, 255, .34) 60%,
+        rgba(255, 255, 255, .76) 82%,
+        #fff 100%
+    );
+    will-change: transform, opacity;
+}
+
+.particle-hero__ui {
+    position: relative;
+    z-index: 4;
+    place-self: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 26px;
+    width: min(920px, 100%);
+    margin: 0 auto 3vh;
+    text-align: center;
+    pointer-events: none;
+}
+
+.particle-hero__ui::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -34% -22%;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, rgba(1, 5, 16, .66) 0%, rgba(1, 5, 16, .38) 40%, transparent 73%);
+}
+
+.particle-hero__intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: min(820px, 100%);
+}
+
+.particle-hero__title {
+    display: grid;
+    align-content: center;
+    width: min(560px, 82vw);
+    aspect-ratio: 3 / 2;
+    margin: 0;
+    color: #f2f2f0;
+    font-size: clamp(3rem, 5.15vw, 5rem);
+    font-weight: 680;
+    line-height: .92;
+    letter-spacing: 0;
+    text-wrap: balance;
+    text-shadow: 0 3px 22px rgba(0, 0, 0, .48), 0 0 48px rgba(37, 99, 235, .12);
+    transition: opacity .38s ease;
+}
+
+.particle-hero__title > span {
+    display: block;
+}
+
+.particle-hero__title-prefix,
+.particle-hero__title-accent {
+    display: inline;
+}
+
+.particle-hero__title-prefix { color: #f2f2f0; }
+
+.particle-hero__title-accent {
+    color: #f15a2b;
+}
+
+.particle-hero.is-particle-ready .particle-hero__title {
+    opacity: 0;
+    text-shadow: none;
+    user-select: none;
+}
+
+.particle-hero__lead {
+    max-width: 54ch;
+    margin: 22px auto 0;
+    color: #c4c7ce;
+    font-size: clamp(.98rem, 1.12vw, 1.1rem);
+    font-weight: 450;
+    line-height: 1.68;
+    text-shadow: 0 2px 16px rgba(0, 0, 0, .62);
+}
+
+.particle-hero__actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    pointer-events: auto;
+}
+
+.particle-hero .btn--hero-primary,
+.particle-hero .btn--hero-secondary {
+    min-height: 50px;
+    min-width: 148px;
+    border-color: rgba(255, 255, 255, .18);
+    color: #fff;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+.particle-hero .btn--hero-primary {
+    background: #2563eb;
+    box-shadow: 0 12px 38px rgba(37, 99, 235, .28);
+}
+
+.particle-hero .btn--hero-primary:hover {
+    background: #3b82f6;
+    border-color: rgba(147, 197, 253, .7);
+    box-shadow: 0 16px 44px rgba(37, 99, 235, .38);
+}
+
+.particle-hero .btn--hero-secondary { background: rgba(255, 255, 255, .075); }
+.particle-hero .btn--hero-secondary:hover { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .45); }
+
+.particle-hero__sr {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* The camera stage keeps its existing scene logic and is revealed after the mist. */
+.stage { opacity: 0; visibility: hidden; }
+
+.nav,
+.nav.is-scrolled {
+    min-height: var(--nav-h);
+    background: rgba(248, 248, 247, .96);
+    border-bottom: 1px solid rgba(17, 24, 39, .09);
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+}
+
+.nav__in { max-width: 1400px; }
+
+.nav__brand {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.nav__brand img { height: 38px; }
+
+.nav .btn--ghost,
+.nav:not(.is-scrolled) .btn--ghost {
+    color: #1f2937;
+    border-color: #d9dde3;
+    background: #fff;
+}
+
+.nav .btn--dark,
+.nav:not(.is-scrolled) .btn--dark {
+    color: #fff;
+    background: #111;
+}
+
+.particle-hero + .scene {
+    z-index: auto;
+    background: #f5f6f7;
+}
+
+.particle-hero + .scene .scene__copy {
+    z-index: 4;
+}
+
+.particle-hero + .scene .scene__in {
+    position: relative;
+    z-index: 3;
+}
+
+.particle-hero + .scene::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: -62vh;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    pointer-events: none;
+    background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, .04) 14%,
+        rgba(255, 255, 255, .22) 24%,
+        rgba(245, 246, 247, .72) 31%,
+        #f5f6f7 37%,
+        #f5f6f7 100%
+    );
+}
+
+/* Rangkaian 01-03 sengaja polos. Garis tipis menjadi satu-satunya pembatas agar
+   model 3D serta teks tetap menjadi fokus utama. */
+.particle-hero + .process-scene--first,
+.process-scene,
+.process-scene--approval,
+.process-scene--return {
+    isolation: isolate;
+    background: #f5f6f7;
+}
+
+.process-scene + .process-scene { border-top: 1px solid rgba(31, 41, 55, .09); }
+
+/* Coverflow laboratorium. Tanpa JavaScript, markup tetap jatuh kembali ke grid
+   bawaan sehingga data dinamis selalu dapat dibaca. */
+.labs-section {
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% 24%, rgba(241, 90, 43, .07), transparent 28%),
+        linear-gradient(180deg, #e8edef 0%, #f2f4f4 56%, #eceff0 100%);
+}
+
+.labs-section .sec__in { max-width: 1320px; }
+
+.lab-coverflow {
+    position: relative;
+    max-width: 1200px;
+    margin: clamp(48px, 7vw, 78px) auto 0;
+    text-align: left;
+}
+
+.lab-coverflow__viewport {
+    position: relative;
+    min-height: 560px;
+    touch-action: pan-y;
+}
+
+.lab-coverflow.is-ready .lab-coverflow__viewport {
+    overflow: hidden;
+    perspective: 1500px;
+    perspective-origin: 50% 44%;
+}
+
+.lab-coverflow.is-ready .labs {
+    position: relative;
+    display: block;
+    height: 100%;
+    min-height: 560px;
+    margin: 0;
+    transform-style: preserve-3d;
+}
+
+.lab-coverflow.is-ready .lab {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    width: clamp(330px, 35vw, 450px);
+    height: 520px;
+    margin: 0;
+    opacity: 0;
+    pointer-events: none;
+    transform-origin: center center;
+    will-change: transform, opacity, filter;
+    transition:
+        transform .72s cubic-bezier(.22, 1, .36, 1),
+        opacity .55s ease,
+        filter .55s ease,
+        box-shadow .45s ease,
+        border-color .45s ease;
+}
+
+.lab-coverflow.is-ready .lab.is-visible { opacity: var(--lab-opacity, 1); }
+.lab-coverflow.is-ready .lab.is-near { pointer-events: auto; cursor: pointer; }
+.lab-coverflow.is-ready .lab.is-active {
+    pointer-events: auto;
+    cursor: default;
+    border-color: rgba(241, 90, 43, .24);
+    box-shadow: 0 28px 64px rgba(32, 41, 49, .18);
+}
+
+.lab-coverflow .lab__ph { flex: 0 0 auto; aspect-ratio: 16 / 10; }
+.lab-coverflow .lab__b { min-height: 0; padding: 24px 26px 26px; }
+.lab-coverflow .lab__d {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+.lab-coverflow .lab__n { margin-top: auto; }
+
+.lab-coverflow__controls {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    min-height: 46px;
+    margin-top: 8px;
+}
+
+.lab-coverflow.is-ready .lab-coverflow__controls { display: flex; }
+
+.lab-coverflow__nav {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid rgba(55, 65, 81, .18);
+    border-radius: 50%;
+    color: #1f2937;
+    background: rgba(255, 255, 255, .84);
+    box-shadow: 0 8px 22px rgba(31, 41, 55, .08);
+    cursor: pointer;
+    transition: color .25s ease, border-color .25s ease, background .25s ease, transform .25s ease;
+}
+
+.lab-coverflow__nav:hover,
+.lab-coverflow__nav:focus-visible {
+    color: #fff;
+    border-color: #f15a2b;
+    background: #f15a2b;
+    transform: translateY(-2px);
+}
+
+.lab-coverflow__nav:disabled { opacity: .38; pointer-events: none; }
+
+.lab-coverflow__pagination { display: flex; align-items: center; gap: 7px; }
+
+.lab-coverflow__dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #aeb6bc;
+    cursor: pointer;
+    transition: width .3s ease, border-radius .3s ease, background .3s ease;
+}
+
+.lab-coverflow__dot.is-active { width: 28px; border-radius: 999px; background: #f15a2b; }
+@media (max-width: 1023.98px) {
+    .particle-hero {
+        min-height: 100svh;
+        padding-bottom: 28px;
+    }
+
+    .particle-hero__ui { width: min(760px, 100%); }
+    .particle-hero__title { width: min(520px, 78vw); font-size: clamp(2.8rem, 6.5vw, 4.25rem); }
+}
+
+@media (max-width: 767.98px) {
+    .particle-hero {
+        min-height: 100svh;
+        padding: calc(var(--nav-h) + 18px) 18px 22px;
+    }
+
+    .particle-hero__ui {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        width: 100%;
+        margin: 0 auto 3vh;
+    }
+
+    .particle-hero__intro { max-width: none; text-align: center; }
+    .particle-hero__title { width: min(390px, 84vw); font-size: clamp(2.3rem, 9.5vw, 3.35rem); line-height: .94; }
+    .particle-hero__lead { max-width: 38ch; margin: 22px auto 0; font-size: .92rem; }
+    .particle-hero__actions { width: min(100%, 420px); }
+    .particle-hero__actions .btn { flex: 1 1 0; min-width: 0; padding-inline: 15px; }
+    .particle-hero__canvas { cursor: default; }
+
+    .process-scene--first::after,
+    .process-scene--approval::after,
+    .process-scene--return::after {
+        height: 68px;
+        background-size: 180% 100%;
+    }
+
+    .lab-coverflow__viewport,
+    .lab-coverflow.is-ready .labs { min-height: 535px; }
+
+    .lab-coverflow.is-ready .lab {
+        width: min(82vw, 390px);
+        height: 500px;
+    }
+}
+
+@media (max-width: 420px) {
+    .particle-hero__title { width: min(330px, 88vw); font-size: clamp(2rem, 9.4vw, 2.7rem); }
+    .particle-hero__lead { max-width: 32ch; font-size: .86rem; }
+    .particle-hero__actions { flex-direction: column; width: min(100%, 330px); }
+    .particle-hero__actions .btn { width: 100%; }
+
+    .lab-coverflow { margin-top: 38px; }
+    .lab-coverflow__viewport,
+    .lab-coverflow.is-ready .labs { min-height: 500px; }
+    .lab-coverflow.is-ready .lab { width: calc(100vw - 58px); height: 470px; }
+    .lab-coverflow .lab__b { padding: 20px; }
+    .lab-coverflow__controls { gap: 9px; margin-top: 4px; }
+    .lab-coverflow__nav { width: 40px; height: 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .particle-hero__fallback { transition: none; }
+    .particle-hero__canvas { cursor: default; }
+    .particle-hero__mist { display: none; }
+    .lab-coverflow.is-ready .lab { transition-duration: .01ms; }
+}

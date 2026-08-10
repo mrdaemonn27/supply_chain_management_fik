@@ -20,6 +20,32 @@ class Welcome extends CI_Controller {
 	 */
 	public function index()
 	{
-		$this->load->view('landing/index');
+		// Daftar laboratorium di halaman depan diambil langsung dari basis data
+		// supaya ikut berubah ketika ruangan ditambah atau diubah dari dashboard.
+		// Halaman depan tetap harus tampil walau basis data sedang tidak bisa
+		// dihubungi, jadi kegagalan di sini cukup menghasilkan daftar kosong.
+		$ruangan = array();
+
+		try
+		{
+			$this->load->model('Ruangan_model');
+			$rows = $this->Ruangan_model->get_all_ruangan();
+
+			if (is_array($rows))
+			{
+				// Model mengurutkan dari yang terbaru; untuk halaman depan urutan
+				// nama lebih mudah dibaca dan tidak berubah-ubah tiap ada data baru.
+				usort($rows, function ($a, $b) {
+					return strcasecmp($a->nama_ruangan, $b->nama_ruangan);
+				});
+				$ruangan = $rows;
+			}
+		}
+		catch (Exception $e)
+		{
+			log_message('error', 'Landing page gagal memuat daftar ruangan: '.$e->getMessage());
+		}
+
+		$this->load->view('landing/index', array('ruangan' => $ruangan));
 	}
 }
