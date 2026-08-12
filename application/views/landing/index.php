@@ -31,6 +31,7 @@ $model_camera  = base_url('assets/models/camera-parts.glb');
 // berat untuk dipakai langsung. Berkas aslinya tetap ada di folder yang sama.
 $img_night     = base_url('assets/images/hero-campus-night.webp');
 $video_hero    = base_url('assets/uploads/videos/landing-cinematic.mp4');
+$video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -454,7 +455,7 @@ $video_hero    = base_url('assets/uploads/videos/landing-cinematic.mp4');
             <section class="scene video-hero" id="beranda" data-video-hero aria-labelledby="videoHeroTitle">
                 <div class="video-hero__media" aria-hidden="true">
                     <div class="video-hero__parallax">
-                        <video class="video-hero__video" autoplay muted loop playsinline preload="metadata" poster="<?= $img_night; ?>">
+                        <video class="video-hero__video" autoplay muted loop playsinline preload="metadata" poster="<?= $img_night; ?>" data-fallback-src="<?= $video_fallback; ?>">
                             <source src="<?= $video_hero; ?>" type="video/mp4">
                         </video>
                     </div>

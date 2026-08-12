@@ -200,17 +200,45 @@
 
     function startVideo() {
         if (!video) return;
-        video.addEventListener("error", function () {
-            hero.classList.add("is-video-fallback");
-        }, { once: true });
 
         if (reducedMotion.matches) {
             video.pause();
             return;
         }
 
+        var fallbackTimer = null;
+        var fallbackUsed = false;
+
+        function clearFallbackTimer() {
+            if (!fallbackTimer) return;
+            window.clearTimeout(fallbackTimer);
+            fallbackTimer = null;
+        }
+
+        function switchToFallback() {
+            if (fallbackUsed || !video.dataset.fallbackSrc) return;
+
+            fallbackUsed = true;
+            clearFallbackTimer();
+            hero.classList.add("is-video-fallback");
+            video.pause();
+            video.src = video.dataset.fallbackSrc;
+            video.load();
+
+            var fallbackPlay = video.play();
+            if (fallbackPlay && fallbackPlay.catch) fallbackPlay.catch(function () {});
+        }
+
+        video.addEventListener("loadedmetadata", clearFallbackTimer, { once: true });
+        video.addEventListener("error", switchToFallback, { once: true });
+        fallbackTimer = window.setTimeout(function () {
+            if (video.readyState < 1) switchToFallback();
+        }, 3500);
+
         var play = video.play();
-        if (play && play.catch) play.catch(function () { hero.classList.add("is-video-fallback"); });
+        if (play && play.catch) play.catch(function () {
+            // Some codec failures are not surfaced immediately; the guarded timeout handles them.
+        });
     }
 
     setMoodVariables("mood-", palettes[0]);

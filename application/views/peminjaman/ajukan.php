@@ -14,6 +14,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?= base_url('assets/css/borrowing-date-range.css'); ?>">
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
@@ -193,7 +194,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
             <div class="col-lg-8" data-aos="fade-left">
                 <div class="card form-card p-4 p-md-5">
-                    <form action="<?= base_url('index.php/peminjaman/proses_pengajuan') ?>" method="POST" enctype="multipart/form-data">
+                    <form id="borrowingRequestForm" action="<?= base_url('index.php/peminjaman/proses_pengajuan') ?>" method="POST" enctype="multipart/form-data">
                         <input type="hidden" name="id_aset" value="<?= $aset->id_aset ?>">
 
                         <div class="row mb-4">
@@ -208,14 +209,48 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                             </div>
                         </div>
 
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label class="form-label fw-semibold text-muted small"><i class="bi bi-calendar-event me-1"></i> Tanggal Pengambilan <span class="text-danger">*</span></label>
-                                <input type="date" name="tanggal_pinjam" class="form-control" min="<?= date('Y-m-d') ?>" required>
+                        <div class="mb-4 borrowing-date-range" data-borrowing-date-range data-min-date="<?= date('Y-m-d') ?>">
+                            <div class="borrowing-date-range__enhanced">
+                                <label class="form-label fw-semibold text-muted small mb-2"><i class="bi bi-calendar-range me-1"></i> Jadwal Peminjaman <span class="text-danger">*</span></label>
+                                <button type="button" class="borrowing-date-range__trigger" data-date-range-trigger aria-expanded="false" aria-controls="borrowDateRangeCalendar">
+                                    <span class="borrowing-date-range__date">
+                                        <i class="bi bi-calendar-event"></i>
+                                        <span><small>Mulai</small><strong data-date-range-start>Pilih tanggal</strong></span>
+                                    </span>
+                                    <span class="borrowing-date-range__arrow" aria-hidden="true"><i class="bi bi-arrow-right"></i></span>
+                                    <span class="borrowing-date-range__date">
+                                        <i class="bi bi-calendar-check"></i>
+                                        <span><small>Selesai</small><strong data-date-range-end>Pilih tanggal</strong></span>
+                                    </span>
+                                    <i class="bi bi-chevron-down borrowing-date-range__chevron" aria-hidden="true"></i>
+                                </button>
+
+                                <section id="borrowDateRangeCalendar" class="borrowing-date-range__panel" data-date-range-panel hidden aria-label="Pilih rentang tanggal peminjaman">
+                                    <div class="borrowing-date-range__panel-header">
+                                        <div>
+                                            <span class="borrowing-date-range__eyebrow">Pilih jadwal</span>
+                                            <p data-date-range-helper>Pilih tanggal pengambilan terlebih dahulu.</p>
+                                        </div>
+                                        <div class="borrowing-date-range__navigation">
+                                            <button type="button" class="borrowing-date-range__nav" data-date-range-prev aria-label="Bulan sebelumnya"><i class="bi bi-chevron-left"></i></button>
+                                            <button type="button" class="borrowing-date-range__nav" data-date-range-next aria-label="Bulan berikutnya"><i class="bi bi-chevron-right"></i></button>
+                                        </div>
+                                    </div>
+                                    <div class="borrowing-date-range__months" data-date-range-months></div>
+                                    <div class="borrowing-date-range__panel-footer"><i class="bi bi-info-circle"></i> Tanggal yang sudah lewat tidak dapat dipilih.</div>
+                                </section>
+                                <div class="borrowing-date-range__feedback" data-date-range-feedback aria-live="polite"></div>
                             </div>
-                            <div class="col-md-6 mt-3 mt-md-0">
-                                <label class="form-label fw-semibold text-muted small"><i class="bi bi-calendar-check me-1"></i> Rencana Kembali <span class="text-danger">*</span></label>
-                                <input type="date" name="tanggal_kembali_rencana" class="form-control" min="<?= date('Y-m-d') ?>" required>
+
+                            <div class="row g-3 borrowing-date-range__native-fallback">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-muted small"><i class="bi bi-calendar-event me-1"></i> Tanggal Pengambilan <span class="text-danger">*</span></label>
+                                    <input type="date" name="tanggal_pinjam" class="form-control" min="<?= date('Y-m-d') ?>" required data-date-range-start-input>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold text-muted small"><i class="bi bi-calendar-check me-1"></i> Rencana Kembali <span class="text-danger">*</span></label>
+                                    <input type="date" name="tanggal_kembali_rencana" class="form-control" min="<?= date('Y-m-d') ?>" required data-date-range-end-input>
+                                </div>
                             </div>
                         </div>
 
@@ -269,6 +304,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="<?= base_url('assets/js/borrowing-date-range.js'); ?>"></script>
     <script>AOS.init({ once: true, offset: 20 });</script>
 
     <script>
