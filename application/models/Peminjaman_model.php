@@ -26,13 +26,27 @@ class Peminjaman_model extends CI_Model {
             $column = $this->db->query("SHOW COLUMNS FROM `{$this->table_peminjaman}` LIKE 'status'")->row();
             if ($column && (
                 stripos((string) $column->Type, 'enum') !== false
-                || (string) $column->Default !== 'Menunggu Verifikasi Laboran'
+                || (string) $column->Default !== 'Menunggu ACC Kaprodi'
             )) {
-                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` MODIFY `status` varchar(80) NOT NULL DEFAULT 'Menunggu Verifikasi Laboran'");
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` MODIFY `status` varchar(80) NOT NULL DEFAULT 'Menunggu ACC Kaprodi'");
             }
 
             if (!$this->db->field_exists('id_user', $this->table_peminjaman)) {
                 $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `id_user` int(11) DEFAULT NULL AFTER `id_peminjam`");
+            }
+
+            if (!$this->db->field_exists('status_kaprodi', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `status_kaprodi` varchar(20) NOT NULL DEFAULT 'Pending' AFTER `status`");
+                $this->db->query("UPDATE `{$this->table_peminjaman}` SET `status_kaprodi` = 'Disetujui' WHERE `status` NOT IN ('Menunggu ACC Kaprodi', 'Ditolak')");
+            }
+            if (!$this->db->field_exists('catatan_kaprodi', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `catatan_kaprodi` text DEFAULT NULL AFTER `status_kaprodi`");
+            }
+            if (!$this->db->field_exists('tgl_approve_kaprodi', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `tgl_approve_kaprodi` datetime DEFAULT NULL AFTER `catatan_kaprodi`");
+            }
+            if (!$this->db->field_exists('id_approver_kaprodi', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `id_approver_kaprodi` int(11) DEFAULT NULL AFTER `tgl_approve_kaprodi`");
             }
 
             if (!$this->db->field_exists('foto_pengembalian', $this->table_peminjaman)) {
@@ -204,6 +218,7 @@ class Peminjaman_model extends CI_Model {
             MAX(p.tanggal_kembali_rencana) as tanggal_kembali_rencana,
             MAX(p.tanggal_kembali_actual) as tanggal_kembali_actual,
             MAX(p.status) as status,
+            MAX(p.status_kaprodi) as status_kaprodi,
             MAX(p.status_laboran) as status_laboran,
             MAX(p.status_kaur) as status_kaur,
             MAX(p.keperluan) as keperluan,
@@ -235,6 +250,51 @@ class Peminjaman_model extends CI_Model {
 
         if (!empty($filters['exclude_status']) && is_array($filters['exclude_status'])) {
             $this->db->where_not_in('p.status', $filters['exclude_status']);
+        }
+
+        // Filter bertingkat dari dashboard admin. Setiap baris filter digabungkan
+        // dengan AND agar Laboran dapat mempersempit hasil secara bertahap.
+        if (!empty($filters['multi_filters']) && is_array($filters['multi_filters'])) {
+            foreach ($filters['multi_filters'] as $filter) {
+                $field = (string) ($filter['field'] ?? '');
+                $value = trim((string) ($filter['value'] ?? ''));
+                if ($value === '') {
+                    continue;
+                }
+
+                switch ($field) {
+                    case 'peminjam':
+                        $this->db->group_start();
+                        $this->db->like('peminjam.nama_peminjam', $value);
+                        $this->db->or_like('peminjam.nim_nip', $value);
+                        $this->db->group_end();
+                        break;
+                    case 'barang':
+                        $search = '%' . $value . '%';
+                        $this->db->where("p.id_aset IN (
+                            SELECT a.id_aset FROM `aset` a
+                            WHERE a.nama_aset LIKE " . $this->db->escape($search) . "
+                               OR a.kode_aset LIKE " . $this->db->escape($search) . "
+                        )", null, false);
+                        break;
+                    case 'status':
+                        if ($value === 'Terlambat') {
+                            $this->db->where_in('p.status', ['Sedang Dipinjam', 'Dipinjam']);
+                            $this->db->where('p.tanggal_kembali_rencana <', date('Y-m-d'));
+                        } else {
+                            $this->db->where('p.status', $value);
+                        }
+                        break;
+                    case 'tanggal':
+                        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                            $this->db->where('DATE(p.tanggal_pinjam)', $value);
+                        }
+                        break;
+                    case 'keperluan':
+                        $this->db->like('p.keperluan', $value);
+                        break;
+                }
+            }
         }
         
         // Filter pencarian
@@ -578,15 +638,35 @@ class Peminjaman_model extends CI_Model {
     }
 
     public function get_pending_laboran() {
-        return array_merge(
+        $rows = array_merge(
             $this->search_peminjaman(['status' => 'Menunggu Verifikasi Laboran']),
             $this->search_peminjaman(['status' => 'Menunggu Pengecekan Laboran']),
             $this->search_peminjaman(['status' => 'Menunggu Persetujuan'])
         );
+        return array_values(array_filter($rows, static function ($row) {
+            return ($row->status_kaprodi ?? 'Pending') === 'Disetujui'
+                && ($row->status_laboran ?? 'Pending') === 'Pending';
+        }));
+    }
+
+    public function get_pending_kaprodi($filters = []) {
+        $filters['status'] = 'Menunggu ACC Kaprodi';
+        if (!empty($filters['q']) && empty($filters['pencarian'])) {
+            $filters['pencarian'] = $filters['q'];
+        }
+        return $this->search_peminjaman($filters);
     }
 
     public function get_pending_kaur($filters = []) {
         $filters['status'] = 'Menunggu ACC Kaur';
+        if (!empty($filters['q']) && empty($filters['pencarian'])) {
+            $filters['pencarian'] = $filters['q'];
+        }
+        return $this->search_peminjaman($filters);
+    }
+
+    public function get_pengembalian_readonly($filters = []) {
+        $filters['status_in'] = ['Sedang Dipinjam', 'Dipinjam', 'Dikembalikan'];
         if (!empty($filters['q']) && empty($filters['pencarian'])) {
             $filters['pencarian'] = $filters['q'];
         }
@@ -1307,9 +1387,15 @@ class Peminjaman_model extends CI_Model {
         $this->db->join('peminjam', 'peminjam.id_peminjam = peminjaman.id_peminjam', 'left');
         if ($role === 'laboran') {
             $this->db->where_in('peminjaman.status', ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran']);
+            $this->db->where('peminjaman.status_kaprodi', 'Disetujui');
             $this->db->where('peminjaman.status_laboran', 'Pending');
+        } elseif ($role === 'kaprodi') {
+            $this->db->where('peminjaman.status', 'Menunggu ACC Kaprodi');
+            $this->db->where('peminjaman.status_kaprodi', 'Pending');
         } elseif ($role === 'kaur') {
             $this->db->where('peminjaman.status', 'Menunggu ACC Kaur');
+            $this->db->where('peminjaman.status_kaprodi', 'Disetujui');
+            $this->db->where('peminjaman.status_laboran', 'Disetujui');
             $this->db->where('peminjaman.status_kaur', 'Pending');
         } else {
             $this->db->where_in('peminjaman.status', ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur', 'Menunggu Persetujuan']);
@@ -1331,6 +1417,8 @@ class Peminjaman_model extends CI_Model {
  
         if ($role === 'laboran') {
             $this->db->where('peminjaman.status_laboran', $approval_status);
+        } elseif ($role === 'kaprodi') {
+            $this->db->where('peminjaman.status_kaprodi', $approval_status);
         } elseif ($role === 'kaur') {
             $this->db->where('peminjaman.status_kaur', $approval_status);
         } else {

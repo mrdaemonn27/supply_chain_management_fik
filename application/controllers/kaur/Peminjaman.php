@@ -30,11 +30,14 @@ class Peminjaman extends CI_Controller {
             redirect('kaur/dashboard/peminjaman');
         }
 
-        if ($peminjaman->status !== 'Menunggu ACC Kaur') {
-            $this->session->set_flashdata('error', 'Pengajuan belum berada di tahap ACC Kaur.');
+        if ($peminjaman->status !== 'Menunggu ACC Kaur'
+            || ($peminjaman->status_kaprodi ?? 'Pending') !== 'Disetujui'
+            || ($peminjaman->status_laboran ?? 'Pending') !== 'Disetujui') {
+            $this->session->set_flashdata('error', 'Pengajuan belum menyelesaikan tahap Kaprodi dan Laboran.');
             redirect('kaur/dashboard/peminjaman');
         }
 
+        $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
         $update = [
             'status' => 'Disetujui (Menunggu Finalisasi QR)',
             'status_kaur' => 'Disetujui',
@@ -46,7 +49,7 @@ class Peminjaman extends CI_Controller {
             'qr_finalized_by' => null,
         ];
 
-        $ok = $this->Peminjaman_model->update_group_status($peminjaman->group_id, $update);
+        $ok = $this->Peminjaman_model->update_group_status($group_id, $update);
         if ($ok && !empty($peminjaman->id_user)) {
             $this->Peminjaman_model->create_notifikasi(
                 null,
@@ -107,7 +110,15 @@ class Peminjaman extends CI_Controller {
             redirect('kaur/dashboard/peminjaman');
         }
 
-        $ok = $this->Peminjaman_model->update_group_status($peminjaman->group_id, [
+        if ($peminjaman->status !== 'Menunggu ACC Kaur'
+            || ($peminjaman->status_kaprodi ?? 'Pending') !== 'Disetujui'
+            || ($peminjaman->status_laboran ?? 'Pending') !== 'Disetujui') {
+            $this->session->set_flashdata('error', 'Pengajuan belum berada di tahap ACC Kaur.');
+            redirect('kaur/dashboard/peminjaman');
+        }
+
+        $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
+        $ok = $this->Peminjaman_model->update_group_status($group_id, [
             'status' => 'Ditolak',
             'status_kaur' => 'Ditolak',
             'catatan_kaur' => $this->input->post('catatan_kaur', true),

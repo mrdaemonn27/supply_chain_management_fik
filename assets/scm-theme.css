@@ -190,3 +190,38 @@ html.scm-theme-dark .scm-admin-sidebar-status { border-color: #2e3439; }
 @media (prefers-reduced-motion: reduce) {
     .scm-theme-toggle { transition: none; }
 }
+
+/* Konsistensi bentuk kontrol panel Laboran/Admin. */
+.scm-admin-shell .btn {
+    min-height: 36px;
+    border-radius: 999px;
+    font-weight: 600;
+}
+.scm-admin-shell .btn-sm { min-height: 32px; }
+.scm-admin-shell .btn > .bi {
+    display: inline-flex;
+    width: 1rem;
+    height: 1rem;
+    align-items: center;
+    justify-content: center;
+    font-size: .9rem;
+    line-height: 1;
+    vertical-align: -.12em;
+}
+.scm-admin-shell .badge,
+.scm-admin-shell .soft-badge {
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.scm-admin-shell .notif-bell,
+.scm-admin-shell .btn.rounded-circle {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+    min-height: 38px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+}

@@ -4,6 +4,10 @@ $status_class = function ($status) { return 'status-' . preg_replace('/[^A-Za-z0
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'total_pages' => 1, 'total' => count($peminjaman ?? []), 'per_page' => 10];
+$filter_rows = isset($filter_rows) && is_array($filter_rows) ? array_values($filter_rows) : [];
+if (empty($filter_rows)) $filter_rows = [['field' => 'peminjam', 'value' => '']];
+$filter_fields = ['peminjam' => 'Peminjam / NIM', 'barang' => 'Nama barang / kode', 'status' => 'Status', 'tanggal' => 'Tanggal pinjam', 'keperluan' => 'Keperluan'];
+$filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions) ? $filter_suggestions : [];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -28,7 +32,25 @@ $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page
         .status-Terlambat { background: rgba(220,53,69,.12); color: #dc3545; }
         .notif-bell { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 38px; }
         .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }
-        @media (max-width: 767.98px) { .topbar-actions { width: 100%; flex-wrap: wrap; } .topbar-actions .btn:not(.notif-bell) { flex: 1; } }
+        .admin-filter-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+        .admin-filter-heading h2 { margin:0; font-size:1rem; font-weight:700; }
+        .admin-filter-heading p { margin:0; color:#6b7280; font-size:.78rem; }
+        .admin-filter-list { display:grid; gap:.65rem; }
+        .admin-filter-row { display:grid; grid-template-columns:minmax(185px, .7fr) minmax(0, 1.5fr) auto; gap:.65rem; align-items:center; }
+        .admin-filter-row .form-select, .admin-filter-row .form-control { min-height:42px; }
+        .admin-filter-tools { display:flex; align-items:center; gap:.45rem; }
+        .admin-filter-icon { width:42px; height:42px; display:inline-flex; align-items:center; justify-content:center; border-radius:10px; }
+        .admin-filter-add { border-color:#ea5b1a; color:#c84f17; }
+        .admin-filter-add:hover { background:#ea5b1a; border-color:#ea5b1a; color:#fff; }
+        .admin-filter-actions { display:flex; flex-wrap:wrap; gap:.65rem; margin-top:1rem; }
+        .admin-filter-actions .btn { min-height:40px; }
+        .admin-filter-note { color:#6b7280; font-size:.74rem; }
+        @media (max-width: 767.98px) {
+            .topbar-actions { width: 100%; flex-wrap: wrap; }
+            .topbar-actions .btn:not(.notif-bell) { flex: 1; }
+            .admin-filter-row { grid-template-columns:1fr; gap:.45rem; padding:.75rem; border:1px solid #edf0f2; border-radius:10px; }
+            .admin-filter-tools { justify-content:flex-end; }
+        }
     </style>
 </head>
 <body class="scm-admin-shell">
@@ -72,11 +94,18 @@ $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page
         <?php if($this->session->flashdata('error')): ?><div class="alert alert-danger border-0 shadow-sm"><?= $this->session->flashdata('error'); ?></div><?php endif; ?>
 
         <section class="panel-card p-3 p-lg-4 mb-4">
-            <form class="row g-3 align-items-end" method="get" action="<?= base_url('index.php/admin/pengembalian') ?>">
-                <div class="col-md-4"><label class="form-label small fw-semibold text-muted">Pencarian</label><input type="text" name="q" class="form-control" value="<?= html_escape($filters['pencarian'] ?? '') ?>" placeholder="Nama, NIM/NIP, atau keperluan"></div>
-                <div class="col-md-3"><label class="form-label small fw-semibold text-muted">Status</label><select name="status" class="form-select"><?php foreach($status_options as $status): ?><option value="<?= $status ?>" <?= (($filters['status'] ?? '') === $status) ? 'selected' : '' ?>><?= $status ?: 'Semua Aktif' ?></option><?php endforeach; ?></select></div>
-                <div class="col-md-3"><label class="form-label small fw-semibold text-muted">Tanggal Pinjam</label><input type="date" name="tanggal" class="form-control" value="<?= html_escape($filters['tanggal'] ?? '') ?>"></div>
-                <div class="col-md-2 d-grid"><button class="btn btn-fik"><i class="bi bi-search me-1"></i> Filter</button></div>
+            <form id="adminFilters" method="get" action="<?= base_url('index.php/admin/pengembalian') ?>" data-max-filters="4">
+                <div class="admin-filter-heading"><div><h2><i class="bi bi-funnel me-2 text-warning"></i>Filter pencarian</h2><p>Tambahkan hingga 4 kriteria untuk mempersempit transaksi aktif.</p></div><span class="admin-filter-note"><i class="bi bi-lightning-charge me-1"></i>Hasil diperbarui saat Anda mengetik</span></div>
+                <div id="adminFilterRows" class="admin-filter-list">
+                    <?php foreach($filter_rows as $index => $filter_row): ?>
+                    <div class="admin-filter-row">
+                        <select name="filter_field[]" class="form-select admin-filter-field" aria-label="Jenis filter <?= $index + 1 ?>"><?php foreach($filter_fields as $field_key => $field_label): ?><option value="<?= $field_key ?>" <?= (($filter_row['field'] ?? '') === $field_key) ? 'selected' : '' ?>><?= $field_label ?></option><?php endforeach; ?></select>
+                        <input type="search" name="filter_value[]" class="form-control admin-filter-value" value="<?= html_escape($filter_row['value'] ?? '') ?>" placeholder="Ketik untuk mencari" autocomplete="off" aria-label="Nilai filter <?= $index + 1 ?>">
+                        <div class="admin-filter-tools"><button type="button" class="btn btn-outline-secondary admin-filter-icon admin-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg"></i></button><button type="button" class="btn btn-outline-primary admin-filter-icon admin-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg"></i></button></div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="admin-filter-actions"><button class="btn btn-fik px-4"><i class="bi bi-search me-1"></i>Terapkan filter</button><a href="<?= base_url('index.php/admin/pengembalian') ?>" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</a></div>
             </form>
         </section>
 
@@ -112,6 +141,10 @@ $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page
                     'q' => $filters['pencarian'] ?? '',
                     'tanggal' => $filters['tanggal'] ?? '',
                 ];
+                foreach ($filter_rows as $filter_row) {
+                    $base_query['filter_field'][] = $filter_row['field'] ?? 'peminjam';
+                    $base_query['filter_value'][] = $filter_row['value'] ?? '';
+                }
                 $page = (int) ($pagination['page'] ?? 1);
                 $total_pages = (int) ($pagination['total_pages'] ?? 1);
             ?>
@@ -213,6 +246,79 @@ $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        (() => {
+            const form = document.getElementById('adminFilters');
+            if (!form) return;
+            const rows = document.getElementById('adminFilterRows');
+            const maxFilters = Number(form.dataset.maxFilters || 4);
+            const fields = <?= json_encode($filter_fields, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            const suggestions = <?= json_encode($filter_suggestions, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            let submitTimer;
+
+            const syncFilterInput = row => {
+                const field = row.querySelector('.admin-filter-field').value;
+                const input = row.querySelector('.admin-filter-value');
+                const listId = `filterSuggestions${Date.now()}${Math.random().toString(16).slice(2)}`;
+                row.querySelector('datalist')?.remove();
+                input.removeAttribute('list');
+                input.type = field === 'tanggal' ? 'date' : 'search';
+                input.placeholder = field === 'tanggal' ? 'Pilih tanggal pinjam' : `Cari ${fields[field].toLowerCase()}`;
+                if (field === 'tanggal') return;
+                const datalist = document.createElement('datalist');
+                datalist.id = listId;
+                (suggestions[field] || []).slice(0, 80).forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    datalist.appendChild(option);
+                });
+                row.appendChild(datalist);
+                input.setAttribute('list', listId);
+            };
+
+            const updateButtons = () => {
+                const filterRows = Array.from(rows.querySelectorAll('.admin-filter-row'));
+                filterRows.forEach((row, index) => {
+                    row.querySelector('.admin-filter-remove').disabled = filterRows.length === 1;
+                    row.querySelector('.admin-filter-add').disabled = filterRows.length >= maxFilters || index !== filterRows.length - 1;
+                });
+            };
+
+            const addRow = (field = 'peminjam', value = '') => {
+                if (rows.querySelectorAll('.admin-filter-row').length >= maxFilters) return;
+                const row = document.createElement('div');
+                row.className = 'admin-filter-row';
+                const select = document.createElement('select');
+                select.name = 'filter_field[]'; select.className = 'form-select admin-filter-field';
+                Object.entries(fields).forEach(([key, label]) => select.add(new Option(label, key, false, key === field)));
+                const input = document.createElement('input');
+                input.name = 'filter_value[]'; input.className = 'form-control admin-filter-value'; input.value = value; input.autocomplete = 'off';
+                const tools = document.createElement('div');
+                tools.className = 'admin-filter-tools';
+                tools.innerHTML = '<button type="button" class="btn btn-outline-secondary admin-filter-icon admin-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg"></i></button><button type="button" class="btn btn-outline-primary admin-filter-icon admin-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg"></i></button>';
+                row.append(select, input, tools); rows.appendChild(row); syncFilterInput(row); updateButtons(); return row;
+            };
+
+            rows.querySelectorAll('.admin-filter-row').forEach(syncFilterInput);
+            updateButtons();
+            rows.addEventListener('click', event => {
+                const row = event.target.closest('.admin-filter-row');
+                if (!row) return;
+                if (event.target.closest('.admin-filter-add')) { const added = addRow(); added?.querySelector('.admin-filter-value').focus(); }
+                if (event.target.closest('.admin-filter-remove') && rows.querySelectorAll('.admin-filter-row').length > 1) { row.remove(); updateButtons(); form.requestSubmit(); }
+            });
+            rows.addEventListener('change', event => {
+                if (!event.target.matches('.admin-filter-field')) return;
+                const row = event.target.closest('.admin-filter-row');
+                row.querySelector('.admin-filter-value').value = '';
+                syncFilterInput(row);
+                row.querySelector('.admin-filter-value').focus();
+            });
+            rows.addEventListener('input', event => {
+                if (!event.target.matches('.admin-filter-value')) return;
+                window.clearTimeout(submitTimer);
+                submitTimer = window.setTimeout(() => form.requestSubmit(), 600);
+            });
+        })();
         document.querySelectorAll('.modal form').forEach((form) => {
             form.addEventListener('submit', (event) => {
                 const condition = form.querySelector('.return-condition')?.value;

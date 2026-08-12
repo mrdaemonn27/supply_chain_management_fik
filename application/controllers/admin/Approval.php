@@ -26,11 +26,19 @@ class Approval extends CI_Controller {
 
     public function index() {
         $data['title'] = 'Approval Peminjaman';
-        $data['pengajuan'] = array_merge(
-            $this->Peminjaman_model->search_peminjaman(['status' => 'Menunggu Verifikasi Laboran']),
-            $this->Peminjaman_model->search_peminjaman(['status' => 'Menunggu Pengecekan Laboran']),
-            $this->Peminjaman_model->search_peminjaman(['status' => 'Menunggu Persetujuan'])
-        );
+        $data['pengajuan'] = $this->Peminjaman_model->get_pending_laboran();
+        $query = trim((string) $this->input->get('q', true));
+        if ($query !== '') {
+            $needle = strtolower($query);
+            $data['pengajuan'] = array_values(array_filter($data['pengajuan'], static function ($row) use ($needle) {
+                $haystack = ($row->nama_peminjam ?? '') . ' ' . ($row->nim_nip ?? '') . ' ' . ($row->status ?? '');
+                foreach (($row->detail_barang ?? []) as $item) {
+                    $haystack .= ' ' . ($item->nama_aset ?? '');
+                }
+                return strpos(strtolower($haystack), $needle) !== false;
+            }));
+        }
+        $data['q'] = $query;
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);
         $this->load->view('admin/approval', $data);
@@ -43,8 +51,9 @@ class Approval extends CI_Controller {
             redirect('admin/approval');
         }
 
-        if (!in_array($peminjaman->status, ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu Persetujuan'], true)) {
-            $this->session->set_flashdata('error', 'Pengajuan ini sudah diproses sebelumnya.');
+        if (!in_array($peminjaman->status, ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu Persetujuan'], true)
+            || ($peminjaman->status_kaprodi ?? 'Pending') !== 'Disetujui') {
+            $this->session->set_flashdata('error', 'Pengajuan belum disetujui Kaprodi atau sudah diproses sebelumnya.');
             redirect('admin/approval');
         }
 

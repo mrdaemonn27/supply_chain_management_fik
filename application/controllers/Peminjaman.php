@@ -180,7 +180,8 @@ class Peminjaman extends CI_Controller {
                 'keperluan' => $this->input->post('keperluan'),
                 'kondisi_saat_pinjam' => $this->input->post('kondisi_saat_pinjam'),
                 'foto_bukti' => $upload_data['file_name'],
-                'status' => 'Menunggu Verifikasi Laboran',
+                'status' => 'Menunggu ACC Kaprodi',
+                'status_kaprodi' => 'Pending',
                 'status_laboran' => 'Pending',
                 'status_kaur' => 'Pending',
                 'created_at' => date('Y-m-d H:i:s')
@@ -189,14 +190,14 @@ class Peminjaman extends CI_Controller {
             // Kirim array data ke Peminjaman_model
             $this->Peminjaman_model->insert_peminjaman($data_peminjaman);
             $this->Peminjaman_model->create_notifikasi(
-                'laboran',
+                'kaprodi',
                 null,
                 'Pengajuan peminjaman baru',
-                $nama_peminjam . ' mengajukan peminjaman dan menunggu verifikasi Laboran.',
-                site_url('admin/approval')
+                $nama_peminjam . ' mengajukan peminjaman dan menunggu persetujuan Kaprodi.',
+                site_url('kaprodi/peminjaman')
             );
             
-            $this->session->set_flashdata('success', 'Berhasil! Pengajuan terkirim dan menunggu verifikasi Laboran.');
+            $this->session->set_flashdata('success', 'Berhasil! Pengajuan terkirim dan menunggu persetujuan Kaprodi.');
             
             // UBAH redirect INI agar setelah submit form langsung masuk ke halaman riwayat
             redirect('peminjaman/riwayat'); 

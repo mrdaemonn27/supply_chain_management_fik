@@ -41,7 +41,37 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         .table-custom tbody td { padding: 15px; vertical-align: middle; border-bottom: 1px solid #eee; background: white; }
         .table-custom tbody tr:hover td { background-color: #fafafa; }
         
-        .badge-status { padding: 8px 12px; border-radius: 6px; font-weight: 500; font-size: 0.8rem;}
+        .table-custom th:nth-child(4), .table-custom td:nth-child(4) { width: 320px; min-width: 320px; }
+        .badge-status { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; width:300px; min-width:300px; max-width:300px; height:42px; min-height:42px; padding:7px 14px; border-radius:999px; font-weight:600; font-size:.76rem; line-height:1.2; white-space:normal; text-align:center; }
+        .history-search { max-width:720px; margin:0 auto 1.25rem; }
+        .history-date { display:inline-flex; align-items:center; gap:.45rem; padding:.4rem .55rem; border-radius:8px; cursor:help; transition:background-color .18s ease; }
+        .history-date:hover { background:#fff3eb; }
+        .history-empty-filter { display:none; }
+        .history-pagination { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-top:1.25rem; }
+        .history-pagination__info { margin:0; color:#6c757d; font-size:.85rem; }
+        .history-pagination .pagination { flex-wrap:wrap; }
+        .history-pagination .page-link {
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            min-width:38px;
+            height:38px;
+            padding:.4rem .7rem;
+            border-color:#e2e5e9;
+            color:#5d3315;
+            font-weight:600;
+            box-shadow:none;
+        }
+        .history-pagination .page-item:first-child .page-link,
+        .history-pagination .page-item:last-child .page-link { border-radius:10px; }
+        .history-pagination .page-item.active .page-link { background:#ea5b1a; border-color:#ea5b1a; color:#fff; }
+        .history-pagination .page-item:not(.active):not(.disabled) .page-link:hover { background:#fff3eb; border-color:#ea5b1a; color:#c44810; }
+        .history-pagination .page-item.disabled .page-link { color:#adb5bd; background:#f3f4f6; }
+        @media (max-width: 575.98px) {
+            .history-pagination { flex-direction:column; justify-content:center; }
+            .history-pagination__info { text-align:center; }
+            .history-pagination .page-link { min-width:36px; height:36px; padding:.35rem .6rem; }
+        }
     </style>
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
 </head>
@@ -103,16 +133,25 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             </div>
         <?php endif; ?>
 
+        <div class="history-search" data-aos="fade-up">
+            <label for="historySearch" class="form-label small fw-semibold text-muted">Cari riwayat peminjaman</label>
+            <div class="input-group shadow-sm">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-fik-orange"></i></span>
+                <input id="historySearch" type="search" class="form-control" placeholder="Nama barang, status, atau tanggal" autocomplete="off">
+            </div>
+            <div id="historySearchCount" class="small text-muted mt-2" aria-live="polite"></div>
+        </div>
+
         <!-- Tabel Riwayat -->
         <div class="table-responsive" data-aos="fade-up">
             <table class="table table-custom mb-0">
                 <thead>
                     <tr>
                         <th>Tgl Pengajuan</th>
-                        <th>Aset Studio</th>
+                        <th>Nama Barang</th>
                         <th>Masa Pinjam</th>
                         <th>Status Approval</th>
-                        <th class="text-center">Aksi / Tiket</th>
+                        <th class="text-center">Status QR</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -126,9 +165,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         </tr>
                     <?php else: ?>
                         <?php foreach($riwayat as $r): ?>
-                        <tr>
+                        <?php $search_label = strtolower(implode(' ', [$r->nama_aset ?? '', $r->status ?? '', tanggal_indonesia($r->created_at ?? null), tanggal_indonesia($r->tanggal_pinjam ?? null), tanggal_indonesia($r->tanggal_kembali_rencana ?? null)])); ?>
+                        <tr data-history-row data-search="<?= html_escape($search_label) ?>">
                             <td>
-                                <div class="fw-semibold text-dark"><?= date('d M Y', strtotime($r->created_at)) ?></div>
+                                <div class="fw-semibold text-dark"><?= tanggal_indonesia($r->created_at) ?></div>
                                 <div class="text-muted small"><?= date('H:i', strtotime($r->created_at)) ?> WIB</div>
                             </td>
                             <td>
@@ -136,8 +176,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                 <div class="text-muted small">Kode: <?= $r->kode_aset ?> &bull; Jml: <span class="text-fik-orange fw-bold"><?= $r->jumlah_pinjam ?></span></div>
                             </td>
                             <td>
-                                <div class="small"><i class="bi bi-box-arrow-in-right text-success me-1"></i> <?= date('d/m/Y', strtotime($r->tanggal_pinjam)) ?></div>
-                                <div class="small"><i class="bi bi-box-arrow-left text-danger me-1"></i> <?= date('d/m/Y', strtotime($r->tanggal_kembali_rencana)) ?></div>
+                                <span class="history-date" tabindex="0" data-bs-toggle="tooltip" data-bs-placement="top" title="Masa pinjam: <?= html_escape(masa_pinjam_indonesia($r->tanggal_pinjam, $r->tanggal_kembali_rencana)) ?>">
+                                    <i class="bi bi-calendar-range text-fik-orange"></i>
+                                    <span><span class="d-block small fw-semibold"><?= tanggal_indonesia($r->tanggal_pinjam) ?></span><span class="d-block small text-muted">s.d. <?= tanggal_indonesia($r->tanggal_kembali_rencana) ?></span></span>
+                                </span>
                             </td>
                             <td>
                                 <?php 
@@ -175,10 +217,19 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                             </td>
                         </tr>
                         <?php endforeach; ?>
+                        <tr class="history-empty-filter"><td colspan="5" class="text-center text-muted py-5"><i class="bi bi-search d-block fs-2 mb-2"></i>Tidak ada riwayat yang cocok.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
+        <?php if(!empty($riwayat)): ?>
+        <div id="historyPaginationWrap" class="history-pagination d-none" aria-live="polite">
+            <p id="historyPageInfo" class="history-pagination__info"></p>
+            <nav id="historyPaginationNav" aria-label="Navigasi halaman riwayat peminjaman">
+                <ul id="historyPagination" class="pagination pagination-sm mb-0"></ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- MODAL TIKET QR CODE (DIPINDAHKAN KELUAR DARI TABLE AGAR TIDAK BUG/KEPOTONG) -->
@@ -229,6 +280,115 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
-    <script>AOS.init({ once: true, offset: 20 });</script>
+    <script>
+        AOS.init({ once: true, offset: 20 });
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+        const historySearch = document.getElementById('historySearch');
+        if (historySearch) {
+            const rows = Array.from(document.querySelectorAll('[data-history-row]'));
+            const emptyRow = document.querySelector('.history-empty-filter');
+            const counter = document.getElementById('historySearchCount');
+            const paginationWrap = document.getElementById('historyPaginationWrap');
+            const paginationNav = document.getElementById('historyPaginationNav');
+            const pagination = document.getElementById('historyPagination');
+            const pageInfo = document.getElementById('historyPageInfo');
+            const pageSize = 5;
+            let currentPage = 1;
+
+            const paginationPages = totalPages => {
+                if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+                const pages = [1];
+                const firstNearbyPage = Math.max(2, currentPage - 1);
+                const lastNearbyPage = Math.min(totalPages - 1, currentPage + 1);
+                if (firstNearbyPage > 2) pages.push('ellipsis-start');
+                for (let page = firstNearbyPage; page <= lastNearbyPage; page++) pages.push(page);
+                if (lastNearbyPage < totalPages - 1) pages.push('ellipsis-end');
+                pages.push(totalPages);
+                return pages;
+            };
+
+            const pageButton = (label, page, options = {}) => {
+                const item = document.createElement('li');
+                item.className = `page-item${options.active ? ' active' : ''}${options.disabled ? ' disabled' : ''}`;
+
+                if (options.ellipsis) {
+                    item.classList.add('disabled');
+                    item.innerHTML = '<span class="page-link" aria-hidden="true">&hellip;</span>';
+                    return item;
+                }
+
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'page-link';
+                button.dataset.page = String(page);
+                button.innerHTML = label;
+                if (options.label) button.setAttribute('aria-label', options.label);
+                if (options.active) button.setAttribute('aria-current', 'page');
+                if (options.disabled) button.disabled = true;
+                item.appendChild(button);
+                return item;
+            };
+
+            const renderPagination = totalPages => {
+                pagination.replaceChildren();
+                pagination.appendChild(pageButton('<i class="bi bi-chevron-left" aria-hidden="true"></i>', currentPage - 1, {
+                    disabled: currentPage === 1,
+                    label: 'Halaman sebelumnya'
+                }));
+
+                paginationPages(totalPages).forEach(page => {
+                    if (typeof page === 'string') {
+                        pagination.appendChild(pageButton('', 0, { ellipsis: true }));
+                        return;
+                    }
+                    pagination.appendChild(pageButton(String(page), page, {
+                        active: page === currentPage,
+                        label: `Halaman ${page}`
+                    }));
+                });
+
+                pagination.appendChild(pageButton('<i class="bi bi-chevron-right" aria-hidden="true"></i>', currentPage + 1, {
+                    disabled: currentPage === totalPages,
+                    label: 'Halaman berikutnya'
+                }));
+            };
+
+            const renderHistory = (resetPage = false) => {
+                const query = historySearch.value.trim().toLocaleLowerCase('id');
+                const filteredRows = rows.filter(row => !query || (row.dataset.search || '').includes(query));
+                const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+                if (resetPage) currentPage = 1;
+                currentPage = Math.min(currentPage, totalPages);
+
+                rows.forEach(row => row.classList.add('d-none'));
+                const firstIndex = (currentPage - 1) * pageSize;
+                filteredRows.slice(firstIndex, firstIndex + pageSize).forEach(row => row.classList.remove('d-none'));
+
+                if (emptyRow) emptyRow.style.display = filteredRows.length ? 'none' : 'table-row';
+                if (counter) counter.textContent = query ? `${filteredRows.length} riwayat ditemukan` : `${rows.length} total riwayat`;
+
+                if (paginationWrap) paginationWrap.classList.toggle('d-none', filteredRows.length === 0);
+                if (paginationNav) paginationNav.classList.toggle('d-none', totalPages <= 1);
+                if (pageInfo) {
+                    const firstShown = filteredRows.length ? firstIndex + 1 : 0;
+                    const lastShown = Math.min(firstIndex + pageSize, filteredRows.length);
+                    pageInfo.textContent = `Menampilkan ${firstShown}–${lastShown} dari ${filteredRows.length} riwayat`;
+                }
+                if (pagination && filteredRows.length) renderPagination(totalPages);
+            };
+
+            historySearch.addEventListener('input', () => renderHistory(true));
+            if (pagination) {
+                pagination.addEventListener('click', event => {
+                    const button = event.target.closest('button[data-page]');
+                    if (!button || button.disabled) return;
+                    currentPage = Number(button.dataset.page);
+                    renderHistory();
+                });
+            }
+            renderHistory();
+        }
+    </script>
 </body>
 </html>

@@ -105,7 +105,7 @@ $module_meta = [
     'pengajuan' => ['title' => 'Pengajuan Kaprodi', 'desc' => 'Pantau seluruh kebutuhan barang dan jasa dari prodi.'],
     'negosiasi' => ['title' => 'Negosiasi Pengadaan', 'desc' => 'Pilih vendor dan simpan riwayat harga negosiasi.'],
     'approval' => ['title' => 'Approval Pengadaan', 'desc' => 'Setujui, revisi, atau tolak pengajuan setelah negosiasi selesai.'],
-    'peminjaman' => ['title' => 'ACC Peminjaman', 'desc' => 'Setujui peminjaman yang sudah diverifikasi Laboran agar QR aktif.'],
+    'peminjaman' => ['title' => 'ACC Peminjaman', 'desc' => 'ACC final setelah Kaprodi dan Laboran; QR kemudian difinalkan Laboran.'],
     'anggaran' => ['title' => 'Alokasi Anggaran', 'desc' => 'Kelola total anggaran, pengeluaran, sisa, dan persentase penggunaan.'],
     'bast' => ['title' => 'BAST', 'desc' => 'Input dokumen BAST dari Logistik dan proses barang ke inventory.'],
     'laporan' => ['title' => 'Laporan', 'desc' => 'Lihat hasil akhir negosiasi yang sudah Deal.'],
@@ -1024,7 +1024,7 @@ function kaur_module_url($module) {
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
                 <div>
                     <h2 class="h5 fw-bold mb-1">Approval Peminjaman oleh Kaur</h2>
-                    <div class="text-muted small">Pengajuan yang sudah dicek Laboran akan muncul di sini. Setelah disetujui, QR Code tampil di akun peminjam.</div>
+                    <div class="text-muted small">Pengajuan tampil setelah ACC Kaprodi dan pengecekan Laboran. Setelah ACC Kaur, Laboran memfinalkan QR.</div>
                 </div>
                 <div class="d-flex flex-wrap gap-2 align-items-start">
                     <a href="<?= base_url('index.php/kaur/peminjaman/export_pengajuan_acc') ?>" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Preview Excel ACC</a>
@@ -1036,11 +1036,13 @@ function kaur_module_url($module) {
                 <input type="hidden" name="sort_dir" value="<?= html_escape($filters['sort_dir'] ?? '') ?>">
                 <div class="col-md-4">
                     <label class="form-label small fw-semibold">Kata Kunci</label>
-                    <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Nama peminjam, NIM/NIP, nama barang, keperluan">
+                    <input id="kaurLoanLiveSearch" type="search" name="q" class="form-control" list="kaurLoanSuggestions" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Ketik nama peminjam, barang, atau status..." autocomplete="off">
+                    <datalist id="kaurLoanSuggestions"><?php foreach(($peminjaman_pending_kaur ?? []) as $suggestion): ?><option value="<?= html_escape($suggestion->nama_peminjam ?? '') ?>"><?php foreach(($suggestion->detail_barang ?? []) as $item): ?><option value="<?= html_escape($item->nama_aset ?? '') ?>"><?php endforeach; ?><?php endforeach; ?></datalist>
+                    <div class="form-text">Hasil terfilter langsung tanpa reload.</div>
                 </div>
                 <div class="col-md-3"><label class="form-label small fw-semibold">Tanggal Pinjam Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
                 <div class="col-md-3"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
-                <div class="col-md-2 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
+                <div class="col-md-2 d-grid"><button class="btn btn-fik"><i class="bi bi-calendar-check me-1"></i> Terapkan Tanggal</button></div>
             </form>
             <div class="table-responsive">
                 <table class="table table-clean align-middle">
@@ -1049,14 +1051,13 @@ function kaur_module_url($module) {
                         <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'nama_peminjam') ?>" class="text-decoration-none text-dark">Nama Peminjam <?= sort_icon_kaur($filters, 'nama_peminjam') ?></a></th>
                         <th>Barang</th>
                         <th>Laboratorium</th>
-                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'tanggal_pinjam') ?>" class="text-decoration-none text-dark">Tanggal Pinjam <?= sort_icon_kaur($filters, 'tanggal_pinjam') ?></a></th>
-                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'tanggal_kembali') ?>" class="text-decoration-none text-dark">Tanggal Kembali <?= sort_icon_kaur($filters, 'tanggal_kembali') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'tanggal_pinjam') ?>" class="text-decoration-none text-dark">Masa Pinjam <?= sort_icon_kaur($filters, 'tanggal_pinjam') ?></a></th>
                         <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'status') ?>" class="text-decoration-none text-dark">Status <?= sort_icon_kaur($filters, 'status') ?></a></th>
                         <th class="text-end">Aksi</th>
                     </tr></thead>
                     <tbody>
                     <?php if(empty($peminjaman_pending_kaur)): ?>
-                        <tr><td colspan="8" class="text-center text-muted py-5">Tidak ada peminjaman yang menunggu ACC Kaur.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-5">Tidak ada peminjaman yang menunggu ACC Kaur.</td></tr>
                     <?php else: foreach($peminjaman_pending_kaur as $p): ?>
                         <?php
                             $barang_names = [];
@@ -1066,17 +1067,18 @@ function kaur_module_url($module) {
                                 if (!empty($d->nama_ruangan)) { $labs[] = $d->nama_ruangan; }
                             }
                         ?>
-                        <tr>
+                        <?php $loan_search_text = strtolower(implode(' ', [$p->group_id ?? '', $p->nama_peminjam ?? '', $p->nim_nip ?? '', implode(' ', $barang_names), implode(' ', $labs), $p->status ?? '', tanggal_indonesia($p->tanggal_pinjam ?? null), tanggal_indonesia($p->tanggal_kembali_rencana ?? null)])); ?>
+                        <tr data-kaur-loan-row data-search="<?= html_escape($loan_search_text) ?>">
                             <td class="fw-semibold"><?= html_escape($p->group_id ?: $p->id_peminjaman) ?></td>
                             <td><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><?= html_escape(implode(', ', $barang_names) ?: '-') ?></td>
                             <td><?= html_escape(implode(', ', array_unique($labs)) ?: '-') ?></td>
-                            <td><?= html_escape($p->tanggal_pinjam ?? '-') ?></td>
-                            <td><?= html_escape($p->tanggal_kembali_rencana ?? '-') ?></td>
-                            <td><span class="status-pill status-negosiasi"><?= html_escape($p->status ?? '-') ?></span></td>
+                            <td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><span class="d-block fw-semibold"><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></span><span class="small text-muted">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></span></span></td>
+                            <td><div class="d-flex flex-column gap-1"><span class="status-pill status-selesai"><i class="bi bi-check2 me-1"></i>Kaprodi</span><span class="status-pill status-selesai"><i class="bi bi-check2 me-1"></i>Laboran</span><span class="status-pill status-negosiasi"><i class="bi bi-hourglass-split me-1"></i>Kaur aktif</span></div></td>
                             <td class="text-end"><button class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#loanApprovalModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-eye me-1"></i> Detail</button></td>
                         </tr>
                     <?php endforeach; endif; ?>
+                        <tr id="kaurLoanEmptySearch" class="d-none"><td colspan="7" class="text-center text-muted py-4">Tidak ada hasil yang cocok.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -1088,7 +1090,7 @@ function kaur_module_url($module) {
                         <div class="modal-header">
                             <div>
                                 <h5 class="modal-title fw-bold"><?= html_escape($p->group_id ?: $p->id_peminjaman) ?> - <?= html_escape($p->nama_peminjam ?? '-') ?></h5>
-                                <div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?> · <?= html_escape($p->tanggal_pinjam ?? '-') ?> s.d. <?= html_escape($p->tanggal_kembali_rencana ?? '-') ?></div>
+                                <div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?> &middot; <?= masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null) ?></div>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
@@ -1121,6 +1123,15 @@ function kaur_module_url($module) {
                 </div>
             </div>
         <?php endforeach; ?>
+        <section class="panel-card p-3 p-lg-4 mb-4">
+            <div class="mb-3"><h2 class="h5 fw-bold mb-1">Status Pengembalian (Read-only)</h2><div class="text-muted small">Pengembalian cukup dikonfirmasi Laboran. Kaur hanya memantau status tanpa tombol approve atau tolak.</div></div>
+            <div class="table-responsive"><table class="table table-clean align-middle"><thead><tr><th>Peminjam</th><th>Nama Barang</th><th>Masa Pinjam</th><th>Status Pengembalian</th></tr></thead><tbody>
+            <?php if(empty($pengembalian_readonly)): ?><tr><td colspan="4" class="text-center text-muted py-4">Belum ada transaksi pengembalian.</td></tr><?php else: foreach($pengembalian_readonly as $p): ?>
+                <?php $return_names=[]; foreach(($p->detail_barang ?? []) as $d){$return_names[]=$d->nama_aset ?? '-';} $return_search=strtolower(implode(' ',[$p->nama_peminjam ?? '',$p->nim_nip ?? '',implode(' ',$return_names),$p->status ?? '',tanggal_indonesia($p->tanggal_pinjam ?? null)])); ?>
+                <tr data-kaur-loan-row data-search="<?= html_escape($return_search) ?>"><td><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td><td><?= html_escape(implode(', ',$return_names) ?: '-') ?></td><td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null,$p->tanggal_kembali_rencana ?? null)) ?>"><?= masa_pinjam_indonesia($p->tanggal_pinjam ?? null,$p->tanggal_kembali_rencana ?? null) ?></span></td><td><span class="status-pill <?= ($p->status ?? '')==='Dikembalikan'?'status-selesai':'status-negosiasi' ?>"><?= html_escape($p->status ?? '-') ?></span></td></tr>
+            <?php endforeach; endif; ?>
+            </tbody></table></div>
+        </section>
         <?php endif; ?>
 
         <?php if ($active_module === 'pengajuan'): ?>
@@ -2190,6 +2201,27 @@ function kaur_module_url($module) {
                 targetUrl.searchParams.set('per_page', pageSize.value);
                 window.location.assign(targetUrl.toString());
             });
+        })();
+    </script>
+    <script>
+        (() => {
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((el) => new bootstrap.Tooltip(el));
+            const input = document.getElementById('kaurLoanLiveSearch');
+            if (!input) return;
+            const rows = Array.from(document.querySelectorAll('[data-kaur-loan-row]'));
+            const empty = document.getElementById('kaurLoanEmptySearch');
+            const applyLiveFilter = () => {
+                const query = input.value.trim().toLocaleLowerCase('id');
+                let approvalVisible = 0;
+                rows.forEach((row) => {
+                    const show = !query || (row.dataset.search || '').includes(query);
+                    row.classList.toggle('d-none', !show);
+                    if (show && row.closest('#approval-peminjaman')) approvalVisible++;
+                });
+                if (empty) empty.classList.toggle('d-none', approvalVisible > 0);
+            };
+            input.addEventListener('input', applyLiveFilter);
+            applyLiveFilter();
         })();
     </script>
 </body>

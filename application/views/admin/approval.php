@@ -27,8 +27,26 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
         .approval-table thead th { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; color: #5f6368; background: #f8f9fa; border-bottom: 1px solid #e8eaed; white-space: nowrap; }
         .approval-table td { vertical-align: middle; }
         .approval-table tbody tr:hover td { background: #fffaf7; }
-        .soft-badge { border-radius: 999px; padding: 6px 10px; font-weight: 700; font-size: .75rem; white-space: nowrap; }
+        .soft-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            min-width: 250px;
+            max-width: 250px;
+            height: 42px;
+            min-height: 38px;
+            padding: 7px 12px;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: .72rem;
+            line-height: 1.2;
+            white-space: normal;
+            text-align: center;
+        }
         .status-Menunggu-Persetujuan,
+        .status-Menunggu-ACC-Kaprodi,
         .status-Menunggu-Verifikasi-Laboran,
         .status-Menunggu-Pengecekan-Laboran { background: rgba(245,158,11,.14); color: #a16207; }
         .status-Menunggu-ACC-Kaur { background: rgba(13,110,253,.12); color: #0d6efd; }
@@ -42,10 +60,16 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
         .notif-bell { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 38px; }
         .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }
         .empty-state { min-height: 280px; display: grid; place-items: center; text-align: center; color: #6c757d; }
+        .approval-stepper { display:grid; grid-template-columns:repeat(6,minmax(88px,1fr)); gap:6px; min-width:590px; }
+        .approval-step { padding:7px 8px; border:1px solid #dfe3e7; border-radius:8px; background:#f7f8f9; color:#7b848d; font-size:.65rem; font-weight:700; text-align:center; }
+        .approval-step.is-done { color:#146c43; border-color:#a3cfbb; background:#eaf7f0; }
+        .approval-step.is-active { color:#9a450e; border-color:#ea5b1a; background:#fff2e9; box-shadow:inset 0 0 0 1px #ea5b1a; }
+        .approval-evidence-btn { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; min-width:132px; min-height:36px; padding:7px 12px; border-radius:999px; font-size:.7rem; font-weight:700; white-space:nowrap; }
         @media (max-width: 767.98px) {
             .topbar-actions { width: 100%; flex-wrap: wrap; }
             .topbar-actions .btn:not(.notif-bell) { flex: 1 1 calc(50% - 8px); }
             .approval-table { min-width: 980px; }
+            .soft-badge { min-width: 220px; max-width: 220px; }
         }
     </style>
 </head>
@@ -56,7 +80,7 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <div>
                     <div class="fw-bold"><i class="bi bi-patch-check me-2 text-warning"></i>Pengecekan Laboran</div>
-                    <div class="small text-white-50">Cek stok fisik lalu teruskan pengajuan ke Kaur</div>
+                    <div class="small text-white-50">Tahap setelah ACC Kaprodi: cek stok fisik lalu teruskan ke Kaur</div>
                 </div>
                 <div class="topbar-actions d-flex gap-2">
                     <div class="dropdown">
@@ -93,13 +117,20 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
             <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
                 <div>
                     <h1 class="h5 fw-bold mb-1">Daftar Pengajuan Menunggu Pengecekan</h1>
-                    <div class="text-muted small">Laboran hanya mengecek ketersediaan fisik. Jika aman, teruskan ke Kaur untuk ACC.</div>
+                    <div class="text-muted small">Kaprodi sudah menyetujui. Laboran mengecek ketersediaan fisik sebelum meneruskan ke Kaur.</div>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge rounded-pill text-bg-warning text-dark px-3 py-2"><?= count($pengajuan) ?> menunggu</span>
                     <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" type="button" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
                 </div>
             </div>
+        </section>
+
+        <section class="panel-card p-3 mb-3">
+            <form method="get" action="<?= base_url('index.php/admin/approval') ?>" class="row g-2 align-items-end">
+                <div class="col-md-9"><label for="approvalSearch" class="form-label small fw-semibold text-muted">Cari approval</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-search"></i></span><input id="approvalSearch" type="search" name="q" class="form-control" value="<?= html_escape($q ?? '') ?>" placeholder="Nama peminjam, nama barang, atau status"></div></div>
+                <div class="col-md-3 d-grid"><button class="btn btn-fik"><i class="bi bi-search me-1"></i> Cari</button></div>
+            </form>
         </section>
 
         <section class="panel-card overflow-hidden">
@@ -119,7 +150,7 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                                 <th class="ps-3">No</th>
                                 <th>Peminjam</th>
                                 <th>Barang Diajukan</th>
-                                <th>Jadwal</th>
+                                <th>Masa Pinjam</th>
                                 <th>Keperluan</th>
                                 <th>Status</th>
                                 <th class="text-end pe-3">Aksi</th>
@@ -138,7 +169,7 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                                             <?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?>
                                                 <div class="asset-item">
                                                     <span><?= html_escape($d->nama_aset ?? '-') ?></span>
-                                                    <strong><?= (int)($d->jumlah_pinjam ?? 0) ?> unit</strong>
+                                                    <strong>Jumlah: <?= (int)($d->jumlah_pinjam ?? 0) ?> unit</strong>
                                                 </div>
                                             <?php endforeach; else: ?>
                                                 <span class="text-muted">-</span>
@@ -146,25 +177,14 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                                         </div>
                                     </td>
                                     <td>
-                                        <div class="small"><i class="bi bi-box-arrow-in-right text-success me-1"></i><?= html_escape($p->tanggal_pinjam ?? '-') ?></div>
-                                        <div class="small text-muted"><i class="bi bi-box-arrow-left text-danger me-1"></i><?= html_escape($p->tanggal_kembali_rencana ?? '-') ?></div>
+                                        <span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><div class="small"><i class="bi bi-box-arrow-in-right text-success me-1"></i><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></div><div class="small text-muted"><i class="bi bi-box-arrow-left text-danger me-1"></i><?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></div></span>
                                     </td>
                                     <td>
                                         <div class="small" style="max-width: 260px; white-space: normal;"><?= nl2br(html_escape($p->keperluan ?? '-')) ?></div>
                                     </td>
-                                    <td><span class="soft-badge <?= $status_class($p->status ?? '') ?>"><?= html_escape($p->status ?? '-') ?></span></td>
+                                    <td><div class="overflow-auto pb-1"><div class="approval-stepper"><span class="approval-step is-done"><i class="bi bi-check2 me-1"></i>Diajukan</span><span class="approval-step is-done"><i class="bi bi-check2 me-1"></i>Kaprodi</span><span class="approval-step is-active">Laboran</span><span class="approval-step">Kaur</span><span class="approval-step">Final QR</span><span class="approval-step">Selesai</span></div></div><span class="soft-badge <?= $status_class($p->status ?? '') ?> mt-2 d-inline-flex"><?= html_escape($p->status ?? '-') ?></span></td>
                                     <td class="text-end pe-3 action-cell">
-                                        <div class="action-grid">
-                                            <form method="post" action="<?= base_url('index.php/admin/approval/setujui/'.$p->id_peminjaman) ?>">
-                                                <input type="hidden" name="catatan_laboran" value="Stok fisik tersedia, diteruskan ke Kaur">
-                                                <button class="btn btn-success btn-sm rounded-pill w-100" onclick="return confirm('Teruskan pengajuan ini ke Kaur? Stok belum dikurangi.')">
-                                                    <i class="bi bi-send-check me-1"></i> Teruskan
-                                                </button>
-                                            </form>
-                                            <button class="btn btn-outline-danger btn-sm rounded-pill px-3" type="button" data-bs-toggle="modal" data-bs-target="#rejectModal<?= (int)$p->id_peminjaman ?>">
-                                                Tolak
-                                            </button>
-                                        </div>
+                                        <div class="d-flex flex-wrap justify-content-end align-items-center gap-2"><?php if(!empty($p->foto_bukti)): ?><button type="button" class="btn btn-sm btn-outline-secondary approval-evidence-btn" data-bs-toggle="modal" data-bs-target="#evidenceModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button><?php endif; ?><button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" data-bs-toggle="modal" data-bs-target="#processModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-sliders me-1"></i> Proses</button></div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -176,11 +196,11 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
     </main>
 
     <?php foreach($pengajuan as $p): ?>
-        <div class="modal fade" id="rejectModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true">
+        <div class="modal fade" id="processModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <form class="modal-content" method="post" action="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>">
                     <div class="modal-header">
-                        <h5 class="modal-title fw-bold">Tolak Pengajuan</h5>
+                        <h5 class="modal-title fw-bold">Aksi Peminjaman</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
                     <div class="modal-body">
@@ -188,18 +208,21 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                             <div class="small text-muted">Peminjam</div>
                             <div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?> - <?= html_escape($p->nim_nip ?? '-') ?></div>
                         </div>
-                        <label class="form-label small fw-semibold">Catatan Penolakan</label>
-                        <textarea name="catatan_laboran" class="form-control" rows="3" placeholder="Contoh: stok fisik belum tersedia atau alat sedang maintenance." required></textarea>
+                        <label class="form-label small fw-semibold">Catatan Laboran</label>
+                        <textarea name="catatan_laboran" class="form-control" rows="3" placeholder="Catatan pengecekan stok atau alasan penolakan."></textarea>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button>
-                        <button class="btn btn-outline-danger rounded-pill px-4" onclick="return confirm('Tolak pengajuan ini?')">Tolak Pengajuan</button>
+                        <button formaction="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-4" onclick="return confirm('Tolak pengajuan ini?')"><i class="bi bi-x-lg me-1"></i> Tolak</button>
+                        <button formaction="<?= base_url('index.php/admin/approval/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-4" onclick="return confirm('Teruskan pengajuan ini ke Kaur?')"><i class="bi bi-send-check me-1"></i> Teruskan ke Kaur</button>
                     </div>
                 </form>
             </div>
         </div>
+        <?php if(!empty($p->foto_bukti)): ?><?php $approval_evidence_url = scm_upload_url($p->foto_bukti, 'assets/uploads/bukti_peminjaman'); $approval_evidence_exists = scm_upload_exists($p->foto_bukti, 'assets/uploads/bukti_peminjaman'); ?><div class="modal fade" id="evidenceModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h5 class="modal-title fw-bold">Bukti Kondisi Awal</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body text-center bg-light"><?php if($approval_evidence_exists): ?><img class="img-fluid rounded-3" style="max-height:70vh;object-fit:contain" src="<?= html_escape($approval_evidence_url) ?>" alt="Bukti kondisi awal"><?php else: ?><div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>File bukti kondisi tidak ditemukan di penyimpanan.</div><?php endif; ?></div></div></div></div><?php endif; ?>
     <?php endforeach; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));</script>
 </body>
 </html>

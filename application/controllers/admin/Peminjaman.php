@@ -24,8 +24,57 @@ class Peminjaman extends CI_Controller {
         }
     }
 
+    private function read_multi_filters() {
+        $allowed_fields = ['peminjam', 'barang', 'status', 'tanggal', 'keperluan'];
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
+        $multi_filters = [];
+        $filter_rows = [];
+
+        foreach ($fields as $index => $field) {
+            if (count($filter_rows) >= 4) {
+                break;
+            }
+            $field = trim((string) $field);
+            $value = trim((string) ($values[$index] ?? ''));
+            if (!in_array($field, $allowed_fields, true)) {
+                continue;
+            }
+
+            $filter_rows[] = ['field' => $field, 'value' => $value];
+            if ($value !== '') {
+                $multi_filters[] = ['field' => $field, 'value' => $value];
+            }
+        }
+
+        return [$multi_filters, $filter_rows];
+    }
+
+    private function build_filter_suggestions($rows) {
+        $suggestions = ['peminjam' => [], 'barang' => [], 'status' => [], 'tanggal' => [], 'keperluan' => []];
+        foreach ((array) $rows as $row) {
+            foreach (['nama_peminjam', 'nim_nip'] as $property) {
+                if (!empty($row->{$property})) $suggestions['peminjam'][] = (string) $row->{$property};
+            }
+            if (!empty($row->status)) $suggestions['status'][] = (string) $row->status;
+            if (!empty($row->tanggal_pinjam)) $suggestions['tanggal'][] = date('Y-m-d', strtotime($row->tanggal_pinjam));
+            if (!empty($row->keperluan)) $suggestions['keperluan'][] = (string) $row->keperluan;
+            foreach ((array) ($row->detail_barang ?? []) as $detail) {
+                if (!empty($detail->nama_aset)) $suggestions['barang'][] = (string) $detail->nama_aset;
+                if (!empty($detail->kode_aset)) $suggestions['barang'][] = (string) $detail->kode_aset;
+            }
+        }
+        foreach ($suggestions as $key => $values) {
+            $values = array_values(array_unique(array_filter($values)));
+            natcasesort($values);
+            $suggestions[$key] = array_values($values);
+        }
+        return $suggestions;
+    }
+
     public function index() {
         $allowed_status = [
+            'Menunggu ACC Kaprodi',
             'Menunggu Verifikasi Laboran',
             'Menunggu Pengecekan Laboran',
             'Menunggu Persetujuan',
@@ -43,10 +92,12 @@ class Peminjaman extends CI_Controller {
             $status = '';
         }
 
+        list($multi_filters, $filter_rows) = $this->read_multi_filters();
         $filters = [
             'status' => $status,
             'pencarian' => $this->input->get('q', true),
             'tanggal' => $this->input->get('tanggal', true),
+            'multi_filters' => $multi_filters,
         ];
         if (empty($filters['status'])) {
             $filters['status_in'] = array_values(array_diff($allowed_status, ['Terlambat']));
@@ -69,6 +120,8 @@ class Peminjaman extends CI_Controller {
 
         $data['title'] = 'Data Peminjaman';
         $data['filters'] = $filters;
+        $data['filter_rows'] = $filter_rows;
+        $data['filter_suggestions'] = $this->build_filter_suggestions($rows);
         $data['status_options'] = array_merge([''], $allowed_status);
         $data['peminjaman'] = $visible_rows;
         $data['pagination'] = [
@@ -83,10 +136,12 @@ class Peminjaman extends CI_Controller {
     }
 
     public function export_pengajuan_acc() {
+        list($multi_filters) = $this->read_multi_filters();
         $filters = [
             'status' => $this->input->get('status', true),
             'pencarian' => $this->input->get('q', true),
             'tanggal' => $this->input->get('tanggal', true),
+            'multi_filters' => $multi_filters,
         ];
 
         $data['title'] = 'Laporan Pengajuan Sampai Tahap ACC';
@@ -234,12 +289,16 @@ class Peminjaman extends CI_Controller {
             redirect('admin/peminjaman');
         }
 
-        if (($peminjaman->status ?? '') !== 'Disetujui (Menunggu Finalisasi QR)') {
-            $this->session->set_flashdata('error', 'QR hanya bisa difinalkan setelah ACC Kaur dan sebelum serah terima.');
+        if (($peminjaman->status ?? '') !== 'Disetujui (Menunggu Finalisasi QR)'
+            || ($peminjaman->status_kaprodi ?? 'Pending') !== 'Disetujui'
+            || ($peminjaman->status_laboran ?? 'Pending') !== 'Disetujui'
+            || ($peminjaman->status_kaur ?? 'Pending') !== 'Disetujui') {
+            $this->session->set_flashdata('error', 'QR hanya bisa difinalkan setelah ACC berurutan dari Kaprodi, Laboran, dan Kaur.');
             redirect('admin/peminjaman');
         }
 
-        $ok = $this->Peminjaman_model->finalize_qr($peminjaman->group_id, $this->session->userdata('id_user'));
+        $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
+        $ok = $this->Peminjaman_model->finalize_qr($group_id, $this->session->userdata('id_user'));
         if ($ok && !empty($peminjaman->id_user)) {
             $this->Peminjaman_model->create_notifikasi(
                 null,
@@ -380,6 +439,13 @@ class Peminjaman extends CI_Controller {
                 'Barang sudah dikembalikan',
                 ($peminjaman->nama_peminjam ?? 'Peminjam') . ' sudah mengembalikan barang ke Laboran.',
                 site_url('kaur/dashboard/peminjaman')
+            );
+            $this->Peminjaman_model->create_notifikasi(
+                'kaprodi',
+                null,
+                'Barang sudah dikembalikan',
+                ($peminjaman->nama_peminjam ?? 'Peminjam') . ' sudah mengembalikan barang dan telah dikonfirmasi Laboran.',
+                site_url('kaprodi/peminjaman')
             );
         }
 

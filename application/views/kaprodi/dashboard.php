@@ -647,6 +647,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             <a class="sidebar-link <?= $active_tab === 'panel' ? 'active' : '' ?>" href="<?= base_url('index.php/kaprodi/dashboard?tab=panel') ?>"><i class="bi bi-grid-1x2"></i><span>Panel</span></a>
             <a class="sidebar-link <?= $active_tab === 'ajukan' ? 'active' : '' ?>" href="<?= base_url('index.php/kaprodi/dashboard?tab=ajukan') ?>"><i class="bi bi-plus-square"></i><span>Ajukan Kebutuhan</span></a>
             <a class="sidebar-link <?= $active_tab === 'riwayat' ? 'active' : '' ?>" href="<?= base_url('index.php/kaprodi/dashboard?tab=riwayat') ?>"><i class="bi bi-clock-history"></i><span>Riwayat Pengajuan</span></a>
+            <a class="sidebar-link" href="<?= base_url('index.php/kaprodi/peminjaman') ?>"><i class="bi bi-patch-check"></i><span>Approval Peminjaman</span></a>
         </nav>
         <div class="sidebar-footer"><span class="sidebar-status-dot"></span><span>System operational</span></div>
     </aside>

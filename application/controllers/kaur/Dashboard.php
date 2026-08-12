@@ -139,7 +139,14 @@ class Dashboard extends CI_Controller {
         $bast_source_limit = $active_module === 'bast' ? null : 12;
         $data['bast_ready'] = $this->Kaur_model->get_bast_ready_pengajuan($bast_source_limit);
         $data['bast_list'] = $this->Kaur_model->get_bast_list($bast_source_limit);
-        $data['peminjaman_pending_kaur'] = $this->Peminjaman_model->get_pending_kaur($filters);
+        $loan_filters = $filters;
+        if ($active_module === 'peminjaman') {
+            // Kata kunci difilter langsung di browser agar hasil berubah saat mengetik.
+            $loan_filters['q'] = '';
+            $loan_filters['pencarian'] = '';
+        }
+        $data['peminjaman_pending_kaur'] = $this->Peminjaman_model->get_pending_kaur($loan_filters);
+        $data['pengembalian_readonly'] = $this->Peminjaman_model->get_pengembalian_readonly($loan_filters);
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('kaur', null);
         $data['pengajuan'] = $this->Kaur_model->get_all_by_user($id_user);

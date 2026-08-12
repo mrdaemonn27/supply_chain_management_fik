@@ -1,15 +1,24 @@
 <?php
-$status_options = isset($status_options) && is_array($status_options) ? $status_options : ['', 'Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur', 'Disetujui (Menunggu Finalisasi QR)', 'Disetujui (Menunggu Pengambilan)', 'Ditolak'];
+$status_options = isset($status_options) && is_array($status_options) ? $status_options : ['', 'Menunggu ACC Kaprodi', 'Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur', 'Disetujui (Menunggu Finalisasi QR)', 'Disetujui (Menunggu Pengambilan)', 'Ditolak'];
 $status_class = function ($status) { return 'status-' . preg_replace('/[^A-Za-z0-9]+/', '-', trim($status ?: 'Menunggu Verifikasi Laboran')); };
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'total_pages' => 1, 'total' => count($peminjaman ?? []), 'per_page' => 10];
 $current_per_page = (string) ($pagination['per_page'] ?? '10');
-$export_query = http_build_query([
+$filter_rows = isset($filter_rows) && is_array($filter_rows) ? array_values($filter_rows) : [];
+if (empty($filter_rows)) $filter_rows = [['field' => 'peminjam', 'value' => '']];
+$filter_fields = ['peminjam' => 'Peminjam / NIM', 'barang' => 'Nama barang / kode', 'status' => 'Status', 'tanggal' => 'Tanggal pinjam', 'keperluan' => 'Keperluan'];
+$filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions) ? $filter_suggestions : [];
+$export_params = [
     'status' => $filters['status'] ?? '',
     'q' => $filters['pencarian'] ?? '',
     'tanggal' => $filters['tanggal'] ?? '',
-]);
+];
+foreach ($filter_rows as $filter_row) {
+    $export_params['filter_field'][] = $filter_row['field'] ?? 'peminjam';
+    $export_params['filter_value'][] = $filter_row['value'] ?? '';
+}
+$export_query = http_build_query($export_params);
 $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($export_query ? '?' . $export_query : ''));
 ?>
 <!DOCTYPE html>
@@ -32,6 +41,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         .table td { vertical-align: middle; }
         .soft-badge { border-radius: 999px; padding: 6px 10px; font-weight: 600; font-size: .75rem; }
         .status-Menunggu-Persetujuan { background: rgba(245,158,11,.14); color: #a16207; }
+        .status-Menunggu-ACC-Kaprodi { background: rgba(245,158,11,.14); color: #a16207; }
         .status-Menunggu-Verifikasi-Laboran { background: rgba(245,158,11,.14); color: #a16207; }
         .status-Menunggu-Pengecekan-Laboran { background: rgba(245,158,11,.14); color: #a16207; }
         .status-Menunggu-ACC-Kaur { background: rgba(13,110,253,.12); color: #0d6efd; }
@@ -90,8 +100,11 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 226px;
-            min-height: 34px;
+            width: 280px;
+            min-width: 280px;
+            max-width: 280px;
+            height: 42px;
+            min-height: 42px;
             padding: 7px 12px;
             border: 1px solid var(--loan-border);
             border-radius: 8px;
@@ -121,6 +134,35 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         .loan-pagination-summary .form-select { width: 92px; min-height: 34px; padding-top: .3rem; padding-bottom: .3rem; font-size: .72rem; }
         .loan-pagination-status { text-align: center; }
         .loan-pagination { margin: 0; }
+        .loan-stepper { display:grid; grid-template-columns:repeat(6,minmax(82px,1fr)); gap:5px; min-width:550px; margin-bottom:8px; }
+        .loan-step { padding:6px 7px; border:1px solid var(--loan-border); border-radius:8px; color:var(--loan-muted); background:var(--loan-soft); font-size:.62rem; font-weight:700; text-align:center; }
+        .loan-step.is-done { color:#146c43; border-color:#a3cfbb; background:#eaf7f0; }
+        .loan-step.is-active { color:#9a450e; border-color:#ea5b1a; background:#fff2e9; box-shadow:inset 0 0 0 1px #ea5b1a; }
+        .loan-evidence-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: .4rem;
+            min-width: 126px;
+            min-height: 34px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: .7rem;
+            font-weight: 700;
+            white-space: normal;
+        }
+        .loan-evidence-btn .bi { font-size: .88rem; }
+        .loan-table .soft-badge.status-Menunggu-Persetujuan,
+        .loan-table .soft-badge.status-Menunggu-ACC-Kaprodi,
+        .loan-table .soft-badge.status-Menunggu-Verifikasi-Laboran,
+        .loan-table .soft-badge.status-Menunggu-Pengecekan-Laboran { color:#8a5800; border-color:#f2cf85; background:#fff4d6; }
+        .loan-table .soft-badge.status-Menunggu-ACC-Kaur,
+        .loan-table .soft-badge.status-Disetujui-Menunggu-Finalisasi-QR-,
+        .loan-table .soft-badge.status-Sedang-Dipinjam,
+        .loan-table .soft-badge.status-Dipinjam { color:#0759bd; border-color:#9ec5fe; background:#e9f2ff; }
+        .loan-table .soft-badge.status-Disetujui-Menunggu-Pengambilan-,
+        .loan-table .soft-badge.status-Dikembalikan { color:#146c43; border-color:#a3cfbb; background:#eaf7f0; }
+        .loan-table .soft-badge.status-Ditolak { color:#b02a37; border-color:#f1aeb5; background:#fbeaec; }
         .loan-pagination .page-link {
             display: inline-flex;
             align-items: center;
@@ -138,12 +180,28 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         .loan-pagination .page-link:hover { color: #ea5b1a; background: var(--loan-soft); }
         .loan-pagination .page-item.active .page-link { color: #ffffff; background: #ea5b1a; border-color: #ea5b1a; }
         .loan-pagination .page-item.disabled .page-link { color: var(--loan-muted); background: var(--loan-soft); opacity: .62; }
+        .admin-filter-heading { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+        .admin-filter-heading h2 { margin:0; font-size:1rem; font-weight:700; }
+        .admin-filter-heading p { margin:0; color:#6b7280; font-size:.78rem; }
+        .admin-filter-list { display:grid; gap:.65rem; }
+        .admin-filter-row { display:grid; grid-template-columns:minmax(185px, .7fr) minmax(0, 1.5fr) auto; gap:.65rem; align-items:center; }
+        .admin-filter-row .form-select, .admin-filter-row .form-control { min-height:42px; }
+        .admin-filter-tools { display:flex; align-items:center; gap:.45rem; }
+        .admin-filter-icon { width:42px; height:42px; display:inline-flex; align-items:center; justify-content:center; border-radius:10px; }
+        .admin-filter-add { border-color:#ea5b1a; color:#c84f17; }
+        .admin-filter-add:hover { background:#ea5b1a; border-color:#ea5b1a; color:#fff; }
+        .admin-filter-actions { display:flex; flex-wrap:wrap; gap:.65rem; margin-top:1rem; }
+        .admin-filter-actions .btn { min-height:40px; }
+        .admin-filter-note { color:#6b7280; font-size:.74rem; }
         @media (max-width: 767.98px) {
             .topbar-actions { width: 100%; }
             .topbar-actions .btn { flex: 1; }
             .topbar-actions .notif-bell { flex: 0 0 38px; }
             .loan-pagination-footer { grid-template-columns: 1fr; justify-items: center; gap: .65rem; }
             .loan-pagination-footer nav { max-width: 100%; overflow-x: auto; padding-bottom: 2px; }
+            .loan-table .soft-badge { width: 250px; min-width: 250px; max-width: 250px; }
+            .admin-filter-row { grid-template-columns:1fr; gap:.45rem; padding:.75rem; border:1px solid #edf0f2; border-radius:10px; }
+            .admin-filter-tools { justify-content:flex-end; }
         }
     </style>
 </head>
@@ -156,36 +214,43 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         <?php if($this->session->flashdata('error')): ?><div class="alert alert-danger border-0 shadow-sm"><?= $this->session->flashdata('error'); ?></div><?php endif; ?>
 
         <section class="panel-card p-3 p-lg-4 mb-4">
-            <form class="row g-3 align-items-end" method="get" action="<?= base_url('index.php/admin/peminjaman') ?>">
+            <form id="adminFilters" method="get" action="<?= base_url('index.php/admin/peminjaman') ?>" data-max-filters="4">
                 <input type="hidden" name="per_page" value="<?= html_escape($current_per_page) ?>">
-                <div class="col-md-4"><label class="form-label small fw-semibold text-muted">Pencarian</label><input type="text" name="q" class="form-control" value="<?= html_escape($filters['pencarian'] ?? '') ?>" placeholder="Nama, NIM/NIP, atau keperluan"></div>
-                <div class="col-md-3"><label class="form-label small fw-semibold text-muted">Status</label><select name="status" class="form-select"><?php foreach($status_options as $status): ?><option value="<?= $status ?>" <?= (($filters['status'] ?? '') === $status) ? 'selected' : '' ?>><?= $status ?: 'Semua Status' ?></option><?php endforeach; ?></select></div>
-                <div class="col-md-3"><label class="form-label small fw-semibold text-muted">Tanggal Pinjam</label><input type="date" name="tanggal" class="form-control" value="<?= html_escape($filters['tanggal'] ?? '') ?>"></div>
-                <div class="col-md-2 d-grid gap-2"><button class="btn btn-fik"><i class="bi bi-search me-1"></i> Filter</button><a href="<?= $export_url ?>" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i> Preview Excel</a></div>
+                <div class="admin-filter-heading"><div><h2><i class="bi bi-funnel me-2 text-fik-orange"></i>Filter pencarian</h2><p>Tambahkan hingga 4 kriteria untuk mempersempit data.</p></div><span class="admin-filter-note"><i class="bi bi-lightning-charge me-1"></i>Hasil diperbarui saat Anda mengetik</span></div>
+                <div id="adminFilterRows" class="admin-filter-list">
+                    <?php foreach($filter_rows as $index => $filter_row): ?>
+                    <div class="admin-filter-row">
+                        <select name="filter_field[]" class="form-select admin-filter-field" aria-label="Jenis filter <?= $index + 1 ?>"><?php foreach($filter_fields as $field_key => $field_label): ?><option value="<?= $field_key ?>" <?= (($filter_row['field'] ?? '') === $field_key) ? 'selected' : '' ?>><?= $field_label ?></option><?php endforeach; ?></select>
+                        <input type="search" name="filter_value[]" class="form-control admin-filter-value" value="<?= html_escape($filter_row['value'] ?? '') ?>" placeholder="Ketik untuk mencari" autocomplete="off" aria-label="Nilai filter <?= $index + 1 ?>">
+                        <div class="admin-filter-tools"><button type="button" class="btn btn-outline-secondary admin-filter-icon admin-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg"></i></button><button type="button" class="btn btn-outline-primary admin-filter-icon admin-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg"></i></button></div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <div class="admin-filter-actions"><button class="btn btn-fik px-4"><i class="bi bi-search me-1"></i>Terapkan filter</button><a href="<?= base_url('index.php/admin/peminjaman?per_page='.rawurlencode($current_per_page)) ?>" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</a><a href="<?= $export_url ?>" class="btn btn-outline-success"><i class="bi bi-file-earmark-excel me-1"></i>Preview Excel</a></div>
             </form>
         </section>
 
         <section class="panel-card p-0 loan-table-card">
             <div class="table-responsive">
                 <table class="table table-hover loan-table">
-                    <thead><tr><th class="ps-3">Peminjam</th><th>Barang</th><th>Jadwal</th><th>Status</th><th class="text-end pe-3">Aksi</th></tr></thead>
+                    <thead><tr><th class="ps-3">Peminjam</th><th>Barang</th><th>Masa Pinjam</th><th>Alur Approval</th><th class="text-end pe-3">Aksi</th></tr></thead>
                     <tbody>
                     <?php if(empty($peminjaman)): ?>
                         <tr><td colspan="5" class="text-center text-muted py-5">Belum ada data peminjaman.</td></tr>
                     <?php else: foreach($peminjaman as $p): ?>
+                        <?php
+                            $loan_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
+                            $loan_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
+                            $return_evidence_url = scm_upload_url($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian');
+                            $return_evidence_exists = scm_upload_exists($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian');
+                        ?>
                         <tr>
                             <td class="ps-3"><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="fw-semibold"><?= (int)($p->total_jenis ?? 1) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?><?= html_escape($d->nama_aset) ?> (<?= (int)$d->jumlah_pinjam ?>), <?php endforeach; else: ?>- <?php endif; ?></div></td>
-                            <td><div><?= html_escape($p->tanggal_pinjam ?? '-') ?></div><div class="small text-muted">s.d. <?= html_escape($p->tanggal_kembali_rencana ?? '-') ?></div></td>
-                            <td><span class="soft-badge <?= $status_class($p->status ?? '') ?>"><?= html_escape($p->status ?? '-') ?></span><?php if(!empty($p->foto_pengembalian)): ?><div class="small mt-1"><a href="<?= base_url($p->foto_pengembalian) ?>" target="_blank" rel="noopener">Evidence kembali</a></div><?php endif; ?><?php if (!empty($p->evidence_serah)): ?><div class="small mt-1"><?php foreach ($p->evidence_serah as $evidence): ?><a class="d-block" href="<?= base_url($evidence->nama_file) ?>" target="_blank" rel="noopener"><i class="bi bi-image me-1"></i><?= html_escape($evidence->original_name ?: 'Evidence serah terima') ?></a><?php endforeach; ?></div><?php endif; ?></td>
+                            <td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><div><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></div><div class="small text-muted">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></div></span></td>
+                            <td><?php $status=(string)($p->status ?? ''); $kaprodi_done=($p->status_kaprodi ?? '')==='Disetujui'; $laboran_done=($p->status_laboran ?? '')==='Disetujui'; $kaur_done=($p->status_kaur ?? '')==='Disetujui'; $qr_done=(int)($p->qr_locked ?? 0)===1 || !empty($p->qr_finalized_at); $finished=in_array($status,['Sedang Dipinjam','Dipinjam','Dikembalikan'],true); ?><div class="overflow-auto"><div class="loan-stepper"><span class="loan-step is-done">Diajukan</span><span class="loan-step <?= $kaprodi_done?'is-done':($status==='Menunggu ACC Kaprodi'?'is-active':'') ?>">Kaprodi</span><span class="loan-step <?= $laboran_done?'is-done':(in_array($status,['Menunggu Verifikasi Laboran','Menunggu Pengecekan Laboran'],true)?'is-active':'') ?>">Laboran</span><span class="loan-step <?= $kaur_done?'is-done':($status==='Menunggu ACC Kaur'?'is-active':'') ?>">Kaur</span><span class="loan-step <?= $qr_done?'is-done':($status==='Disetujui (Menunggu Finalisasi QR)'?'is-active':'') ?>">Final QR</span><span class="loan-step <?= $finished?'is-done':($status==='Disetujui (Menunggu Pengambilan)'?'is-active':'') ?>">Selesai</span></div></div><div class="d-flex flex-wrap align-items-center justify-content-center gap-2"><span class="soft-badge <?= $status_class($status) ?>"><?= html_escape($status ?: '-') ?></span><?php if(!empty($p->foto_bukti)): ?><button type="button" class="btn btn-sm btn-outline-secondary loan-evidence-btn" data-bs-toggle="modal" data-bs-target="#loanEvidence<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button><?php endif; ?><?php if(!empty($p->foto_pengembalian)): ?><button type="button" class="btn btn-sm btn-outline-secondary loan-evidence-btn" data-bs-toggle="modal" data-bs-target="#returnEvidence<?= (int)$p->id_peminjaman ?>"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Bukti kembali</span></button><?php endif; ?></div></td>
                             <td class="text-end pe-3">
-                                <?php if(($p->status ?? '') === 'Disetujui (Menunggu Finalisasi QR)'): ?>
-                                    <a class="btn btn-sm btn-outline-primary rounded-pill loan-action-btn" href="<?= base_url('index.php/admin/peminjaman/finalkan_qr/'.$p->id_peminjaman) ?>" onclick="return confirm('Finalkan QR dan kunci data transaksi ini?')"><i class="bi bi-qr-code me-1"></i> Finalkan QR</a>
-                                <?php elseif(($p->status ?? '') === 'Disetujui (Menunggu Pengambilan)'): ?>
-                                    <a class="btn btn-sm btn-outline-success rounded-pill loan-action-btn" href="<?= base_url('index.php/admin/peminjaman/serah_terima/'.rawurlencode($p->group_id)) ?>"><i class="bi bi-box-arrow-up-right me-1"></i> Serah Barang</a>
-                                <?php else: ?>
-                                    <span class="text-muted small">-</span>
-                                <?php endif; ?>
+                                <div class="dropdown"><button class="btn btn-sm btn-outline-secondary rounded-pill px-3 dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-three-dots me-1"></i> Kelola</button><ul class="dropdown-menu dropdown-menu-end"><?php if($status==='Disetujui (Menunggu Finalisasi QR)'): ?><li><a class="dropdown-item" href="<?= base_url('index.php/admin/peminjaman/finalkan_qr/'.$p->id_peminjaman) ?>" onclick="return confirm('Finalkan QR dan kunci data transaksi ini?')"><i class="bi bi-qr-code me-2"></i>Finalkan QR</a></li><?php elseif($status==='Disetujui (Menunggu Pengambilan)'): ?><li><a class="dropdown-item" href="<?= base_url('index.php/admin/peminjaman/serah_terima/'.rawurlencode($p->group_id)) ?>"><i class="bi bi-box-arrow-up-right me-2"></i>Serah Barang</a></li><?php else: ?><li><span class="dropdown-item-text text-muted small">Belum ada aksi pada tahap ini</span></li><?php endif; ?><?php if(!empty($p->foto_bukti)): ?><li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#loanEvidence<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image me-2"></i>Lihat bukti awal</button></li><?php endif; ?></ul></div>
                             </td>
                         </tr>
                     <?php endforeach; endif; ?>
@@ -199,6 +264,10 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                     'tanggal' => $filters['tanggal'] ?? '',
                     'per_page' => $current_per_page,
                 ];
+                foreach ($filter_rows as $filter_row) {
+                    $base_query['filter_field'][] = $filter_row['field'] ?? 'peminjam';
+                    $base_query['filter_value'][] = $filter_row['value'] ?? '';
+                }
                 $page = (int) ($pagination['page'] ?? 1);
                 $total_pages = (int) ($pagination['total_pages'] ?? 1);
             ?>
@@ -227,10 +296,93 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                     </nav>
                 </div>
         </section>
+        <?php foreach(($peminjaman ?? []) as $p): ?>
+            <?php $loan_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $loan_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $return_evidence_url = scm_upload_url($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); $return_evidence_exists = scm_upload_exists($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); ?>
+            <?php if(!empty($p->foto_bukti)): ?><div class="modal fade" id="loanEvidence<?= (int)$p->id_peminjaman ?>" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h2 class="modal-title h5 fw-bold">Bukti Kondisi Awal</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body text-center bg-light"><?php if($loan_evidence_exists): ?><img class="img-fluid rounded-3" style="max-height:70vh;object-fit:contain" src="<?= html_escape($loan_evidence_url) ?>" alt="Bukti kondisi awal"><?php else: ?><div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>File bukti kondisi tidak ditemukan di penyimpanan.</div><?php endif; ?></div></div></div></div><?php endif; ?>
+            <?php if(!empty($p->foto_pengembalian)): ?><div class="modal fade" id="returnEvidence<?= (int)$p->id_peminjaman ?>" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h2 class="modal-title h5 fw-bold">Bukti Pengembalian</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body text-center bg-light"><?php if($return_evidence_exists): ?><img class="img-fluid rounded-3" style="max-height:70vh;object-fit:contain" src="<?= html_escape($return_evidence_url) ?>" alt="Bukti pengembalian"><?php else: ?><div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>File bukti pengembalian tidak ditemukan di penyimpanan.</div><?php endif; ?></div></div></div></div><?php endif; ?>
+        <?php endforeach; ?>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        (() => {
+            const form = document.getElementById('adminFilters');
+            if (!form) return;
+            const rows = document.getElementById('adminFilterRows');
+            const maxFilters = Number(form.dataset.maxFilters || 4);
+            const fields = <?= json_encode($filter_fields, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            const suggestions = <?= json_encode($filter_suggestions, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            let submitTimer;
+
+            const syncFilterInput = row => {
+                const field = row.querySelector('.admin-filter-field').value;
+                const input = row.querySelector('.admin-filter-value');
+                const listId = `filterSuggestions${Date.now()}${Math.random().toString(16).slice(2)}`;
+                row.querySelector('datalist')?.remove();
+                input.removeAttribute('list');
+                input.type = field === 'tanggal' ? 'date' : 'search';
+                input.placeholder = field === 'tanggal' ? 'Pilih tanggal pinjam' : `Cari ${fields[field].toLowerCase()}`;
+                if (field === 'tanggal') return;
+                const datalist = document.createElement('datalist');
+                datalist.id = listId;
+                (suggestions[field] || []).slice(0, 80).forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    datalist.appendChild(option);
+                });
+                row.appendChild(datalist);
+                input.setAttribute('list', listId);
+            };
+
+            const updateButtons = () => {
+                const filterRows = Array.from(rows.querySelectorAll('.admin-filter-row'));
+                filterRows.forEach((row, index) => {
+                    row.querySelector('.admin-filter-remove').disabled = filterRows.length === 1;
+                    row.querySelector('.admin-filter-add').disabled = filterRows.length >= maxFilters || index !== filterRows.length - 1;
+                });
+            };
+
+            const addRow = (field = 'peminjam', value = '') => {
+                if (rows.querySelectorAll('.admin-filter-row').length >= maxFilters) return;
+                const row = document.createElement('div');
+                row.className = 'admin-filter-row';
+                const select = document.createElement('select');
+                select.name = 'filter_field[]';
+                select.className = 'form-select admin-filter-field';
+                Object.entries(fields).forEach(([key, label]) => {
+                    const option = new Option(label, key, false, key === field);
+                    select.add(option);
+                });
+                const input = document.createElement('input');
+                input.name = 'filter_value[]'; input.className = 'form-control admin-filter-value'; input.value = value; input.autocomplete = 'off';
+                const tools = document.createElement('div');
+                tools.className = 'admin-filter-tools';
+                tools.innerHTML = '<button type="button" class="btn btn-outline-secondary admin-filter-icon admin-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg"></i></button><button type="button" class="btn btn-outline-primary admin-filter-icon admin-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg"></i></button>';
+                row.append(select, input, tools); rows.appendChild(row); syncFilterInput(row); updateButtons(); return row;
+            };
+
+            rows.querySelectorAll('.admin-filter-row').forEach(syncFilterInput);
+            updateButtons();
+            rows.addEventListener('click', event => {
+                const row = event.target.closest('.admin-filter-row');
+                if (!row) return;
+                if (event.target.closest('.admin-filter-add')) { const added = addRow(); added?.querySelector('.admin-filter-value').focus(); }
+                if (event.target.closest('.admin-filter-remove') && rows.querySelectorAll('.admin-filter-row').length > 1) { row.remove(); updateButtons(); form.requestSubmit(); }
+            });
+            rows.addEventListener('change', event => {
+                if (!event.target.matches('.admin-filter-field')) return;
+                const row = event.target.closest('.admin-filter-row');
+                row.querySelector('.admin-filter-value').value = '';
+                syncFilterInput(row);
+                row.querySelector('.admin-filter-value').focus();
+            });
+            rows.addEventListener('input', event => {
+                if (!event.target.matches('.admin-filter-value')) return;
+                window.clearTimeout(submitTimer);
+                submitTimer = window.setTimeout(() => form.requestSubmit(), 600);
+            });
+        })();
         const loanPageSize = document.getElementById('loanPageSize');
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
         if (loanPageSize) {
             loanPageSize.addEventListener('change', () => {
                 const targetUrl = new URL(window.location.href);

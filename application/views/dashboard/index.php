@@ -138,28 +138,62 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             height: 100%;
         }
+        .lab-grid {
+            --lab-columns: 3;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: stretch;
+            margin: -12px;
+        }
+        .lab-grid__item { display:flex; min-width:0; flex:0 0 calc(100% / var(--lab-columns)); padding:12px; }
+        .lab-grid__item .service-card { width:100%; }
+        .service-card__media {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            overflow: hidden;
+            background: #eef1f3;
+        }
         .service-card:hover {
             transform: translateY(-10px);
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
             border-bottom: 4px solid #ea5b1a;
         }
-        .service-card img, .service-card .card-img-top {
-            height: 180px;
+        .service-card__media img {
+            display: block;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
+            object-position: center;
             transition: 0.5s;
         }
-        .service-card:hover img {
+        .service-card__placeholder { position: absolute; inset: 0; display: grid; place-items: center; }
+        .service-card:hover .service-card__media img {
             transform: scale(1.05);
+        }
+        @media (max-width: 991.98px) {
+            .lab-grid__item { flex-basis:50%; }
+        }
+        @media (max-width: 575.98px) {
+            .lab-grid { margin:-9px; }
+            .lab-grid__item { flex-basis:100%; padding:9px; }
+            .service-card__media { aspect-ratio: 16 / 9; }
         }
 
         /* SOP / Aturan Section */
-          .sop-section {
-            /* Menambahkan efek gradasi oranye FIK di atas gambar background Gedung.webp */
-            background: linear-gradient(rgba(107, 49, 22, 0.85), rgba(115, 43, 12, 0.95)), url('<?= base_url('assets/logo/Gedung.webp'); ?>') center/ cover no-repeat;
-            /* DITAMBAHKAN: Memberikan efek parallax agar gambar tidak ikut terscroll */
+        .sop-section {
+            background: linear-gradient(rgba(107, 49, 22, 0.84), rgba(115, 43, 12, 0.93)), url('<?= base_url('assets/logo/BG-FIK-VSCO.jpg'); ?>') center / cover no-repeat;
             background-attachment: fixed;
             padding: 80px 0;
             color: white;
+        }
+
+        @media (max-width: 991.98px) {
+            .sop-section {
+                background-attachment: scroll;
+                background-position: center;
+            }
         }
 
         .rule-card {
@@ -339,25 +373,33 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     </div>
 
     <section class="container py-5 mt-2">
-        <div class="row g-4 justify-content-center">
+        <?php
+            $lab_count = count($ruangan_list ?? []);
+            $lab_columns = min(4, max(1, $lab_count));
+            while ($lab_columns > 2 && $lab_count > 1 && $lab_count % $lab_columns === 1) {
+                $lab_columns--;
+            }
+        ?>
+        <div class="lab-grid" style="--lab-columns: <?= (int) $lab_columns ?>" data-lab-count="<?= (int) $lab_count ?>">
             
             <?php if(empty($ruangan_list)): ?>
-                <div class="col-12 text-center py-5">
+                <div class="text-center py-5 w-100">
                     <i class="bi bi-door-closed fs-1 text-muted mb-3 d-block"></i>
                     <h5 class="text-muted">Belum ada data ruangan yang tersedia.</h5>
                 </div>
             <?php else: ?>
                 <?php $delay = 100; foreach($ruangan_list as $r): ?>
-                <div class="col-md-6 col-lg-4" data-aos="fade-up" data-aos-delay="<?= $delay; ?>">
+                <div class="lab-grid__item" data-aos="fade-up" data-aos-delay="<?= $delay; ?>">
                     <div class="card service-card">
-                        
+                        <div class="service-card__media">
                         <?php if(!empty($r['foto'])): ?>
-                            <img src="<?= base_url('assets/uploads/ruangan/'.$r['foto']) ?>" class="card-img-top" alt="<?= $r['nama_ruangan'] ?>">
+                            <img src="<?= base_url('assets/uploads/ruangan/'.rawurlencode($r['foto'])) ?>" alt="Foto <?= html_escape($r['nama_ruangan']) ?>" loading="lazy" decoding="async">
                         <?php else: ?>
-                            <div class="bg-light d-flex align-items-center justify-content-center card-img-top">
+                            <div class="service-card__placeholder bg-light">
                                 <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
                             </div>
                         <?php endif; ?>
+                        </div>
                         
                         <div class="card-body p-4 text-center d-flex flex-column">
                             <h5 class="fw-bold mt-3"><?= $r['nama_ruangan'] ?></h5>
