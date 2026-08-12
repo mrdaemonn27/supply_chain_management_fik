@@ -201,6 +201,21 @@ body.date-range-ready .borrowing-date-range__native-fallback {
 .borrowing-date-range__days {
     position: relative;
     row-gap: 5px;
+    /* Set unconditionally (not only while .is-dragging) so the browser doesn't
+       start a page-scroll gesture on the very first touch before JS can react. */
+    touch-action: none;
+}
+
+.borrowing-date-range__months.is-dragging,
+.borrowing-date-range__days.is-dragging {
+    cursor: crosshair;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.borrowing-date-range__months.is-dragging .borrowing-date-range__day:not(:disabled),
+.borrowing-date-range__days.is-dragging .borrowing-date-range__day:not(:disabled) {
+    cursor: crosshair;
 }
 
 .borrowing-date-range__weekdays span {
@@ -271,6 +286,13 @@ body.date-range-ready .borrowing-date-range__native-fallback {
     border: 2px solid #ea5b1a;
     border-radius: 999px;
     box-shadow: 0 3px 8px rgba(234, 91, 26, .16);
+    /* Hints that this handle can be pressed and dragged to a new date. */
+    cursor: grab;
+}
+
+.borrowing-date-range__days.is-dragging .borrowing-date-range__day.is-range-start,
+.borrowing-date-range__days.is-dragging .borrowing-date-range__day.is-range-end {
+    cursor: grabbing;
 }
 
 .borrowing-date-range__day.is-range-start:not(.is-range-end) {

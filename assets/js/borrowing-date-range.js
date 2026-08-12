@@ -66,6 +66,8 @@
         var startDate = fromIso(startInput.value);
         var endDate = fromIso(endInput.value);
         var viewDate = new Date((startDate || minDate).getFullYear(), (startDate || minDate).getMonth(), 1);
+        var dragState = null;
+        var ignoreClickUntil = 0;
 
         startInput.required = false;
         endInput.required = false;
@@ -80,18 +82,32 @@
         }
 
         function updateSummary() {
-            startLabel.textContent = formatDate(startDate);
-            endLabel.textContent = formatDate(endDate);
-            startLabel.classList.toggle("is-placeholder", !startDate);
-            endLabel.classList.toggle("is-placeholder", !endDate);
+            var visibleRange = getVisibleRange();
+            startLabel.textContent = formatDate(visibleRange.start);
+            endLabel.textContent = formatDate(visibleRange.end);
+            startLabel.classList.toggle("is-placeholder", !visibleRange.start);
+            endLabel.classList.toggle("is-placeholder", !visibleRange.end);
 
-            if (!startDate) {
+            if (dragState) {
+                helper.textContent = dragState.isHandleDrag
+                    ? "Geser untuk mengubah tanggal, lepaskan untuk menetapkan."
+                    : "Lepaskan pointer untuk menetapkan rentang tanggal.";
+            } else if (!startDate) {
                 helper.textContent = "Pilih tanggal pengambilan terlebih dahulu.";
             } else if (!endDate) {
                 helper.textContent = "Sekarang pilih rencana tanggal pengembalian.";
             } else {
-                helper.textContent = "Rentang tanggal telah dipilih. Anda masih dapat mengubahnya.";
+                helper.textContent = "Rentang tanggal telah dipilih. Geser bulatan tanggal untuk mengubahnya.";
             }
+        }
+
+        function getVisibleRange() {
+            if (!dragState) return { start: startDate, end: endDate };
+            var dragAnchor = dragState.anchor;
+            var dragEnd = dragState.preview;
+            return dragEnd.getTime() < dragAnchor.getTime()
+                ? { start: dragEnd, end: dragAnchor }
+                : { start: dragAnchor, end: dragEnd };
         }
 
         function clearError() {
@@ -119,6 +135,7 @@
 
             var days = document.createElement("div");
             days.className = "borrowing-date-range__days";
+            if (dragState) days.classList.add("is-dragging");
             var firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
             var totalDays = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
             var day;
@@ -141,26 +158,29 @@
 
                 if (date.getTime() < minDate.getTime()) button.disabled = true;
                 if (sameDay(date, today)) button.classList.add("is-today");
-                if (isWithinRange(date, startDate, endDate)) button.classList.add("is-range");
-                if (sameDay(date, startDate)) button.classList.add("is-range-start");
-                if (sameDay(date, endDate)) button.classList.add("is-range-end");
+                var visibleRange = getVisibleRange();
+                if (isWithinRange(date, visibleRange.start, visibleRange.end)) button.classList.add("is-range");
+                if (sameDay(date, visibleRange.start)) button.classList.add("is-range-start");
+                if (sameDay(date, visibleRange.end)) button.classList.add("is-range-end");
                 days.appendChild(button);
             }
 
-            addRangeRails(days, monthDate, firstDay, totalDays);
+            addRangeRails(days, monthDate, firstDay, totalDays, getVisibleRange());
             wrapper.appendChild(days);
             return wrapper;
         }
 
-        function addRangeRails(days, monthDate, firstDay, totalDays) {
-            if (!startDate || !endDate || sameDay(startDate, endDate)) return;
+        function addRangeRails(days, monthDate, firstDay, totalDays, range) {
+            var rangeStartDate = range.start;
+            var rangeEndDate = range.end;
+            if (!rangeStartDate || !rangeEndDate || sameDay(rangeStartDate, rangeEndDate)) return;
 
             var monthStart = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
             var monthEnd = new Date(monthDate.getFullYear(), monthDate.getMonth(), totalDays);
-            if (endDate.getTime() < monthStart.getTime() || startDate.getTime() > monthEnd.getTime()) return;
+            if (rangeEndDate.getTime() < monthStart.getTime() || rangeStartDate.getTime() > monthEnd.getTime()) return;
 
-            var rangeStart = startDate.getTime() > monthStart.getTime() ? startDate : monthStart;
-            var rangeEnd = endDate.getTime() < monthEnd.getTime() ? endDate : monthEnd;
+            var rangeStart = rangeStartDate.getTime() > monthStart.getTime() ? rangeStartDate : monthStart;
+            var rangeEnd = rangeEndDate.getTime() < monthEnd.getTime() ? rangeEndDate : monthEnd;
             var rangeStartIndex = firstDay + rangeStart.getDate() - 1;
             var rangeEndIndex = firstDay + rangeEnd.getDate() - 1;
             var startRow = Math.floor(rangeStartIndex / 7);
@@ -170,8 +190,8 @@
             for (row = startRow; row <= endRow; row += 1) {
                 var rowStartIndex = row === startRow ? rangeStartIndex : row * 7;
                 var rowEndIndex = row === endRow ? rangeEndIndex : (row * 7) + 6;
-                var startOffset = row === startRow && sameDay(rangeStart, startDate) ? 0.5 : 0;
-                var endOffset = row === endRow && sameDay(rangeEnd, endDate) ? 0.5 : 1;
+                var startOffset = row === startRow && sameDay(rangeStart, rangeStartDate) ? 0.5 : 0;
+                var endOffset = row === endRow && sameDay(rangeEnd, rangeEndDate) ? 0.5 : 1;
                 var left = ((rowStartIndex % 7) + startOffset) * (100 / 7);
                 var right = ((rowEndIndex % 7) + endOffset) * (100 / 7);
                 var rail = document.createElement("span");
@@ -208,6 +228,37 @@
             render();
         }
 
+        function dateFromPointer(event) {
+            var target = document.elementFromPoint(event.clientX, event.clientY);
+            var button = target && target.closest("[data-date-range-date]");
+            if (!button || button.disabled || !months.contains(button)) return null;
+            return fromIso(button.dataset.dateRangeDate);
+        }
+
+        function finishDrag(event) {
+            if (!dragState) return;
+            if (event && event.pointerId !== undefined && event.pointerId !== dragState.pointerId) return;
+            var selection = dragState;
+            dragState = null;
+            months.classList.remove("is-dragging");
+            if (months.hasPointerCapture && months.hasPointerCapture(selection.pointerId)) {
+                months.releasePointerCapture(selection.pointerId);
+            }
+            ignoreClickUntil = Date.now() + 300;
+
+            if (!selection.moved) {
+                chooseDate(selection.origin);
+                return;
+            }
+
+            startDate = selection.preview.getTime() < selection.anchor.getTime() ? selection.preview : selection.anchor;
+            endDate = selection.preview.getTime() < selection.anchor.getTime() ? selection.anchor : selection.preview;
+            startInput.value = toIso(startDate);
+            endInput.value = toIso(endDate);
+            clearError();
+            render();
+        }
+
         trigger.addEventListener("click", function () {
             setOpen(panel.hidden);
         });
@@ -225,7 +276,69 @@
             render();
         });
 
+        months.addEventListener("pointerdown", function (event) {
+            if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) return;
+            var button = event.target.closest("[data-date-range-date]");
+            if (!button || button.disabled) return;
+            var selectedDate = fromIso(button.dataset.dateRangeDate);
+            if (!selectedDate) return;
+            event.preventDefault();
+
+            // Kalau yang ditekan adalah salah satu ujung (handle) dari rentang yang
+            // sudah lengkap, jadikan ujung SATUNYA sebagai jangkar supaya menggeser
+            // satu bulatan tidak menghapus ujung lainnya (perilaku ala slider).
+            var anchor = selectedDate;
+            var isHandleDrag = false;
+            if (startDate && endDate && !sameDay(startDate, endDate)) {
+                var isStartHandle = button.classList.contains("is-range-start") && !button.classList.contains("is-range-end");
+                var isEndHandle = button.classList.contains("is-range-end") && !button.classList.contains("is-range-start");
+                if (isStartHandle) {
+                    anchor = endDate;
+                    isHandleDrag = true;
+                } else if (isEndHandle) {
+                    anchor = startDate;
+                    isHandleDrag = true;
+                }
+            }
+
+            dragState = {
+                origin: selectedDate,
+                anchor: anchor,
+                preview: selectedDate,
+                moved: false,
+                isHandleDrag: isHandleDrag,
+                pointerId: event.pointerId
+            };
+            months.classList.add("is-dragging");
+            if (months.setPointerCapture) months.setPointerCapture(event.pointerId);
+            updateSummary();
+        });
+
+        months.addEventListener("pointermove", function (event) {
+            if (!dragState || event.pointerId !== dragState.pointerId) return;
+            event.preventDefault();
+            var selectedDate = dateFromPointer(event);
+            if (!selectedDate || sameDay(selectedDate, dragState.preview)) return;
+            dragState.preview = selectedDate;
+            dragState.moved = true;
+            render();
+        });
+
+        months.addEventListener("pointerup", finishDrag);
+        months.addEventListener("pointercancel", function (event) {
+            if (!dragState || event.pointerId !== dragState.pointerId) return;
+            if (months.hasPointerCapture && months.hasPointerCapture(dragState.pointerId)) {
+                months.releasePointerCapture(dragState.pointerId);
+            }
+            dragState = null;
+            months.classList.remove("is-dragging");
+            render();
+        });
+
+        months.addEventListener("dragstart", function (event) { event.preventDefault(); });
+
         months.addEventListener("click", function (event) {
+            if (Date.now() < ignoreClickUntil) return;
             var button = event.target.closest("[data-date-range-date]");
             if (!button || button.disabled) return;
             var selectedDate = fromIso(button.dataset.dateRangeDate);

@@ -237,7 +237,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                         </div>
                                     </div>
                                     <div class="borrowing-date-range__months" data-date-range-months></div>
-                                    <div class="borrowing-date-range__panel-footer"><i class="bi bi-info-circle"></i> Tanggal yang sudah lewat tidak dapat dipilih.</div>
+                                    <div class="borrowing-date-range__panel-footer"><i class="bi bi-info-circle"></i> Klik tanggal satu per satu, atau tahan lalu drag untuk memilih rentang. Tanggal yang sudah lewat tidak dapat dipilih.</div>
                                 </section>
                                 <div class="borrowing-date-range__feedback" data-date-range-feedback aria-live="polite"></div>
                             </div>
