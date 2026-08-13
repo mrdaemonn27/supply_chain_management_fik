@@ -141,6 +141,51 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             cursor: not-allowed;
         }
 
+        .catalog-toolbar {
+            display: grid;
+            grid-template-columns: minmax(260px, 1fr) minmax(210px, .36fr) auto;
+            gap: 12px;
+            align-items: end;
+            margin-bottom: 24px;
+            padding: 16px;
+            border: 1px solid #e1e5e9;
+            border-radius: 12px;
+            background: #ffffff;
+            box-shadow: 0 6px 18px rgba(29, 38, 48, .045);
+        }
+        .catalog-filter-label { display:block; margin-bottom:6px; color:#27313b; font-size:.72rem; font-weight:700; }
+        .catalog-control { min-height:42px; border-color:#cfd6dd; background:#fff; color:#27313b; font-size:.78rem; box-shadow:none !important; }
+        .catalog-control:focus { border-color:#ea5b1a; }
+        .catalog-search-group .input-group-text { width:44px; justify-content:center; border-color:#cfd6dd; background:#fff; color:#5e6873; }
+        .catalog-search-group .form-control { border-left:0; }
+        .catalog-reset { min-height:42px; padding-inline:17px; border-color:#c5cdd5; border-radius:999px; color:#626d78; background:#fff; font-size:.74rem; font-weight:600; white-space:nowrap; }
+        .catalog-reset:hover { border-color:#ea5b1a; color:#ea5b1a; background:#fff7f2; }
+        .catalog-filter-hint { grid-column:1 / -1; margin-top:-3px; color:#7c8791; font-size:.66rem; }
+        .catalog-empty-result { padding:48px 18px; text-align:center; }
+        .catalog-empty-result i { display:block; margin-bottom:10px; color:#a8b1bb; font-size:2.4rem; }
+        .catalog-pagination-footer { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:16px; margin-top:30px; padding:12px 14px; border:1px solid #e1e5e9; border-radius:10px; background:#fff; color:#6f7a85; font-size:.7rem; }
+        .catalog-pagination-summary { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
+        .catalog-pagination-summary .form-select { width:72px; min-height:34px; border-color:#cfd6dd; background:#fff; color:#27313b; font-size:.7rem; }
+        .catalog-pagination-status { text-align:center; white-space:nowrap; }
+        .catalog-page-nav { display:flex; justify-content:flex-end; }
+        .catalog-pagination { margin:0; }
+        .catalog-pagination .page-link { display:inline-flex; min-width:34px; min-height:34px; align-items:center; justify-content:center; border-color:#e1e5e9; background:#fff; color:#27313b; font-size:.7rem; }
+        .catalog-pagination .page-link:hover { background:#fff7f2; color:#ea5b1a; }
+        .catalog-pagination .page-item.active .page-link { border-color:#ea5b1a; background:#ea5b1a; color:#fff; }
+        .catalog-pagination .page-item.disabled .page-link { background:#f7f8f9; color:#9ba4ad; opacity:.7; }
+        .catalog-item[hidden], .catalog-empty-result[hidden] { display:none !important; }
+
+        html.scm-theme-dark .catalog-toolbar,
+        html.scm-theme-dark .catalog-pagination-footer { border-color:var(--scm-theme-border); background:var(--scm-theme-surface); }
+        html.scm-theme-dark .catalog-filter-label { color:var(--scm-theme-text); }
+        html.scm-theme-dark .catalog-control,
+        html.scm-theme-dark .catalog-search-group .input-group-text,
+        html.scm-theme-dark .catalog-reset,
+        html.scm-theme-dark .catalog-pagination-summary .form-select,
+        html.scm-theme-dark .catalog-pagination .page-link { border-color:var(--scm-theme-border); background:var(--scm-theme-surface-soft); color:var(--scm-theme-text); }
+        html.scm-theme-dark .catalog-filter-hint,
+        html.scm-theme-dark .catalog-pagination-footer { color:var(--scm-theme-muted); }
+
         .sop-modal-content {
             border: none;
             border-radius: 14px;
@@ -206,6 +251,11 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             pointer-events: none;
         }
         @media (max-width: 575.98px) {
+            .catalog-toolbar { grid-template-columns:1fr; }
+            .catalog-filter-hint { grid-column:auto; }
+            .catalog-reset { width:100%; }
+            .catalog-pagination-footer { grid-template-columns:1fr; justify-items:center; }
+            .catalog-page-nav { max-width:100%; justify-content:center; overflow-x:auto; }
             .sop-modal-content {
                 border-radius: 0;
             }
@@ -214,6 +264,13 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 min-height: 240px;
                 padding: 14px;
             }
+        }
+        @media (min-width:576px) and (max-width:991.98px) {
+            .catalog-toolbar { grid-template-columns:1fr 240px; }
+            .catalog-reset, .catalog-filter-hint { grid-column:1 / -1; }
+            .catalog-reset { justify-self:end; }
+            .catalog-pagination-footer { grid-template-columns:1fr; justify-items:center; }
+            .catalog-page-nav { justify-content:center; }
         }
     </style>
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
@@ -312,11 +369,40 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 <button type="button" class="btn btn-sm btn-doc-mini" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
                     <i class="bi bi-file-earmark-pdf me-1"></i> SOP & Instruksi Kerja
                 </button>
-                <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-box-seam me-1"></i> Total: <?= count($barang) ?> Aset</span>
+                <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-box-seam me-1"></i> Total: <span id="catalogHeaderTotal"><?= count($barang) ?></span> Aset</span>
             </div>
         </div>
+
+        <?php if (!empty($barang)): ?>
+        <div class="catalog-toolbar" aria-label="Pencarian dan pengurutan katalog">
+            <div>
+                <label for="catalogSearch" class="catalog-filter-label">Cari Alat Studio</label>
+                <div class="input-group catalog-search-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input id="catalogSearch" type="search" class="form-control catalog-control" placeholder="Nama alat, kode aset, ruangan, kondisi, atau stok" autocomplete="off">
+                </div>
+            </div>
+            <div>
+                <label for="catalogSort" class="catalog-filter-label">Urutkan</label>
+                <select id="catalogSort" class="form-select catalog-control">
+                    <option value="original:asc">Urutan Awal</option>
+                    <option value="name:asc">Nama A–Z</option>
+                    <option value="name:desc">Nama Z–A</option>
+                    <option value="code:asc">Kode A–Z</option>
+                    <option value="code:desc">Kode Z–A</option>
+                    <option value="room:asc">Ruangan A–Z</option>
+                    <option value="stock:desc">Stok Terbanyak</option>
+                    <option value="stock:asc">Stok Tersedikit</option>
+                </select>
+            </div>
+            <button id="catalogReset" type="button" class="btn catalog-reset">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+            </button>
+            <div class="catalog-filter-hint"><i class="bi bi-lightning-charge me-1"></i>Hasil pencarian, urutan, total aset, dan paging diperbarui secara otomatis.</div>
+        </div>
+        <?php endif; ?>
         
-        <div class="row g-4">
+        <div class="row g-4" id="catalogGrid">
             <!-- Jika tidak ada barang di database -->
             <?php if(empty($barang)): ?>
                 <div class="col-12 text-center py-5" data-aos="fade-up">
@@ -331,7 +417,18 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
             <!-- Looping Kartu Barang dari Database -->
             <?php foreach($barang as $index => $b): ?>
-            <div class="col-sm-6 col-md-4 col-lg-3" data-aos="fade-up" data-aos-delay="<?= ($index % 4) * 100 ?>">
+            <?php $catalog_room = isset($b->nama_ruangan) ? $b->nama_ruangan : 'Laboratorium Pusat'; ?>
+            <div
+                class="col-sm-6 col-md-4 col-lg-3 catalog-item"
+                data-aos="fade-up"
+                data-aos-delay="<?= ($index % 4) * 100 ?>"
+                data-search="<?= html_escape(implode(' ', [$b->nama_aset ?? '', $b->kode_aset ?? '', $catalog_room, $b->kondisi ?? '', $b->jumlah_tersedia ?? 0])) ?>"
+                data-sort-name="<?= html_escape($b->nama_aset ?? '') ?>"
+                data-sort-code="<?= html_escape($b->kode_aset ?? '') ?>"
+                data-sort-room="<?= html_escape($catalog_room) ?>"
+                data-sort-stock="<?= (int) ($b->jumlah_tersedia ?? 0) ?>"
+                data-original-index="<?= (int) $index ?>"
+            >
                 <div class="card item-card">
                     <!-- LOGIKA GAMBAR DINAMIS (DIPERBAIKI: Hapus file_exists) -->
                     <div class="item-img-placeholder">
@@ -401,7 +498,35 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 </div>
             </div>
             <?php endforeach; ?>
+
+            <?php if (!empty($barang)): ?>
+                <div id="catalogEmptyResult" class="col-12 catalog-empty-result" hidden>
+                    <i class="bi bi-search"></i>
+                    <h5 class="fw-bold text-dark mb-1">Alat tidak ditemukan</h5>
+                    <p class="text-muted mb-0">Coba gunakan nama, kode aset, ruangan, kondisi, atau jumlah stok yang berbeda.</p>
+                </div>
+            <?php endif; ?>
         </div>
+
+        <?php if (!empty($barang)): ?>
+        <div class="catalog-pagination-footer">
+            <div class="catalog-pagination-summary">
+                <label for="catalogPageSize">Tampilkan:</label>
+                <select id="catalogPageSize" class="form-select form-select-sm" aria-label="Jumlah aset per halaman">
+                    <option value="8">8</option>
+                    <option value="12" selected>12</option>
+                    <option value="24">24</option>
+                    <option value="48">48</option>
+                    <option value="all">Semua</option>
+                </select>
+                <span>Total item: <span id="catalogTotalItems"><?= count($barang) ?></span></span>
+            </div>
+            <div id="catalogPageStatus" class="catalog-pagination-status">Halaman: 1 dari 1</div>
+            <nav class="catalog-page-nav" aria-label="Paging katalog alat studio">
+                <ul id="catalogPageNav" class="pagination pagination-sm catalog-pagination"></ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 
 
@@ -502,6 +627,154 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         AOS.init({ once: true, offset: 20 });
 
         document.addEventListener('DOMContentLoaded', function () {
+            const catalogGrid = document.getElementById('catalogGrid');
+            const catalogItems = Array.from(document.querySelectorAll('.catalog-item'));
+            const catalogSearch = document.getElementById('catalogSearch');
+            const catalogSort = document.getElementById('catalogSort');
+            const catalogReset = document.getElementById('catalogReset');
+            const catalogPageSize = document.getElementById('catalogPageSize');
+            const catalogTotalItems = document.getElementById('catalogTotalItems');
+            const catalogHeaderTotal = document.getElementById('catalogHeaderTotal');
+            const catalogPageStatus = document.getElementById('catalogPageStatus');
+            const catalogPageNav = document.getElementById('catalogPageNav');
+            const catalogEmptyResult = document.getElementById('catalogEmptyResult');
+
+            if (catalogGrid && catalogItems.length && catalogSearch && catalogSort && catalogPageSize && catalogPageNav) {
+                let catalogPage = 1;
+
+                function normalizeCatalogValue(value) {
+                    return String(value || '').trim().toLocaleLowerCase('id');
+                }
+
+                function filteredCatalogItems() {
+                    const keyword = normalizeCatalogValue(catalogSearch.value);
+                    return catalogItems.filter(function (item) {
+                        return !keyword || normalizeCatalogValue(item.dataset.search).includes(keyword);
+                    });
+                }
+
+                function sortedCatalogItems(items) {
+                    const sortParts = catalogSort.value.split(':');
+                    const sortKey = sortParts[0] || 'original';
+                    const sortDirection = sortParts[1] || 'asc';
+
+                    return items.slice().sort(function (left, right) {
+                        let comparison;
+
+                        if (sortKey === 'original') {
+                            comparison = Number(left.dataset.originalIndex) - Number(right.dataset.originalIndex);
+                        } else if (sortKey === 'stock') {
+                            comparison = Number(left.dataset.sortStock) - Number(right.dataset.sortStock);
+                        } else {
+                            const datasetKey = 'sort' + sortKey.charAt(0).toUpperCase() + sortKey.slice(1);
+                            comparison = normalizeCatalogValue(left.dataset[datasetKey]).localeCompare(
+                                normalizeCatalogValue(right.dataset[datasetKey]),
+                                'id',
+                                { numeric: true, sensitivity: 'base' }
+                            );
+                        }
+
+                        if (comparison === 0) {
+                            comparison = Number(left.dataset.originalIndex) - Number(right.dataset.originalIndex);
+                        }
+
+                        return sortDirection === 'asc' ? comparison : -comparison;
+                    });
+                }
+
+                function catalogSizeFor(total) {
+                    return catalogPageSize.value === 'all'
+                        ? Math.max(total, 1)
+                        : Math.max(Number(catalogPageSize.value) || 12, 1);
+                }
+
+                function addCatalogPageButton(label, target, disabled, active, ariaLabel) {
+                    const item = document.createElement('li');
+                    const link = document.createElement('button');
+                    item.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+                    link.type = 'button';
+                    link.className = 'page-link';
+                    link.textContent = label;
+                    link.disabled = disabled;
+                    if (ariaLabel) link.setAttribute('aria-label', ariaLabel);
+                    if (active) link.setAttribute('aria-current', 'page');
+                    link.addEventListener('click', function () {
+                        catalogPage = target;
+                        renderCatalog();
+                        catalogGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
+                    item.appendChild(link);
+                    catalogPageNav.appendChild(item);
+                }
+
+                function renderCatalogPagination(totalPages) {
+                    catalogPageNav.innerHTML = '';
+                    addCatalogPageButton('Previous', Math.max(1, catalogPage - 1), catalogPage <= 1, false, 'Halaman sebelumnya');
+
+                    let startPage = Math.max(1, catalogPage - 2);
+                    let endPage = Math.min(totalPages, startPage + 4);
+                    startPage = Math.max(1, endPage - 4);
+
+                    for (let pageNumber = startPage; pageNumber <= endPage; pageNumber += 1) {
+                        addCatalogPageButton(String(pageNumber), pageNumber, false, pageNumber === catalogPage, 'Halaman ' + pageNumber);
+                    }
+
+                    addCatalogPageButton('Next', Math.min(totalPages, catalogPage + 1), catalogPage >= totalPages, false, 'Halaman berikutnya');
+                }
+
+                function renderCatalog() {
+                    const visibleItems = sortedCatalogItems(filteredCatalogItems());
+                    const pageSize = catalogSizeFor(visibleItems.length);
+                    const totalPages = Math.max(1, Math.ceil(visibleItems.length / pageSize));
+                    catalogPage = Math.max(1, Math.min(catalogPage, totalPages));
+                    const start = (catalogPage - 1) * pageSize;
+                    const end = start + pageSize;
+
+                    catalogItems.forEach(function (item) {
+                        item.hidden = true;
+                        item.removeAttribute('data-aos');
+                    });
+
+                    visibleItems.forEach(function (item, index) {
+                        catalogGrid.insertBefore(item, catalogEmptyResult || null);
+                        item.hidden = index < start || index >= end;
+                    });
+
+                    if (catalogEmptyResult) catalogEmptyResult.hidden = visibleItems.length !== 0;
+                    if (catalogTotalItems) catalogTotalItems.textContent = String(visibleItems.length);
+                    if (catalogHeaderTotal) catalogHeaderTotal.textContent = String(visibleItems.length);
+                    if (catalogPageStatus) catalogPageStatus.textContent = 'Halaman: ' + catalogPage + ' dari ' + totalPages;
+                    renderCatalogPagination(totalPages);
+                }
+
+                catalogSearch.addEventListener('input', function () {
+                    catalogPage = 1;
+                    renderCatalog();
+                });
+
+                catalogSort.addEventListener('change', function () {
+                    catalogPage = 1;
+                    renderCatalog();
+                });
+
+                catalogPageSize.addEventListener('change', function () {
+                    catalogPage = 1;
+                    renderCatalog();
+                });
+
+                if (catalogReset) {
+                    catalogReset.addEventListener('click', function () {
+                        catalogSearch.value = '';
+                        catalogSort.value = 'original:asc';
+                        catalogPageSize.value = '12';
+                        catalogPage = 1;
+                        renderCatalog();
+                    });
+                }
+
+                renderCatalog();
+            }
+
             const internalDocsModal = document.getElementById('internalDocsModal');
             const internalDocsFrame = document.querySelector('.js-internal-doc-frame');
 

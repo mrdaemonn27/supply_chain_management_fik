@@ -86,6 +86,18 @@
             background-color: #bb2d3b;
             transform: scale(1.1);
         }
+        .room-table-toolbar { display:flex; align-items:center; gap:.65rem; padding:1rem; border-bottom:1px solid #e8eaed; background:#fff; }
+        .room-table-search { flex:1 1 auto; max-width:760px; }
+        .room-table-search .input-group-text, .room-table-search .form-control { min-height:42px; border-color:#d3d9df; background:#fff; font-size:.78rem; }
+        .room-table-search .input-group-text { width:44px; justify-content:center; }
+        .room-table-search .form-control { border-left:0; box-shadow:none; }
+        .room-table-search .form-control:focus { border-color:#ea5b1a; }
+        .room-table-reset { min-height:42px; padding-inline:1rem; border-color:#c5cdd5; border-radius:999px; color:#66717d; background:#fff; font-size:.74rem; font-weight:600; white-space:nowrap; }
+        .room-table-reset:hover { border-color:#ea5b1a; color:#ea5b1a; background:#fff7f2; }
+        .room-table-hint { padding:0 1rem .75rem; border-bottom:1px solid #e8eaed; color:#7a848e; background:#fff; font-size:.68rem; }
+        .room-sort-button { display:inline-flex; align-items:center; gap:.38rem; padding:0; border:0; color:inherit; background:transparent; font:inherit; font-weight:inherit; }
+        .room-sort-button i { color:#8d98a3; font-size:.72rem; }
+        .room-filter-empty td { padding:2.5rem 1rem !important; color:#6b7280 !important; text-align:center; }
         .loan-pagination-footer { display:grid; grid-template-columns:minmax(0, auto) 1fr minmax(0, auto); align-items:center; gap:1rem; min-height:64px; padding:.75rem 1rem; border-top:1px solid #e8eaed; color:#6b7280; background:#f8f9fa; }
         .loan-pagination-summary { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem; }
         .loan-pagination-summary, .loan-pagination-status { font-size:.72rem; white-space:nowrap; }
@@ -96,7 +108,7 @@
         .loan-pagination .page-link:hover { color:#ea5b1a; background:#fff7f2; }
         .loan-pagination .page-item.active .page-link { color:#fff; background:#ea5b1a; border-color:#ea5b1a; }
         .loan-pagination .page-item.disabled .page-link { color:#9aa0a6; background:#f8f9fa; opacity:.62; }
-        @media (max-width:767.98px) { .loan-pagination-footer { grid-template-columns:1fr; justify-items:center; gap:.65rem; } .loan-pagination-footer nav { max-width:100%; overflow-x:auto; padding-bottom:2px; } }
+        @media (max-width:767.98px) { .room-table-toolbar { align-items:stretch; flex-direction:column; } .room-table-search { width:100%; max-width:none; } .room-table-reset { align-self:flex-end; } .loan-pagination-footer { grid-template-columns:1fr; justify-items:center; gap:.65rem; } .loan-pagination-footer nav { max-width:100%; overflow-x:auto; padding-bottom:2px; } }
     </style>
 </head>
 <body class="scm-admin-shell">
@@ -147,14 +159,24 @@
 
         <div class="card shadow-sm border-0 rounded-4">
             <div class="card-body p-0">
+                <div class="room-table-toolbar">
+                    <div class="input-group room-table-search">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input id="ruanganSearch" type="search" class="form-control" placeholder="Cari nama ruangan atau deskripsi" autocomplete="off" aria-label="Cari data ruangan">
+                    </div>
+                    <button id="ruanganSearchReset" type="button" class="btn room-table-reset">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
+                    </button>
+                </div>
+                <div class="room-table-hint"><i class="bi bi-lightning-charge me-1"></i>Hasil diperbarui saat Anda mengetik. Klik judul kolom untuk mengurutkan.</div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th class="p-3 text-center" width="5%">No</th>
+                                <th class="p-3 text-center" width="5%"><button type="button" class="room-sort-button" data-room-sort="index">No <i class="bi bi-arrow-down-up"></i></button></th>
                                 <th width="15%" class="text-center">Gambar</th>
-                                <th width="25%">Nama Ruangan</th>
-                                <th width="40%">Deskripsi</th>
+                                <th width="25%"><button type="button" class="room-sort-button" data-room-sort="name">Nama Ruangan <i class="bi bi-arrow-down-up"></i></button></th>
+                                <th width="40%"><button type="button" class="room-sort-button" data-room-sort="description">Deskripsi <i class="bi bi-arrow-down-up"></i></button></th>
                                 <th width="15%" class="text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -165,7 +187,13 @@
                             </tr>
                             <?php else: ?>
                                 <?php $no=1; foreach($ruangan_list as $r): ?>
-                                <tr class="ruangan-data-row">
+                                <tr
+                                    class="ruangan-data-row"
+                                    data-search="<?= html_escape(($r['nama_ruangan'] ?? '') . ' ' . ($r['deskripsi'] ?? '')) ?>"
+                                    data-sort-index="<?= $no ?>"
+                                    data-sort-name="<?= html_escape($r['nama_ruangan'] ?? '') ?>"
+                                    data-sort-description="<?= html_escape($r['deskripsi'] ?? '') ?>"
+                                >
                                     <td class="p-3 text-center"><?= $no++; ?></td>
                                     <td class="text-center">
                                         <?php if($r['foto']): ?>
@@ -190,6 +218,9 @@
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
+                                <tr id="ruanganFilterEmpty" class="room-filter-empty" hidden>
+                                    <td colspan="5">Tidak ada ruangan yang sesuai dengan pencarian.</td>
+                                </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -201,7 +232,7 @@
                     <select id="ruanganPageSize" class="form-select form-select-sm" aria-label="Jumlah data ruangan per halaman">
                         <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option>
                     </select>
-                    <span>Total item: <?= count($ruangan_list) ?></span>
+                    <span>Total item: <span id="ruanganTotalItems"><?= count($ruangan_list) ?></span></span>
                 </div>
                 <div class="loan-pagination-status" id="ruanganPageStatus">Halaman: 1 dari 1</div>
                 <nav aria-label="Pagination ruangan"><ul class="pagination pagination-sm loan-pagination" id="ruanganPageNav"></ul></nav>
@@ -431,9 +462,20 @@
             const select = document.getElementById('ruanganPageSize');
             const status = document.getElementById('ruanganPageStatus');
             const nav = document.getElementById('ruanganPageNav');
+            const search = document.getElementById('ruanganSearch');
+            const reset = document.getElementById('ruanganSearchReset');
+            const total = document.getElementById('ruanganTotalItems');
+            const empty = document.getElementById('ruanganFilterEmpty');
+            const body = rows.length ? rows[0].parentElement : null;
+            const sortButtons = Array.from(document.querySelectorAll('[data-room-sort]'));
             if (!rows.length || !select || !status || !nav) return;
+
+            rows.forEach((row, index) => { row.dataset.originalIndex = String(index); });
             let page = 1;
-            const pageSize = () => select.value === 'all' ? Math.max(rows.length, 1) : Number(select.value) || 10;
+            let sortKey = '';
+            let sortDirection = 'asc';
+            const normalize = value => String(value || '').trim().toLocaleLowerCase('id');
+            const pageSize = length => select.value === 'all' ? Math.max(length, 1) : Number(select.value) || 10;
             const button = (label, target, disabled, active) => {
                 const li = document.createElement('li');
                 li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
@@ -442,18 +484,92 @@
                 if (!disabled) a.addEventListener('click', function (event) { event.preventDefault(); page = target; render(); });
                 li.appendChild(a); nav.appendChild(li);
             };
+
+            function filteredRows() {
+                const keyword = search ? normalize(search.value) : '';
+                return rows.filter(row => !keyword || normalize(row.dataset.search).includes(keyword));
+            }
+
+            function sortedRows(items) {
+                return items.slice().sort((left, right) => {
+                    if (!sortKey) return Number(left.dataset.originalIndex) - Number(right.dataset.originalIndex);
+
+                    const datasetKey = 'sort' + sortKey.charAt(0).toUpperCase() + sortKey.slice(1);
+                    const leftValue = left.dataset[datasetKey] || '';
+                    const rightValue = right.dataset[datasetKey] || '';
+                    let comparison = sortKey === 'index'
+                        ? Number(leftValue) - Number(rightValue)
+                        : normalize(leftValue).localeCompare(normalize(rightValue), 'id', { numeric: true, sensitivity: 'base' });
+
+                    if (comparison === 0) comparison = Number(left.dataset.originalIndex) - Number(right.dataset.originalIndex);
+                    return sortDirection === 'asc' ? comparison : -comparison;
+                });
+            }
+
+            function updateSortButtons() {
+                sortButtons.forEach(sortButton => {
+                    const key = sortButton.dataset.roomSort;
+                    const icon = sortButton.querySelector('i');
+                    const heading = sortButton.closest('th');
+                    const active = key === sortKey;
+                    if (icon) icon.className = active
+                        ? (sortDirection === 'asc' ? 'bi bi-sort-up-alt' : 'bi bi-sort-down')
+                        : 'bi bi-arrow-down-up';
+                    if (heading) heading.setAttribute('aria-sort', active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none');
+                });
+            }
+
             function render() {
-                const size = pageSize();
-                const totalPages = Math.max(1, Math.ceil(rows.length / size));
-                page = Math.min(page, totalPages);
-                rows.forEach((row, index) => { row.hidden = index < (page - 1) * size || index >= page * size; });
+                const currentRows = sortedRows(filteredRows());
+                const size = pageSize(currentRows.length);
+                const totalPages = Math.max(1, Math.ceil(currentRows.length / size));
+                page = Math.max(1, Math.min(page, totalPages));
+                const start = (page - 1) * size;
+                const end = start + size;
+
+                rows.forEach(row => { row.hidden = true; });
+                currentRows.forEach((row, index) => {
+                    if (body) body.insertBefore(row, empty || null);
+                    row.hidden = index < start || index >= end;
+                });
+
+                if (empty) empty.hidden = currentRows.length !== 0;
+                if (total) total.textContent = String(currentRows.length);
                 status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
                 nav.innerHTML = '';
                 button('Previous', Math.max(1, page - 1), page === 1, false);
                 for (let index = 1; index <= totalPages; index += 1) button(String(index), index, false, index === page);
                 button('Next', Math.min(totalPages, page + 1), page === totalPages, false);
+                updateSortButtons();
             }
+
+            if (search) search.addEventListener('input', function () { page = 1; render(); });
             select.addEventListener('change', function () { page = 1; render(); });
+
+            sortButtons.forEach(sortButton => {
+                sortButton.addEventListener('click', function () {
+                    const nextKey = sortButton.dataset.roomSort;
+                    if (sortKey === nextKey) {
+                        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        sortKey = nextKey;
+                        sortDirection = 'asc';
+                    }
+                    page = 1;
+                    render();
+                });
+            });
+
+            if (reset) {
+                reset.addEventListener('click', function () {
+                    if (search) search.value = '';
+                    sortKey = '';
+                    sortDirection = 'asc';
+                    page = 1;
+                    render();
+                });
+            }
+
             render();
         }());
     </script>

@@ -813,7 +813,21 @@ class Kaur_model extends CI_Model {
         $params = [];
         $sql = $this->append_laporan_negosiasi_filters($sql, $params, $filters);
 
-        $sql .= " ORDER BY n.created_at DESC";
+        $sort_map = [
+            'kode_pengajuan' => 'p.kode_pengajuan',
+            'item' => 'i.uraian_barang',
+            'vendor' => 'n.vendor',
+            'harga_awal' => 'n.harga_awal',
+            'harga_akhir' => 'n.harga_negosiasi',
+            'selisih' => '(n.harga_awal - n.harga_negosiasi)',
+            'volume' => 'n.volume_negosiasi',
+            'garansi' => 'n.garansi',
+            'catatan' => 'n.catatan',
+        ];
+        $sort_key = (string) ($filters['sort_by'] ?? '');
+        $sort_column = $sort_map[$sort_key] ?? 'n.created_at';
+        $sort_dir = strtoupper((string) ($filters['sort_dir'] ?? '')) === 'ASC' ? 'ASC' : 'DESC';
+        $sql .= " ORDER BY {$sort_column} {$sort_dir}, n.id_negosiasi DESC";
         if ($limit !== null) {
             $sql .= " LIMIT " . (int) $offset . ", " . (int) $limit;
         }
@@ -850,8 +864,12 @@ class Kaur_model extends CI_Model {
             $params[] = $filters['jenis_pengajuan'];
         }
         if (!empty($filters['q'])) {
-            $sql .= " AND (p.kode_pengajuan LIKE ? OR p.nama_pengajuan LIKE ? OR i.uraian_barang LIKE ?)";
+            $sql .= " AND (p.kode_pengajuan LIKE ? OR p.nama_pengajuan LIKE ? OR p.nama_prodi LIKE ? OR i.uraian_barang LIKE ? OR n.vendor LIKE ? OR n.garansi LIKE ? OR n.catatan LIKE ?)";
             $like = '%' . $filters['q'] . '%';
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
             $params[] = $like;
             $params[] = $like;
             $params[] = $like;
