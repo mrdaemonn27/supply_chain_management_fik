@@ -86,6 +86,17 @@
             background-color: #bb2d3b;
             transform: scale(1.1);
         }
+        .loan-pagination-footer { display:grid; grid-template-columns:minmax(0, auto) 1fr minmax(0, auto); align-items:center; gap:1rem; min-height:64px; padding:.75rem 1rem; border-top:1px solid #e8eaed; color:#6b7280; background:#f8f9fa; }
+        .loan-pagination-summary { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem; }
+        .loan-pagination-summary, .loan-pagination-status { font-size:.72rem; white-space:nowrap; }
+        .loan-pagination-summary .form-select { width:92px; min-height:34px; padding-top:.3rem; padding-bottom:.3rem; font-size:.72rem; }
+        .loan-pagination-status { text-align:center; }
+        .loan-pagination { margin:0; }
+        .loan-pagination .page-link { display:inline-flex; align-items:center; justify-content:center; min-width:34px; min-height:34px; padding:.35rem .58rem; border-color:#e8eaed; color:#202124; background:#fff; font-size:.72rem; line-height:1; transition:color .16s ease, background-color .16s ease, border-color .16s ease; }
+        .loan-pagination .page-link:hover { color:#ea5b1a; background:#fff7f2; }
+        .loan-pagination .page-item.active .page-link { color:#fff; background:#ea5b1a; border-color:#ea5b1a; }
+        .loan-pagination .page-item.disabled .page-link { color:#9aa0a6; background:#f8f9fa; opacity:.62; }
+        @media (max-width:767.98px) { .loan-pagination-footer { grid-template-columns:1fr; justify-items:center; gap:.65rem; } .loan-pagination-footer nav { max-width:100%; overflow-x:auto; padding-bottom:2px; } }
     </style>
 </head>
 <body class="scm-admin-shell">
@@ -154,7 +165,7 @@
                             </tr>
                             <?php else: ?>
                                 <?php $no=1; foreach($ruangan_list as $r): ?>
-                                <tr>
+                                <tr class="ruangan-data-row">
                                     <td class="p-3 text-center"><?= $no++; ?></td>
                                     <td class="text-center">
                                         <?php if($r['foto']): ?>
@@ -183,6 +194,17 @@
                         </tbody>
                     </table>
                 </div>
+            </div>
+            <div class="loan-pagination-footer" id="ruanganPaginationFooter" data-total="<?= count($ruangan_list) ?>">
+                <div class="loan-pagination-summary">
+                    <label for="ruanganPageSize">Tampilkan:</label>
+                    <select id="ruanganPageSize" class="form-select form-select-sm" aria-label="Jumlah data ruangan per halaman">
+                        <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option>
+                    </select>
+                    <span>Total item: <?= count($ruangan_list) ?></span>
+                </div>
+                <div class="loan-pagination-status" id="ruanganPageStatus">Halaman: 1 dari 1</div>
+                <nav aria-label="Pagination ruangan"><ul class="pagination pagination-sm loan-pagination" id="ruanganPageNav"></ul></nav>
             </div>
         </div>
 
@@ -404,6 +426,36 @@
                 }
             }
         });
+        (function () {
+            const rows = Array.from(document.querySelectorAll('.ruangan-data-row'));
+            const select = document.getElementById('ruanganPageSize');
+            const status = document.getElementById('ruanganPageStatus');
+            const nav = document.getElementById('ruanganPageNav');
+            if (!rows.length || !select || !status || !nav) return;
+            let page = 1;
+            const pageSize = () => select.value === 'all' ? Math.max(rows.length, 1) : Number(select.value) || 10;
+            const button = (label, target, disabled, active) => {
+                const li = document.createElement('li');
+                li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+                const a = document.createElement('a');
+                a.className = 'page-link'; a.href = '#'; a.textContent = label;
+                if (!disabled) a.addEventListener('click', function (event) { event.preventDefault(); page = target; render(); });
+                li.appendChild(a); nav.appendChild(li);
+            };
+            function render() {
+                const size = pageSize();
+                const totalPages = Math.max(1, Math.ceil(rows.length / size));
+                page = Math.min(page, totalPages);
+                rows.forEach((row, index) => { row.hidden = index < (page - 1) * size || index >= page * size; });
+                status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
+                nav.innerHTML = '';
+                button('Previous', Math.max(1, page - 1), page === 1, false);
+                for (let index = 1; index <= totalPages; index += 1) button(String(index), index, false, index === page);
+                button('Next', Math.min(totalPages, page + 1), page === totalPages, false);
+            }
+            select.addEventListener('change', function () { page = 1; render(); });
+            render();
+        }());
     </script>
 </body>
 </html>

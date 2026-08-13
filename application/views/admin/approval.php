@@ -2,9 +2,45 @@
 $status_class = function ($status) {
     return 'status-' . preg_replace('/[^A-Za-z0-9]+/', '-', trim($status ?: 'Menunggu Verifikasi Laboran'));
 };
+$approval_progress = static function ($p) {
+    $status = (string) ($p->status ?? '');
+    $state = static function ($complete, $current) {
+        return $complete ? 'is-complete' : ($current ? 'is-current' : 'is-pending');
+    };
+    $steps = [
+        ['label' => 'Diajukan', 'state' => $status !== '' ? 'is-complete' : 'is-current'],
+        ['label' => 'Kaprodi', 'state' => $state(($p->status_kaprodi ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaprodi')],
+        ['label' => 'Laboran', 'state' => $state(($p->status_laboran ?? '') === 'Disetujui', in_array($status, ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu Persetujuan'], true))],
+        ['label' => 'Kaur', 'state' => $state(($p->status_kaur ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaur')],
+        ['label' => 'Final QR', 'state' => $state((int) ($p->qr_locked ?? 0) === 1 || !empty($p->qr_finalized_at), $status === 'Disetujui (Menunggu Finalisasi QR)')],
+        ['label' => 'Selesai', 'state' => $state($status === 'Dikembalikan', in_array($status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dipinjam'], true))],
+    ];
+    $current_index = null;
+    foreach ($steps as $index => $step) {
+        if ($step['state'] === 'is-current') {
+            $current_index = $index;
+            break;
+        }
+    }
+    if ($current_index === null) {
+        foreach ($steps as $index => $step) {
+            if ($step['state'] === 'is-pending') {
+                $current_index = $index;
+                break;
+            }
+        }
+    }
+    return [
+        'steps' => $steps,
+        'current_label' => $current_index !== null ? $steps[$current_index]['label'] : 'Selesai',
+        'current_index' => $current_index !== null ? $current_index : count($steps) - 1,
+        'status' => $status,
+    ];
+};
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
+$approval_total = count($pengajuan);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -24,7 +60,8 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
         .form-control:focus, .form-select:focus { border-color: #ea5b1a; box-shadow: 0 0 0 .2rem rgba(234,91,26,.16); }
         .table-wrap { overflow-x: auto; }
         .approval-table { min-width: 1120px; }
-        .approval-table thead th { font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; color: #5f6368; background: #f8f9fa; border-bottom: 1px solid #e8eaed; white-space: nowrap; }
+        .approval-table thead th { font-size: .76rem; font-family: inherit; font-weight: 700 !important; text-transform: uppercase; letter-spacing: .04em; color: #111827 !important; background: #f8f9fa; border-bottom: 1px solid #e8eaed; white-space: nowrap; }
+        .approval-table thead th, .approval-table thead th * { color: #111827 !important; font-weight: 700 !important; }
         .approval-table td { vertical-align: middle; }
         .approval-table tbody tr:hover td { background: #fffaf7; }
         .soft-badge {
@@ -52,24 +89,56 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
         .status-Menunggu-ACC-Kaur { background: rgba(13,110,253,.12); color: #0d6efd; }
         .status-Disetujui-Menunggu-Pengambilan- { background: rgba(25,135,84,.12); color: #198754; }
         .status-Ditolak { background: rgba(220,53,69,.12); color: #dc3545; }
-        .asset-list { max-width: 320px; }
-        .asset-item { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; border-bottom: 1px solid #f0f1f3; font-size: .86rem; }
-        .asset-item:last-child { border-bottom: 0; }
+        .asset-list, .asset-quantity-list { max-width: 320px; }
+        .asset-item, .asset-quantity-item { min-height: 30px; display: flex; align-items: center; padding: 3px 0; border-bottom: 1px solid #f0f1f3; font-size: .86rem; }
+        .asset-quantity-item { white-space: nowrap; }
+        .asset-item:last-child, .asset-quantity-item:last-child { border-bottom: 0; }
         .action-cell { min-width: 260px; }
         .action-grid { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
         .notif-bell { width: 38px; height: 38px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 38px; }
         .notif-menu { width: min(380px, calc(100vw - 32px)); max-height: min(420px, calc(100vh - 110px)); overflow-y: auto; }
         .empty-state { min-height: 280px; display: grid; place-items: center; text-align: center; color: #6c757d; }
-        .approval-stepper { display:grid; grid-template-columns:repeat(6,minmax(88px,1fr)); gap:6px; min-width:590px; }
-        .approval-step { padding:7px 8px; border:1px solid #dfe3e7; border-radius:8px; background:#f7f8f9; color:#7b848d; font-size:.65rem; font-weight:700; text-align:center; }
-        .approval-step.is-done { color:#146c43; border-color:#a3cfbb; background:#eaf7f0; }
-        .approval-step.is-active { color:#9a450e; border-color:#ea5b1a; background:#fff2e9; box-shadow:inset 0 0 0 1px #ea5b1a; }
+        .approval-progress { width:min(100%, 320px); min-width:250px; }
+        .approval-progress__heading { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; }
+        .approval-progress__current { min-width:0; color:#273444; font-size:.72rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .approval-progress__count { flex:0 0 auto; color:#7b848d; font-size:.64rem; font-weight:600; white-space:nowrap; }
+        .approval-progress__track { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); align-items:center; min-width:0; }
+        .approval-progress__unit { position:relative; display:flex; align-items:center; min-width:0; height:16px; }
+        .approval-progress__unit:not(:last-child)::after { content:""; position:absolute; top:50%; left:50%; right:-50%; height:1px; background:#dfe3e7; transform:translateY(-50%); }
+        .approval-progress__dot { position:relative; z-index:1; width:12px; height:12px; flex:0 0 12px; border:1px solid #cbd2da; border-radius:50%; background:#fff; }
+        .approval-progress__unit.is-complete .approval-progress__dot { display:inline-flex; align-items:center; justify-content:center; border-color:#a3cfbb; background:#eaf7f0; }
+        .approval-progress__unit.is-complete .approval-progress__dot::before { content:""; width:4px; height:2px; border-left:1px solid #146c43; border-bottom:1px solid #146c43; transform:rotate(-45deg) translate(1px, -1px); }
+        .approval-progress__unit.is-current .approval-progress__dot { border:2px solid #ea5b1a; background:#fff2e9; }
+        .approval-progress__unit.is-current .approval-progress__dot::before { content:""; width:4px; height:4px; border-radius:50%; background:#ea5b1a; }
+        .approval-progress__unit.is-rejected .approval-progress__dot { border-color:#dc3545; background:#fbeaec; }
+        .approval-progress__unit.is-rejected .approval-progress__dot::before { content:""; width:5px; height:1px; background:#dc3545; transform:rotate(-45deg); }
+        .approval-progress__status { display:inline-flex; align-items:center; max-width:100%; margin-top:8px; padding:3px 8px; border:1px solid #dfe3e7; border-radius:999px; color:#5f6368; background:#f8f9fa; font-size:.64rem; font-weight:600; line-height:1.2; white-space:normal; }
+        .approval-progress__status.status-Menunggu-Persetujuan,
+        .approval-progress__status.status-Menunggu-ACC-Kaprodi,
+        .approval-progress__status.status-Menunggu-Verifikasi-Laboran,
+        .approval-progress__status.status-Menunggu-Pengecekan-Laboran { border-color:#f2cf85; color:#8a5800; background:#fff8e8; }
+        .approval-progress__status.status-Menunggu-ACC-Kaur { border-color:#b8d5ff; color:#0759bd; background:#f0f6ff; }
+        .approval-progress__status.status-Disetujui-Menunggu-Pengambilan- { border-color:#a3cfbb; color:#146c43; background:#f0faf4; }
+        .approval-progress__status.status-Ditolak { border-color:#f1aeb5; color:#b02a37; background:#fff4f5; }
         .approval-evidence-btn { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; min-width:132px; min-height:36px; padding:7px 12px; border-radius:999px; font-size:.7rem; font-weight:700; white-space:nowrap; }
+        .loan-pagination-footer { display:grid; grid-template-columns:minmax(0, auto) 1fr minmax(0, auto); align-items:center; gap:1rem; min-height:64px; padding:.75rem 1rem; border-top:1px solid #e8eaed; color:#6b7280; background:#f8f9fa; }
+        .loan-pagination-summary { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem; }
+        .loan-pagination-summary, .loan-pagination-status { font-size:.72rem; white-space:nowrap; }
+        .loan-pagination-summary .form-select { width:92px; min-height:34px; padding-top:.3rem; padding-bottom:.3rem; font-size:.72rem; }
+        .loan-pagination-status { text-align:center; }
+        .loan-pagination { margin:0; }
+        .loan-pagination .page-link { display:inline-flex; align-items:center; justify-content:center; min-width:34px; min-height:34px; padding:.35rem .58rem; border-color:#e8eaed; color:#202124; background:#fff; font-size:.72rem; line-height:1; transition:color .16s ease, background-color .16s ease, border-color .16s ease; }
+        .loan-pagination .page-link:hover { color:#ea5b1a; background:#fff7f2; }
+        .loan-pagination .page-item.active .page-link { color:#fff; background:#ea5b1a; border-color:#ea5b1a; }
+        .loan-pagination .page-item.disabled .page-link { color:#9aa0a6; background:#f8f9fa; opacity:.62; }
         @media (max-width: 767.98px) {
             .topbar-actions { width: 100%; flex-wrap: wrap; }
             .topbar-actions .btn:not(.notif-bell) { flex: 1 1 calc(50% - 8px); }
             .approval-table { min-width: 980px; }
             .soft-badge { min-width: 220px; max-width: 220px; }
+            .approval-progress { width:250px; min-width:0; }
+            .loan-pagination-footer { grid-template-columns:1fr; justify-items:center; gap:.65rem; }
+            .loan-pagination-footer nav { max-width:100%; overflow-x:auto; padding-bottom:2px; }
         }
     </style>
 </head>
@@ -150,6 +219,7 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                                 <th class="ps-3">No</th>
                                 <th>Peminjam</th>
                                 <th>Barang Diajukan</th>
+                                <th>Jumlah</th>
                                 <th>Masa Pinjam</th>
                                 <th>Keperluan</th>
                                 <th>Status</th>
@@ -158,7 +228,7 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                         </thead>
                         <tbody>
                             <?php foreach($pengajuan as $index => $p): ?>
-                                <tr>
+                                <tr class="approval-data-row">
                                     <td class="ps-3 fw-semibold text-muted"><?= $index + 1 ?></td>
                                     <td>
                                         <div class="fw-bold"><?= html_escape($p->nama_peminjam ?? '-') ?></div>
@@ -169,7 +239,6 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                                             <?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?>
                                                 <div class="asset-item">
                                                     <span><?= html_escape($d->nama_aset ?? '-') ?></span>
-                                                    <strong>Jumlah: <?= (int)($d->jumlah_pinjam ?? 0) ?> unit</strong>
                                                 </div>
                                             <?php endforeach; else: ?>
                                                 <span class="text-muted">-</span>
@@ -177,12 +246,35 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                                         </div>
                                     </td>
                                     <td>
-                                        <span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><div class="small"><i class="bi bi-box-arrow-in-right text-success me-1"></i><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></div><div class="small text-muted"><i class="bi bi-box-arrow-left text-danger me-1"></i><?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></div></span>
+                                        <div class="asset-quantity-list">
+                                            <?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?>
+                                                <div class="asset-quantity-item"><?= (int)($d->jumlah_pinjam ?? 0) ?> unit</div>
+                                            <?php endforeach; else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><div><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></div><div class="small text-muted">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></div></span>
                                     </td>
                                     <td>
                                         <div class="small" style="max-width: 260px; white-space: normal;"><?= nl2br(html_escape($p->keperluan ?? '-')) ?></div>
                                     </td>
-                                    <td><div class="overflow-auto pb-1"><div class="approval-stepper"><span class="approval-step is-done"><i class="bi bi-check2 me-1"></i>Diajukan</span><span class="approval-step is-done"><i class="bi bi-check2 me-1"></i>Kaprodi</span><span class="approval-step is-active">Laboran</span><span class="approval-step">Kaur</span><span class="approval-step">Final QR</span><span class="approval-step">Selesai</span></div></div><span class="soft-badge <?= $status_class($p->status ?? '') ?> mt-2 d-inline-flex"><?= html_escape($p->status ?? '-') ?></span></td>
+                                    <?php $progress = $approval_progress($p); ?>
+                                    <td>
+                                        <div class="approval-progress" aria-label="Progress approval">
+                                            <div class="approval-progress__heading">
+                                                <span class="approval-progress__current"><?= html_escape($progress['current_label']) ?></span>
+                                                <span class="approval-progress__count">Tahap <?= (int) $progress['current_index'] + 1 ?> dari 6</span>
+                                            </div>
+                                            <div class="approval-progress__track" aria-hidden="true">
+                                                <?php foreach ($progress['steps'] as $step): ?>
+                                                    <span class="approval-progress__unit <?= html_escape($step['state']) ?>" title="<?= html_escape($step['label']) ?>"><span class="approval-progress__dot"></span></span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                            <span class="approval-progress__status <?= $status_class($progress['status']) ?>"><?= html_escape($progress['status'] ?: '-') ?></span>
+                                        </div>
+                                    </td>
                                     <td class="text-end pe-3 action-cell">
                                         <div class="d-flex flex-wrap justify-content-end align-items-center gap-2"><?php if(!empty($p->foto_bukti)): ?><button type="button" class="btn btn-sm btn-outline-secondary approval-evidence-btn" data-bs-toggle="modal" data-bs-target="#evidenceModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button><?php endif; ?><button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" data-bs-toggle="modal" data-bs-target="#processModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-sliders me-1"></i> Proses</button></div>
                                     </td>
@@ -190,6 +282,17 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
                             <?php endforeach; ?>
                         </tbody>
                     </table>
+                </div>
+                <div class="loan-pagination-footer" id="approvalPaginationFooter" data-total="<?= $approval_total ?>">
+                    <div class="loan-pagination-summary">
+                        <label for="approvalPageSize">Tampilkan:</label>
+                        <select id="approvalPageSize" class="form-select form-select-sm" aria-label="Jumlah data approval per halaman">
+                            <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option>
+                        </select>
+                        <span>Total item: <?= $approval_total ?></span>
+                    </div>
+                    <div class="loan-pagination-status" id="approvalPageStatus">Halaman: 1 dari 1</div>
+                    <nav aria-label="Pagination approval"><ul class="pagination pagination-sm loan-pagination" id="approvalPageNav"></ul></nav>
                 </div>
             <?php endif; ?>
         </section>
@@ -223,6 +326,39 @@ $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
     <?php endforeach; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));</script>
+    <script>
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
+        (function () {
+            const rows = Array.from(document.querySelectorAll('.approval-data-row'));
+            const select = document.getElementById('approvalPageSize');
+            const status = document.getElementById('approvalPageStatus');
+            const nav = document.getElementById('approvalPageNav');
+            if (!rows.length || !select || !status || !nav) return;
+            let page = 1;
+            const pageSize = () => select.value === 'all' ? Math.max(rows.length, 1) : Number(select.value) || 10;
+            const button = (label, target, disabled, active) => {
+                const li = document.createElement('li');
+                li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+                const a = document.createElement('a');
+                a.className = 'page-link'; a.href = '#'; a.textContent = label;
+                a.setAttribute('aria-label', label);
+                if (!disabled) a.addEventListener('click', function (event) { event.preventDefault(); page = target; render(); });
+                li.appendChild(a); nav.appendChild(li);
+            };
+            function render() {
+                const size = pageSize();
+                const totalPages = Math.max(1, Math.ceil(rows.length / size));
+                page = Math.min(page, totalPages);
+                rows.forEach((row, index) => { row.hidden = index < (page - 1) * size || index >= page * size; });
+                status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
+                nav.innerHTML = '';
+                button('Previous', Math.max(1, page - 1), page === 1, false);
+                for (let index = 1; index <= totalPages; index += 1) button(String(index), index, false, index === page);
+                button('Next', Math.min(totalPages, page + 1), page === totalPages, false);
+            }
+            select.addEventListener('change', function () { page = 1; render(); });
+            render();
+        }());
+    </script>
 </body>
 </html>

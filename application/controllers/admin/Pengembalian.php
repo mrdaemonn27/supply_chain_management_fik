@@ -90,8 +90,12 @@ class Pengembalian extends CI_Controller {
         }
 
         $page = max(1, (int) $this->input->get('page', true));
-        $per_page = 10;
+        $per_page_value = (string) $this->input->get('per_page', true);
+        if (!in_array($per_page_value, ['10', '25', '50', 'all'], true)) {
+            $per_page_value = '10';
+        }
         $rows = $this->Peminjaman_model->search_peminjaman($filters);
+        $per_page = $per_page_value === 'all' ? max(1, count($rows)) : (int) $per_page_value;
 
         $data['title'] = 'Data Pengembalian';
         $data['filters'] = $filters;
@@ -101,7 +105,7 @@ class Pengembalian extends CI_Controller {
         $data['peminjaman'] = array_slice($rows, ($page - 1) * $per_page, $per_page);
         $data['pagination'] = [
             'page' => $page,
-            'per_page' => $per_page,
+            'per_page' => $per_page_value,
             'total' => count($rows),
             'total_pages' => max(1, (int) ceil(count($rows) / $per_page)),
         ];

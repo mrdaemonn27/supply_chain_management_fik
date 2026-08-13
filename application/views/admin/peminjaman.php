@@ -1,6 +1,21 @@
 <?php
 $status_options = isset($status_options) && is_array($status_options) ? $status_options : ['', 'Menunggu ACC Kaprodi', 'Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur', 'Disetujui (Menunggu Finalisasi QR)', 'Disetujui (Menunggu Pengambilan)', 'Ditolak'];
 $status_class = function ($status) { return 'status-' . preg_replace('/[^A-Za-z0-9]+/', '-', trim($status ?: 'Menunggu Verifikasi Laboran')); };
+$approval_states = static function ($p) {
+    $status = (string) ($p->status ?? '');
+    $state = static function ($complete, $current) {
+        return $complete ? 'is-complete' : ($current ? 'is-current' : 'is-pending');
+    };
+    return [
+        'status' => $status,
+        'diajukan' => $status !== '' ? 'is-complete' : 'is-current',
+        'kaprodi' => $state(($p->status_kaprodi ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaprodi'),
+        'laboran' => $state(($p->status_laboran ?? '') === 'Disetujui', in_array($status, ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran'], true)),
+        'kaur' => $state(($p->status_kaur ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaur'),
+        'qr' => $state((int) ($p->qr_locked ?? 0) === 1 || !empty($p->qr_finalized_at), $status === 'Disetujui (Menunggu Finalisasi QR)'),
+        'selesai' => $state($status === 'Dikembalikan', in_array($status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dipinjam'], true)),
+    ];
+};
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'total_pages' => 1, 'total' => count($peminjaman ?? []), 'per_page' => 10];
@@ -74,14 +89,16 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         .loan-table.table-hover > tbody > tr:hover > * { --bs-table-bg-state: rgba(234, 91, 26, .045); }
         .loan-table thead th {
             padding: 14px 18px;
-            color: var(--loan-muted);
+            color: #111827 !important;
             background: var(--loan-soft);
             border-color: var(--loan-border);
             font-size: .72rem;
-            font-weight: 600;
+            font-family: inherit;
+            font-weight: 700 !important;
             letter-spacing: .035em;
             vertical-align: middle;
         }
+        .loan-table thead th, .loan-table thead th * { color: #111827 !important; font-weight: 700 !important; }
         .loan-table tbody tr { min-height: 82px; }
         .loan-table tbody td {
             padding: 16px 18px;
@@ -134,10 +151,51 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         .loan-pagination-summary .form-select { width: 92px; min-height: 34px; padding-top: .3rem; padding-bottom: .3rem; font-size: .72rem; }
         .loan-pagination-status { text-align: center; }
         .loan-pagination { margin: 0; }
-        .loan-stepper { display:grid; grid-template-columns:repeat(6,minmax(82px,1fr)); gap:5px; min-width:550px; margin-bottom:8px; }
-        .loan-step { padding:6px 7px; border:1px solid var(--loan-border); border-radius:8px; color:var(--loan-muted); background:var(--loan-soft); font-size:.62rem; font-weight:700; text-align:center; }
-        .loan-step.is-done { color:#146c43; border-color:#a3cfbb; background:#eaf7f0; }
-        .loan-step.is-active { color:#9a450e; border-color:#ea5b1a; background:#fff2e9; box-shadow:inset 0 0 0 1px #ea5b1a; }
+        .loan-approval-summary { display:grid; gap:5px; width:100%; min-width:0; text-align:left; }
+        .loan-approval-summary__status { display:flex; align-items:center; min-width:0; }
+        .loan-approval-summary__status-text { display:inline-flex; align-items:center; min-width:0; max-width:100%; color:var(--loan-text); font-size:.72rem; font-weight:600; line-height:1.25; white-space:normal; }
+        .loan-approval-summary__status-dot { width:7px; height:7px; flex:0 0 7px; margin-right:7px; border-radius:50%; background:#9aa3af; }
+        .loan-approval-summary__status-dot.status-Ditolak { background:#dc4c5a; }
+        .loan-approval-summary__status-dot.status-Sedang-Dipinjam,
+        .loan-approval-summary__status-dot.status-Dipinjam { background:#3b82f6; }
+        .loan-approval-summary__status-dot.status-Disetujui-Menunggu-Pengambilan-,
+        .loan-approval-summary__status-dot.status-Dikembalikan { background:#2f9e68; }
+        .loan-approval-summary__status-dot.status-Menunggu-Persetujuan,
+        .loan-approval-summary__status-dot.status-Menunggu-ACC-Kaprodi,
+        .loan-approval-summary__status-dot.status-Menunggu-Verifikasi-Laboran,
+        .loan-approval-summary__status-dot.status-Menunggu-Pengecekan-Laboran,
+        .loan-approval-summary__status-dot.status-Menunggu-ACC-Kaur,
+        .loan-approval-summary__status-dot.status-Disetujui-Menunggu-Finalisasi-QR- { background:#ea5b1a; }
+        .loan-approval-summary__actions { display:flex; align-items:center; justify-content:space-between; gap:8px; min-width:0; }
+        .loan-approval-detail-btn { display:inline-flex; align-items:center; flex:0 0 auto; gap:4px; padding:0; border:0; color:#5f6b78; background:transparent; font-size:.68rem; font-weight:600; text-decoration:none; }
+        .loan-approval-detail-btn:hover { color:#ea5b1a; text-decoration:underline; }
+        .loan-approval-detail-btn .bi { transition:transform .16s ease; }
+        .loan-approval-detail-btn:hover .bi { transform:translateX(2px); }
+        .loan-approval-timeline { position:relative; display:grid; gap:0; margin:2px 0 18px; }
+        .loan-approval-timeline::before { content:""; position:absolute; top:15px; bottom:15px; left:14px; width:1px; background:#dfe4ea; }
+        .loan-approval-timeline__item { position:relative; display:grid; grid-template-columns:30px minmax(0, 1fr); align-items:center; min-height:40px; }
+        .loan-approval-timeline__marker { position:relative; z-index:1; width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border:1px solid #dfe4ea; border-radius:50%; color:#8a94a2; background:#f7f8fa; font-size:.72rem; }
+        .loan-approval-timeline__label { padding-left:10px; color:#737d8b; font-size:.78rem; font-weight:600; }
+        .loan-approval-timeline__item.is-complete .loan-approval-timeline__marker { color:#177245; border-color:#bfe5cd; background:#ecf8f1; }
+        .loan-approval-timeline__item.is-complete .loan-approval-timeline__label { color:#177245; }
+        .loan-approval-timeline__item.is-current .loan-approval-timeline__marker { color:#a94714; border-color:#f1b28d; background:#fff4ec; }
+        .loan-approval-timeline__item.is-current .loan-approval-timeline__label { color:#a94714; }
+        .loan-approval-timeline__item.is-rejected .loan-approval-timeline__marker { color:#b4232f; border-color:#f1c4c8; background:#fff1f2; }
+        .loan-approval-timeline__item.is-rejected .loan-approval-timeline__label { color:#b4232f; }
+        .loan-approval-modal .modal-dialog { max-width:440px; }
+        .loan-approval-modal .modal-content { border:1px solid #e5e7eb; border-radius:14px; box-shadow:0 18px 50px rgba(31,41,55,.14); }
+        .loan-approval-modal .modal-header { padding:16px 18px 12px; border-bottom:1px solid #eef0f3; }
+        .loan-approval-modal .modal-title { font-size:1rem; }
+        .loan-approval-modal .modal-body { padding:16px 18px 18px; }
+        .loan-approval-modal__status { border-top:1px solid #eef0f3; padding-top:14px; }
+        .loan-approval-modal__status .soft-badge { max-width:100%; padding:6px 10px; font-size:.7rem; line-height:1.25; white-space:normal; }
+        .loan-approval-modal__evidence { margin-top:14px; padding-top:14px; border-top:1px solid #eef0f3; }
+        .loan-approval-modal__evidence-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:8px; }
+        .loan-approval-modal__evidence .loan-evidence-btn { min-width:0; min-height:36px; padding:7px 12px; font-size:.68rem; }
+        .loan-approval-modal__evidence-empty { color:#8a94a2; font-size:.72rem; }
+        .loan-approval-modal__actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; }
+        .loan-evidence-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:5px; }
+        .loan-evidence-actions .loan-evidence-btn { min-width:auto; min-height:28px; padding:4px 8px; font-size:.64rem; }
         .loan-evidence-btn {
             display: inline-flex;
             align-items: center;
@@ -200,6 +258,9 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
             .loan-pagination-footer { grid-template-columns: 1fr; justify-items: center; gap: .65rem; }
             .loan-pagination-footer nav { max-width: 100%; overflow-x: auto; padding-bottom: 2px; }
             .loan-table .soft-badge { width: 250px; min-width: 250px; max-width: 250px; }
+            .loan-approval-modal .modal-dialog { margin: .75rem; }
+            .loan-approval-summary__actions { align-items:center; }
+            .loan-evidence-actions { justify-content:flex-end; }
             .admin-filter-row { grid-template-columns:1fr; gap:.45rem; padding:.75rem; border:1px solid #edf0f2; border-radius:10px; }
             .admin-filter-tools { justify-content:flex-end; }
         }
@@ -233,11 +294,11 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         <section class="panel-card p-0 loan-table-card">
             <div class="table-responsive">
                 <table class="table table-hover loan-table">
-                    <thead><tr><th class="ps-3">Peminjam</th><th>Barang</th><th>Masa Pinjam</th><th>Alur Approval</th><th class="text-end pe-3">Aksi</th></tr></thead>
+                    <thead><tr><th class="ps-3">No</th><th>Peminjam</th><th>Barang</th><th>Masa Pinjam</th><th>Alur Approval</th><th class="text-end pe-3">Aksi</th></tr></thead>
                     <tbody>
                     <?php if(empty($peminjaman)): ?>
-                        <tr><td colspan="5" class="text-center text-muted py-5">Belum ada data peminjaman.</td></tr>
-                    <?php else: foreach($peminjaman as $p): ?>
+                        <tr><td colspan="6" class="text-center text-muted py-5">Belum ada data peminjaman.</td></tr>
+                    <?php else: foreach($peminjaman as $index => $p): ?>
                         <?php
                             $loan_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
                             $loan_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
@@ -245,10 +306,11 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                             $return_evidence_exists = scm_upload_exists($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian');
                         ?>
                         <tr>
+                            <td class="ps-3 fw-semibold text-muted"><?= (((int) ($pagination['page'] ?? 1) - 1) * max(1, (int) ($pagination['per_page'] ?? 10))) + $index + 1 ?></td>
                             <td class="ps-3"><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="fw-semibold"><?= (int)($p->total_jenis ?? 1) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?><?= html_escape($d->nama_aset) ?> (<?= (int)$d->jumlah_pinjam ?>), <?php endforeach; else: ?>- <?php endif; ?></div></td>
                             <td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><div><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></div><div class="small text-muted">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></div></span></td>
-                            <td><?php $status=(string)($p->status ?? ''); $kaprodi_done=($p->status_kaprodi ?? '')==='Disetujui'; $laboran_done=($p->status_laboran ?? '')==='Disetujui'; $kaur_done=($p->status_kaur ?? '')==='Disetujui'; $qr_done=(int)($p->qr_locked ?? 0)===1 || !empty($p->qr_finalized_at); $finished=in_array($status,['Sedang Dipinjam','Dipinjam','Dikembalikan'],true); ?><div class="overflow-auto"><div class="loan-stepper"><span class="loan-step is-done">Diajukan</span><span class="loan-step <?= $kaprodi_done?'is-done':($status==='Menunggu ACC Kaprodi'?'is-active':'') ?>">Kaprodi</span><span class="loan-step <?= $laboran_done?'is-done':(in_array($status,['Menunggu Verifikasi Laboran','Menunggu Pengecekan Laboran'],true)?'is-active':'') ?>">Laboran</span><span class="loan-step <?= $kaur_done?'is-done':($status==='Menunggu ACC Kaur'?'is-active':'') ?>">Kaur</span><span class="loan-step <?= $qr_done?'is-done':($status==='Disetujui (Menunggu Finalisasi QR)'?'is-active':'') ?>">Final QR</span><span class="loan-step <?= $finished?'is-done':($status==='Disetujui (Menunggu Pengambilan)'?'is-active':'') ?>">Selesai</span></div></div><div class="d-flex flex-wrap align-items-center justify-content-center gap-2"><span class="soft-badge <?= $status_class($status) ?>"><?= html_escape($status ?: '-') ?></span><?php if(!empty($p->foto_bukti)): ?><button type="button" class="btn btn-sm btn-outline-secondary loan-evidence-btn" data-bs-toggle="modal" data-bs-target="#loanEvidence<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button><?php endif; ?><?php if(!empty($p->foto_pengembalian)): ?><button type="button" class="btn btn-sm btn-outline-secondary loan-evidence-btn" data-bs-toggle="modal" data-bs-target="#returnEvidence<?= (int)$p->id_peminjaman ?>"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Bukti kembali</span></button><?php endif; ?></div></td>
+                            <td><?php $status = (string) ($p->status ?? ''); $approval = $approval_states($p); $status_css = $status_class($status); ?><div class="loan-approval-summary"><div class="loan-approval-summary__status"><span class="loan-approval-summary__status-text"><span class="loan-approval-summary__status-dot <?= $status_css ?>" aria-hidden="true"></span><span><?= html_escape($status ?: '-') ?></span></span></div><div class="loan-approval-summary__actions"><button type="button" class="loan-approval-detail-btn" data-bs-toggle="modal" data-bs-target="#approvalDetail<?= (int) $p->id_peminjaman ?>">Lihat Detail <i class="bi bi-arrow-right" aria-hidden="true"></i></button></div></div></td>
                             <td class="text-end pe-3">
                                 <div class="dropdown"><button class="btn btn-sm btn-outline-secondary rounded-pill px-3 dropdown-toggle" data-bs-toggle="dropdown"><i class="bi bi-three-dots me-1"></i> Kelola</button><ul class="dropdown-menu dropdown-menu-end"><?php if($status==='Disetujui (Menunggu Finalisasi QR)'): ?><li><a class="dropdown-item" href="<?= base_url('index.php/admin/peminjaman/finalkan_qr/'.$p->id_peminjaman) ?>" onclick="return confirm('Finalkan QR dan kunci data transaksi ini?')"><i class="bi bi-qr-code me-2"></i>Finalkan QR</a></li><?php elseif($status==='Disetujui (Menunggu Pengambilan)'): ?><li><a class="dropdown-item" href="<?= base_url('index.php/admin/peminjaman/serah_terima/'.rawurlencode($p->group_id)) ?>"><i class="bi bi-box-arrow-up-right me-2"></i>Serah Barang</a></li><?php else: ?><li><span class="dropdown-item-text text-muted small">Belum ada aksi pada tahap ini</span></li><?php endif; ?><?php if(!empty($p->foto_bukti)): ?><li><button class="dropdown-item" type="button" data-bs-toggle="modal" data-bs-target="#loanEvidence<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image me-2"></i>Lihat bukti awal</button></li><?php endif; ?></ul></div>
                             </td>
@@ -297,7 +359,44 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                 </div>
         </section>
         <?php foreach(($peminjaman ?? []) as $p): ?>
-            <?php $loan_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $loan_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $return_evidence_url = scm_upload_url($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); $return_evidence_exists = scm_upload_exists($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); ?>
+            <?php $approval = $approval_states($p); $loan_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $loan_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $return_evidence_url = scm_upload_url($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); $return_evidence_exists = scm_upload_exists($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); ?>
+            <div class="modal fade loan-approval-modal" id="approvalDetail<?= (int) $p->id_peminjaman ?>" tabindex="-1" aria-labelledby="approvalDetailLabel<?= (int) $p->id_peminjaman ?>" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <div class="small text-uppercase text-muted fw-semibold">Detail proses</div>
+                                <h2 class="modal-title h5 fw-bold mb-0" id="approvalDetailLabel<?= (int) $p->id_peminjaman ?>">Alur Approval</h2>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="loan-approval-timeline" aria-label="Timeline approval peminjaman">
+                                <div class="loan-approval-timeline__item <?= $approval['diajukan'] ?>"><span class="loan-approval-timeline__marker"><?php if ($approval['diajukan'] === 'is-complete'): ?><i class="bi bi-check2" aria-hidden="true"></i><?php elseif ($approval['diajukan'] === 'is-current'): ?><i class="bi bi-dot" aria-hidden="true"></i><?php else: ?><i class="bi bi-circle" aria-hidden="true"></i><?php endif; ?></span><span class="loan-approval-timeline__label">Diajukan</span></div>
+                                <div class="loan-approval-timeline__item <?= $approval['kaprodi'] ?>"><span class="loan-approval-timeline__marker"><?php if ($approval['kaprodi'] === 'is-complete'): ?><i class="bi bi-check2" aria-hidden="true"></i><?php elseif ($approval['kaprodi'] === 'is-current'): ?><i class="bi bi-dot" aria-hidden="true"></i><?php else: ?><i class="bi bi-circle" aria-hidden="true"></i><?php endif; ?></span><span class="loan-approval-timeline__label">Kaprodi</span></div>
+                                <div class="loan-approval-timeline__item <?= $approval['laboran'] ?>"><span class="loan-approval-timeline__marker"><?php if ($approval['laboran'] === 'is-complete'): ?><i class="bi bi-check2" aria-hidden="true"></i><?php elseif ($approval['laboran'] === 'is-current'): ?><i class="bi bi-dot" aria-hidden="true"></i><?php else: ?><i class="bi bi-circle" aria-hidden="true"></i><?php endif; ?></span><span class="loan-approval-timeline__label">Laboran</span></div>
+                                <div class="loan-approval-timeline__item <?= $approval['kaur'] ?>"><span class="loan-approval-timeline__marker"><?php if ($approval['kaur'] === 'is-complete'): ?><i class="bi bi-check2" aria-hidden="true"></i><?php elseif ($approval['kaur'] === 'is-current'): ?><i class="bi bi-dot" aria-hidden="true"></i><?php else: ?><i class="bi bi-circle" aria-hidden="true"></i><?php endif; ?></span><span class="loan-approval-timeline__label">Kaur</span></div>
+                                <div class="loan-approval-timeline__item <?= $approval['qr'] ?>"><span class="loan-approval-timeline__marker"><?php if ($approval['qr'] === 'is-complete'): ?><i class="bi bi-check2" aria-hidden="true"></i><?php elseif ($approval['qr'] === 'is-current'): ?><i class="bi bi-dot" aria-hidden="true"></i><?php else: ?><i class="bi bi-circle" aria-hidden="true"></i><?php endif; ?></span><span class="loan-approval-timeline__label">Final QR</span></div>
+                                <div class="loan-approval-timeline__item <?= $approval['selesai'] ?>"><span class="loan-approval-timeline__marker"><?php if ($approval['selesai'] === 'is-complete'): ?><i class="bi bi-check2" aria-hidden="true"></i><?php elseif ($approval['selesai'] === 'is-current'): ?><i class="bi bi-dot" aria-hidden="true"></i><?php else: ?><i class="bi bi-circle" aria-hidden="true"></i><?php endif; ?></span><span class="loan-approval-timeline__label">Selesai</span></div>
+                            </div>
+                            <div class="loan-approval-modal__status"><div class="small text-muted mb-2">Status transaksi</div><span class="soft-badge <?= $status_class($approval['status']) ?>"><?= html_escape($approval['status'] ?: '-') ?></span></div>
+                            <div class="loan-approval-modal__evidence">
+                                <div class="small text-muted">Bukti pendukung</div>
+                                <div class="loan-approval-modal__evidence-actions">
+                                    <?php if(!empty($p->foto_bukti)): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary loan-evidence-btn" data-bs-toggle="modal" data-bs-target="#loanEvidence<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button>
+                                    <?php else: ?>
+                                        <span class="loan-approval-modal__evidence-empty">Bukti kondisi belum tersedia</span>
+                                    <?php endif; ?>
+                                    <?php if(!empty($p->foto_pengembalian)): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary loan-evidence-btn" data-bs-toggle="modal" data-bs-target="#returnEvidence<?= (int)$p->id_peminjaman ?>"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Bukti kembali</span></button>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <?php if(!empty($p->foto_bukti)): ?><div class="modal fade" id="loanEvidence<?= (int)$p->id_peminjaman ?>" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h2 class="modal-title h5 fw-bold">Bukti Kondisi Awal</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body text-center bg-light"><?php if($loan_evidence_exists): ?><img class="img-fluid rounded-3" style="max-height:70vh;object-fit:contain" src="<?= html_escape($loan_evidence_url) ?>" alt="Bukti kondisi awal"><?php else: ?><div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>File bukti kondisi tidak ditemukan di penyimpanan.</div><?php endif; ?></div></div></div></div><?php endif; ?>
             <?php if(!empty($p->foto_pengembalian)): ?><div class="modal fade" id="returnEvidence<?= (int)$p->id_peminjaman ?>" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h2 class="modal-title h5 fw-bold">Bukti Pengembalian</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body text-center bg-light"><?php if($return_evidence_exists): ?><img class="img-fluid rounded-3" style="max-height:70vh;object-fit:contain" src="<?= html_escape($return_evidence_url) ?>" alt="Bukti pengembalian"><?php else: ?><div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>File bukti pengembalian tidak ditemukan di penyimpanan.</div><?php endif; ?></div></div></div></div><?php endif; ?>
         <?php endforeach; ?>

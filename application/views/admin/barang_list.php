@@ -20,6 +20,43 @@ $master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_p
         .text-fik-orange { color: #ea5b1a; }
         .btn-fik-orange { background-color: #ea5b1a; color: white; border: none; }
         .btn-fik-orange:hover { background-color: #c24a13; color: white; }
+        .master-pagination-footer {
+            display: grid;
+            grid-template-columns: minmax(0, auto) 1fr minmax(0, auto);
+            align-items: center;
+            gap: 1rem;
+            min-height: 64px;
+            padding: .75rem 1rem;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            background: #f9fafb;
+        }
+        .master-pagination-summary { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; }
+        .master-pagination-summary, .master-pagination-status { font-size: .72rem; white-space: nowrap; }
+        .master-pagination-summary .form-select { width: 92px; min-height: 34px; padding-top: .3rem; padding-bottom: .3rem; font-size: .72rem; }
+        .master-pagination-status { text-align: center; }
+        .master-pagination { margin: 0; }
+        .master-pagination .page-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 34px;
+            min-height: 34px;
+            padding: .35rem .58rem;
+            border-color: #e5e7eb;
+            color: #1f2937;
+            background: #fff;
+            font-size: .72rem;
+            line-height: 1;
+            transition: color .16s ease, background-color .16s ease, border-color .16s ease;
+        }
+        .master-pagination .page-link:hover { color: #ea5b1a; background: #f9fafb; }
+        .master-pagination .page-item.active .page-link { color: #fff; background: #ea5b1a; border-color: #ea5b1a; }
+        .master-pagination .page-item.disabled .page-link { color: #6b7280; background: #f9fafb; opacity: .62; }
+        @media (max-width: 767.98px) {
+            .master-pagination-footer { grid-template-columns: 1fr; justify-items: center; gap: .65rem; }
+            .master-pagination-footer nav { max-width: 100%; overflow-x: auto; padding-bottom: 2px; }
+        }
         /* Style untuk thumbnail gambar di tabel */
         .img-thumbnail-table { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
         .img-placeholder { width: 60px; height: 60px; background-color: #eee; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 1.5rem; }
@@ -62,12 +99,7 @@ $master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_p
                     <label for="masterSearch" class="form-label small fw-semibold text-muted">Cari aset</label>
                     <input id="masterSearch" type="search" name="q" value="<?= html_escape($master_filters['q'] ?? '') ?>" class="form-control" placeholder="Kode, nama barang, ruangan, atau kondisi" autocomplete="off">
                 </div>
-                <div>
-                    <label for="masterPerPage" class="form-label small fw-semibold text-muted">Data per halaman</label>
-                    <select id="masterPerPage" name="per_page" class="form-select">
-                        <?php foreach (($per_page_options ?? [10, 25, 50, 100]) as $option): ?><option value="<?= (int) $option ?>" <?= (int) $option === (int) ($master_pagination['per_page'] ?? 10) ? 'selected' : '' ?>><?= (int) $option ?> data</option><?php endforeach; ?>
-                    </select>
-                </div>
+                <input type="hidden" name="per_page" value="<?= (int) ($master_pagination['per_page'] ?? 10) ?>">
                 <button class="btn btn-fik-orange rounded-pill px-4" type="submit"><i class="bi bi-search me-1"></i> Cari</button>
             </div>
         </form>
@@ -89,6 +121,7 @@ $master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_p
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th class="p-3 text-center">No</th>
                                 <th class="p-3 text-center">Gambar</th>
                                 <th>Kode Aset</th>
                                 <th>Nama Barang</th>
@@ -101,11 +134,12 @@ $master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_p
                         <tbody>
                             <?php if(empty($barang)): ?>
                             <tr>
-                                <td colspan="7" class="text-center py-4 text-muted">Belum ada data barang di Master Data.</td>
+                                <td colspan="8" class="text-center py-4 text-muted">Belum ada data barang di Master Data.</td>
                             </tr>
                             <?php else: ?>
-                                <?php foreach($barang as $b): ?>
+                                <?php foreach($barang as $loop_index => $b): ?>
                                 <tr>
+                                    <td class="p-3 text-center fw-semibold text-muted"><?= (($master_page - 1) * max(1, (int) ($master_pagination['per_page'] ?? 10))) + $loop_index + 1 ?></td>
                                     <td class="p-3 text-center">
                                         <!-- Logika menampilkan gambar atau placeholder -->
                                         <?php if(!empty($b->gambar) && file_exists('./assets/uploads/barang/'.$b->gambar)): ?>
@@ -141,22 +175,27 @@ $master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_p
                     </table>
                 </div>
             </div>
-            <?php if ($master_total_pages > 1): ?>
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 px-3 py-3 border-top">
-                    <div class="small text-muted">Menampilkan <?= count($barang ?? []) ?> dari <?= (int) ($master_pagination['total'] ?? 0) ?> data aset</div>
-                    <nav aria-label="Pagination master data">
-                        <ul class="pagination pagination-sm mb-0">
-                            <?php $master_prev = http_build_query(array_merge($master_base_query, ['page' => max(1, $master_page - 1)])); ?>
-                            <li class="page-item <?= $master_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_prev) ?>">Prev</a></li>
-                            <?php for ($page_index = 1; $page_index <= $master_total_pages; $page_index++): $master_query = http_build_query(array_merge($master_base_query, ['page' => $page_index])); ?>
-                                <li class="page-item <?= $master_page === $page_index ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_query) ?>"><?= $page_index ?></a></li>
-                            <?php endfor; ?>
-                            <?php $master_next = http_build_query(array_merge($master_base_query, ['page' => min($master_total_pages, $master_page + 1)])); ?>
-                            <li class="page-item <?= $master_page >= $master_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_next) ?>">Next</a></li>
-                        </ul>
-                    </nav>
+            <div class="master-pagination-footer">
+                <div class="master-pagination-summary">
+                    <label for="masterPerPage">Tampilkan:</label>
+                    <select id="masterPerPage" class="form-select form-select-sm" aria-label="Jumlah data aset per halaman">
+                        <?php foreach (($per_page_options ?? [10, 25, 50, 100]) as $option): ?><option value="<?= (int) $option ?>" <?= (int) $option === (int) ($master_pagination['per_page'] ?? 10) ? 'selected' : '' ?>><?= (int) $option ?></option><?php endforeach; ?>
+                    </select>
+                    <span>Total item: <?= (int) ($master_pagination['total'] ?? 0) ?></span>
                 </div>
-            <?php endif; ?>
+                <div class="master-pagination-status">Halaman: <?= $master_page ?> dari <?= $master_total_pages ?></div>
+                <nav aria-label="Pagination master data">
+                    <ul class="pagination pagination-sm master-pagination">
+                        <?php $master_prev = http_build_query(array_merge($master_base_query, ['page' => max(1, $master_page - 1)])); ?>
+                        <li class="page-item <?= $master_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_prev) ?>">Previous</a></li>
+                        <?php for ($page_index = 1; $page_index <= $master_total_pages; $page_index++): $master_query = http_build_query(array_merge($master_base_query, ['page' => $page_index])); ?>
+                            <li class="page-item <?= $master_page === $page_index ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_query) ?>"><?= $page_index ?></a></li>
+                        <?php endfor; ?>
+                        <?php $master_next = http_build_query(array_merge($master_base_query, ['page' => min($master_total_pages, $master_page + 1)])); ?>
+                        <li class="page-item <?= $master_page >= $master_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_next) ?>">Next</a></li>
+                    </ul>
+                </nav>
+            </div>
         </div>
     </div>
     
@@ -178,7 +217,13 @@ $master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_p
                 }, 450);
             });
         }
-        masterPerPage?.addEventListener('change', () => masterSearchForm?.submit());
+        masterPerPage?.addEventListener('change', () => {
+            const url = new URL(masterSearchForm.action, window.location.origin);
+            url.searchParams.set('q', masterSearch?.value.trim() || '');
+            url.searchParams.set('per_page', masterPerPage.value);
+            url.searchParams.set('page', '1');
+            window.location.href = url.toString();
+        });
     </script>
 </body>
 </html>

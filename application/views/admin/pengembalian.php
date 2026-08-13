@@ -4,6 +4,7 @@ $status_class = function ($status) { return 'status-' . preg_replace('/[^A-Za-z0
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'total_pages' => 1, 'total' => count($peminjaman ?? []), 'per_page' => 10];
+$current_per_page = (string) ($pagination['per_page'] ?? '10');
 $filter_rows = isset($filter_rows) && is_array($filter_rows) ? array_values($filter_rows) : [];
 if (empty($filter_rows)) $filter_rows = [['field' => 'peminjam', 'value' => '']];
 $filter_fields = ['peminjam' => 'Peminjam / NIM', 'barang' => 'Nama barang / kode', 'status' => 'Status', 'tanggal' => 'Tanggal pinjam', 'keperluan' => 'Keperluan'];
@@ -25,7 +26,8 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
         .btn-fik { background: #ea5b1a; color: #fff; border: 0; }
         .btn-fik:hover { background: #c24a13; color: #fff; }
         .form-control:focus, .form-select:focus { border-color: #ea5b1a; box-shadow: 0 0 0 .2rem rgba(234,91,26,.16); }
-        .table thead th { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: #5f6368; background: #f8f9fa; border-bottom: 1px solid #e8eaed; }
+        .table thead th { font-size: .78rem; font-family: inherit; font-weight: 700 !important; text-transform: uppercase; letter-spacing: .04em; color: #111827 !important; background: #f8f9fa; border-bottom: 1px solid #e8eaed; }
+        .table thead th, .table thead th * { color: #111827 !important; font-weight: 700 !important; }
         .table td { vertical-align: middle; }
         .soft-badge { border-radius: 999px; padding: 6px 10px; font-weight: 600; font-size: .75rem; }
         .status-Sedang-Dipinjam, .status-Dipinjam { background: rgba(13,110,253,.12); color: #0d6efd; }
@@ -45,6 +47,17 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
         .admin-filter-actions { display:flex; flex-wrap:wrap; gap:.65rem; margin-top:1rem; }
         .admin-filter-actions .btn { min-height:40px; }
         .admin-filter-note { color:#6b7280; font-size:.74rem; }
+        .loan-pagination-footer { display:grid; grid-template-columns:minmax(0, auto) 1fr minmax(0, auto); align-items:center; gap:1rem; min-height:64px; padding:.75rem 1rem; border-top:1px solid #e8eaed; color:#6b7280; background:#f8f9fa; }
+        .loan-pagination-summary { display:flex; align-items:center; flex-wrap:wrap; gap:.55rem; }
+        .loan-pagination-summary, .loan-pagination-status { font-size:.72rem; white-space:nowrap; }
+        .loan-pagination-summary .form-select { width:92px; min-height:34px; padding-top:.3rem; padding-bottom:.3rem; font-size:.72rem; }
+        .loan-pagination-status { text-align:center; }
+        .loan-pagination { margin:0; }
+        .loan-pagination .page-link { display:inline-flex; align-items:center; justify-content:center; min-width:34px; min-height:34px; padding:.35rem .58rem; border-color:#e8eaed; color:#202124; background:#fff; font-size:.72rem; line-height:1; transition:color .16s ease, background-color .16s ease, border-color .16s ease; }
+        .loan-pagination .page-link:hover { color:#ea5b1a; background:#fff7f2; }
+        .loan-pagination .page-item.active .page-link { color:#fff; background:#ea5b1a; border-color:#ea5b1a; }
+        .loan-pagination .page-item.disabled .page-link { color:#9aa0a6; background:#f8f9fa; opacity:.62; }
+        @media (max-width:767.98px) { .loan-pagination-footer { grid-template-columns:1fr; justify-items:center; gap:.65rem; } .loan-pagination-footer nav { max-width:100%; overflow-x:auto; padding-bottom:2px; } }
         @media (max-width: 767.98px) {
             .topbar-actions { width: 100%; flex-wrap: wrap; }
             .topbar-actions .btn:not(.notif-bell) { flex: 1; }
@@ -95,6 +108,7 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
 
         <section class="panel-card p-3 p-lg-4 mb-4">
             <form id="adminFilters" method="get" action="<?= base_url('index.php/admin/pengembalian') ?>" data-max-filters="4">
+                <input type="hidden" name="per_page" value="<?= html_escape($current_per_page) ?>">
                 <div class="admin-filter-heading"><div><h2><i class="bi bi-funnel me-2 text-warning"></i>Filter pencarian</h2><p>Tambahkan hingga 4 kriteria untuk mempersempit transaksi aktif.</p></div><span class="admin-filter-note"><i class="bi bi-lightning-charge me-1"></i>Hasil diperbarui saat Anda mengetik</span></div>
                 <div id="adminFilterRows" class="admin-filter-list">
                     <?php foreach($filter_rows as $index => $filter_row): ?>
@@ -105,20 +119,21 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
                     </div>
                     <?php endforeach; ?>
                 </div>
-                <div class="admin-filter-actions"><button class="btn btn-fik px-4"><i class="bi bi-search me-1"></i>Terapkan filter</button><a href="<?= base_url('index.php/admin/pengembalian') ?>" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</a></div>
+                <div class="admin-filter-actions"><button class="btn btn-fik px-4"><i class="bi bi-search me-1"></i>Terapkan filter</button><a href="<?= base_url('index.php/admin/pengembalian?per_page='.rawurlencode($current_per_page)) ?>" class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</a></div>
             </form>
         </section>
 
         <section class="panel-card p-0 overflow-hidden">
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <thead><tr><th class="ps-3">Peminjam</th><th>Barang</th><th>Jadwal</th><th>Status</th><th class="text-end pe-3">Aksi</th></tr></thead>
+                    <thead><tr><th class="ps-3">No</th><th>Peminjam</th><th>Barang</th><th>Jadwal</th><th>Status</th><th class="text-end pe-3">Aksi</th></tr></thead>
                     <tbody>
                     <?php if(empty($peminjaman)): ?>
-                        <tr><td colspan="5" class="text-center text-muted py-5">Belum ada transaksi aktif untuk pengembalian.</td></tr>
-                    <?php else: foreach($peminjaman as $p): ?>
+                        <tr><td colspan="6" class="text-center text-muted py-5">Belum ada transaksi aktif untuk pengembalian.</td></tr>
+                    <?php else: foreach($peminjaman as $index => $p): ?>
                         <?php $is_late = !empty($p->tanggal_kembali_rencana) && strtotime($p->tanggal_kembali_rencana) < strtotime(date('Y-m-d')); ?>
                         <tr>
+                            <td class="ps-3 fw-semibold text-muted"><?= (($pagination['page'] ?? 1) - 1) * max(1, (int) ($pagination['per_page'] ?? count($peminjaman))) + $index + 1 ?></td>
                             <td class="ps-3"><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="fw-semibold"><?= (int)($p->total_jenis ?? 1) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?><?= html_escape($d->nama_aset) ?> (<?= (int)$d->jumlah_pinjam ?>), <?php endforeach; else: ?>- <?php endif; ?></div></td>
                             <td><div><?= html_escape($p->tanggal_pinjam ?? '-') ?></div><div class="small <?= $is_late ? 'text-danger fw-semibold' : 'text-muted' ?>">s.d. <?= html_escape($p->tanggal_kembali_rencana ?? '-') ?><?= $is_late ? ' - Terlambat' : '' ?></div></td>
@@ -140,6 +155,7 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
                     'status' => $filters['status'] ?? '',
                     'q' => $filters['pencarian'] ?? '',
                     'tanggal' => $filters['tanggal'] ?? '',
+                    'per_page' => $current_per_page,
                 ];
                 foreach ($filter_rows as $filter_row) {
                     $base_query['filter_field'][] = $filter_row['field'] ?? 'peminjam';
@@ -148,13 +164,22 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
                 $page = (int) ($pagination['page'] ?? 1);
                 $total_pages = (int) ($pagination['total_pages'] ?? 1);
             ?>
-            <?php if($total_pages > 1): ?>
-                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 px-3 py-3 border-top">
-                    <div class="small text-muted">Menampilkan <?= count($peminjaman) ?> dari <?= (int)($pagination['total'] ?? 0) ?> data</div>
+                <div class="loan-pagination-footer">
+                    <div class="loan-pagination-summary">
+                        <label for="returnPageSize">Tampilkan:</label>
+                        <select id="returnPageSize" class="form-select form-select-sm" aria-label="Jumlah data pengembalian per halaman">
+                            <option value="10" <?= $current_per_page === '10' ? 'selected' : '' ?>>10</option>
+                            <option value="25" <?= $current_per_page === '25' ? 'selected' : '' ?>>25</option>
+                            <option value="50" <?= $current_per_page === '50' ? 'selected' : '' ?>>50</option>
+                            <option value="all" <?= $current_per_page === 'all' ? 'selected' : '' ?>>Semua</option>
+                        </select>
+                        <span>Total item: <?= (int) ($pagination['total'] ?? 0) ?></span>
+                    </div>
+                    <div class="loan-pagination-status">Halaman: <?= $page ?> dari <?= $total_pages ?></div>
                     <nav aria-label="Pagination pengembalian">
-                        <ul class="pagination pagination-sm mb-0">
+                        <ul class="pagination pagination-sm loan-pagination">
                             <?php $prev_query = http_build_query(array_merge($base_query, ['page' => max(1, $page - 1)])); ?>
-                            <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/pengembalian'.($prev_query ? '?'.$prev_query : '')) ?>">Prev</a></li>
+                            <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/pengembalian'.($prev_query ? '?'.$prev_query : '')) ?>">Previous</a></li>
                             <?php for($i = 1; $i <= $total_pages; $i++): $page_query = http_build_query(array_merge($base_query, ['page' => $i])); ?>
                                 <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/pengembalian'.($page_query ? '?'.$page_query : '')) ?>"><?= $i ?></a></li>
                             <?php endfor; ?>
@@ -163,7 +188,6 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
                         </ul>
                     </nav>
                 </div>
-            <?php endif; ?>
         </section>
     </main>
 
@@ -348,6 +372,12 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
                     reader.readAsDataURL(file);
                 });
             });
+        });
+        document.getElementById('returnPageSize')?.addEventListener('change', function () {
+            const targetUrl = new URL(window.location.href);
+            targetUrl.searchParams.set('per_page', this.value);
+            targetUrl.searchParams.set('page', '1');
+            window.location.assign(targetUrl.toString());
         });
         window.setInterval(() => {
             const activeElement = document.activeElement;
