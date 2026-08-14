@@ -986,10 +986,11 @@ function kaur_module_url($module) {
         .kaur-return-sort-button:hover, .kaur-return-sort-button:focus-visible, .kaur-return-sort-button.is-active { color: var(--scm-orange); }
         .kaur-return-sort-button:focus-visible { outline: 2px solid rgba(234, 91, 26, .28); outline-offset: 3px; border-radius: 3px; }
         .kaur-return-sort-button i { font-size: .7rem; }
-        .kaur-loan-return-table th:nth-child(1), .kaur-loan-return-table td:nth-child(1) { min-width: 200px; }
-        .kaur-loan-return-table th:nth-child(2), .kaur-loan-return-table td:nth-child(2) { min-width: 300px; }
-        .kaur-loan-return-table th:nth-child(3), .kaur-loan-return-table td:nth-child(3) { min-width: 210px; }
-        .kaur-loan-return-table th:nth-child(4), .kaur-loan-return-table td:nth-child(4) { min-width: 190px; }
+        .kaur-loan-return-table th:nth-child(1), .kaur-loan-return-table td:nth-child(1) { width: 58px; min-width: 58px; text-align: center; white-space: nowrap; }
+        .kaur-loan-return-table th:nth-child(2), .kaur-loan-return-table td:nth-child(2) { min-width: 200px; }
+        .kaur-loan-return-table th:nth-child(3), .kaur-loan-return-table td:nth-child(3) { min-width: 300px; }
+        .kaur-loan-return-table th:nth-child(4), .kaur-loan-return-table td:nth-child(4) { min-width: 210px; }
+        .kaur-loan-return-table th:nth-child(5), .kaur-loan-return-table td:nth-child(5) { min-width: 190px; }
         .kaur-return-pagination-footer { display: grid; grid-template-columns: minmax(0, auto) 1fr minmax(0, auto); align-items: center; gap: 1rem; min-height: 64px; padding: .75rem 1rem; border-top: 1px solid var(--scm-border); color: var(--scm-muted); background: var(--scm-surface-strong); }
         .kaur-return-pagination-summary { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; font-size: .72rem; white-space: nowrap; }
         .kaur-return-pagination-summary .form-select { width: 92px; min-height: 34px; padding-top: .3rem; padding-bottom: .3rem; border-color: var(--scm-border); font-size: .72rem; }
@@ -1451,16 +1452,17 @@ function kaur_module_url($module) {
             </div>
             <?php endif; ?>
             <div class="table-responsive kaur-loan-return-table-wrap"><table class="table table-clean kaur-loan-return-table align-middle"><thead><tr>
+                <th>No</th>
                 <th aria-sort="none"><button type="button" class="kaur-return-sort-button" data-kaur-return-sort="peminjam">Peminjam <i class="bi bi-arrow-down-up" aria-hidden="true"></i></button></th>
                 <th aria-sort="none"><button type="button" class="kaur-return-sort-button" data-kaur-return-sort="barang">Nama Barang <i class="bi bi-arrow-down-up" aria-hidden="true"></i></button></th>
                 <th aria-sort="none"><button type="button" class="kaur-return-sort-button" data-kaur-return-sort="masa">Masa Pinjam <i class="bi bi-arrow-down-up" aria-hidden="true"></i></button></th>
                 <th aria-sort="none"><button type="button" class="kaur-return-sort-button" data-kaur-return-sort="status">Status Pengembalian <i class="bi bi-arrow-down-up" aria-hidden="true"></i></button></th>
             </tr></thead><tbody id="kaurReturnTableBody">
-            <?php if(empty($pengembalian_readonly)): ?><tr><td colspan="4" class="text-center text-muted py-4">Belum ada transaksi pengembalian.</td></tr><?php else: foreach($pengembalian_readonly as $p): ?>
+            <?php if(empty($pengembalian_readonly)): ?><tr><td colspan="5" class="text-center text-muted py-4">Belum ada transaksi pengembalian.</td></tr><?php else: foreach($pengembalian_readonly as $return_index => $p): ?>
                 <?php $return_names=[]; foreach(($p->detail_barang ?? []) as $d){$return_names[]=$d->nama_aset ?? '-';} $return_item_text=implode(', ',$return_names) ?: '-'; $return_period=masa_pinjam_indonesia($p->tanggal_pinjam ?? null,$p->tanggal_kembali_rencana ?? null); $return_search=strtolower(implode(' ',[$p->nama_peminjam ?? '',$p->nim_nip ?? '',$return_item_text,$return_period,$p->status ?? ''])); $return_date_sort=strtotime((string)($p->tanggal_pinjam ?? '')) ?: 0; ?>
-                <tr data-kaur-return-row data-search="<?= html_escape($return_search) ?>" data-sort-peminjam="<?= html_escape(strtolower((string)($p->nama_peminjam ?? ''))) ?>" data-sort-barang="<?= html_escape(strtolower($return_item_text)) ?>" data-sort-masa="<?= (int)$return_date_sort ?>" data-sort-status="<?= html_escape(strtolower((string)($p->status ?? ''))) ?>"><td><div class="kaur-loan-person"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="kaur-loan-meta"><?= html_escape($p->nim_nip ?? '-') ?></div></td><td><?= html_escape($return_item_text) ?></td><td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape($return_period) ?>"><?= $return_period ?></span></td><td><span class="kaur-loan-status-badge <?= html_escape(loan_status_tone_kaur($p->status ?? '')) ?>"><?= html_escape($p->status ?? '-') ?></span></td></tr>
+                <tr data-kaur-return-row data-search="<?= html_escape($return_search) ?>" data-sort-peminjam="<?= html_escape(strtolower((string)($p->nama_peminjam ?? ''))) ?>" data-sort-barang="<?= html_escape(strtolower($return_item_text)) ?>" data-sort-masa="<?= (int)$return_date_sort ?>" data-sort-status="<?= html_escape(strtolower((string)($p->status ?? ''))) ?>"><td class="fw-semibold text-muted"><?= (int) $return_index + 1 ?></td><td><div class="kaur-loan-person"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="kaur-loan-meta"><?= html_escape($p->nim_nip ?? '-') ?></div></td><td><?= html_escape($return_item_text) ?></td><td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape($return_period) ?>"><?= $return_period ?></span></td><td><span class="kaur-loan-status-badge <?= html_escape(loan_status_tone_kaur($p->status ?? '')) ?>"><?= html_escape($p->status ?? '-') ?></span></td></tr>
             <?php endforeach; endif; ?>
-            <?php if(!empty($pengembalian_readonly)): ?><tr id="kaurReturnEmptySearch" hidden><td colspan="4" class="text-center text-muted py-4">Tidak ada status pengembalian yang cocok.</td></tr><?php endif; ?>
+            <?php if(!empty($pengembalian_readonly)): ?><tr id="kaurReturnEmptySearch" hidden><td colspan="5" class="text-center text-muted py-4">Tidak ada status pengembalian yang cocok.</td></tr><?php endif; ?>
             </tbody></table></div>
             <?php if(!empty($pengembalian_readonly)): ?>
             <div class="kaur-return-pagination-footer">
