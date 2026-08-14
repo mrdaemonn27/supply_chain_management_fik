@@ -25,6 +25,7 @@ class Maintenance extends CI_Controller {
     }
 
     public function index() {
+        $criteria = $this->read_filter_criteria(['aset', 'ruangan', 'tanggal', 'kondisi', 'deskripsi']);
         $page = max(1, (int) $this->input->get('page', true));
         $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
         if ($requested_per_page === 'all') {
@@ -37,13 +38,14 @@ class Maintenance extends CI_Controller {
             $per_page = (string) $limit;
         }
 
-        $total_rows = $this->Maintenance_model->count();
+        $total_rows = $this->Maintenance_model->count($criteria);
         $total_pages = $limit === null ? 1 : max(1, (int) ceil($total_rows / $limit));
         $page = min($page, $total_pages);
         $offset = $limit === null ? 0 : (($page - 1) * $limit);
 
         $data['title'] = 'Maintenance Barang';
-        $data['maintenance'] = $this->Maintenance_model->get_all_maintenance($limit, $offset);
+        $data['maintenance'] = $this->Maintenance_model->get_all_maintenance($limit, $offset, $criteria);
+        $data['filter_criteria'] = $criteria;
         $data['pagination'] = [
             'page' => $page,
             'per_page' => $per_page,
@@ -52,6 +54,17 @@ class Maintenance extends CI_Controller {
         ];
         $data['aset'] = $this->Aset_model->get_all_aset_ordered('nama_aset', 'ASC');
         $this->load->view('admin/maintenance', $data);
+    }
+
+    private function read_filter_criteria($allowed) {
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
+        $criteria = [];
+        foreach (array_slice($fields, 0, 4) as $index => $field) {
+            $value = trim((string) ($values[$index] ?? ''));
+            if (in_array($field, $allowed, true) && $value !== '') $criteria[] = ['field' => $field, 'value' => $value];
+        }
+        return $criteria;
     }
 
     public function simpan() {

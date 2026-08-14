@@ -189,33 +189,17 @@ $format_date = static function ($value) {
             </button>
         </div>
 
-        <section class="blokir-panel blokir-toolbar">
-            <form class="row g-3 align-items-end" method="get" action="<?= base_url('index.php/admin/blokir') ?>">
-                <div class="col-12 col-lg-5">
-                    <label class="form-label" for="blockSearch">Pencarian</label>
-                    <input id="blockSearch" type="text" name="q" class="form-control" value="<?= html_escape($filters['pencarian'] ?? '') ?>" placeholder="Nama, NIM/NIP, atau alasan">
-                </div>
-                <div class="col-12 col-md-4 col-lg-2">
-                    <label class="form-label" for="blockStatus">Status</label>
-                    <select id="blockStatus" name="status" class="form-select">
-                        <option value="">Semua</option>
-                        <?php foreach ($status_options as $option): ?>
-                            <option value="<?= html_escape($option) ?>" <?= $selected_status === $option ? 'selected' : '' ?>><?= html_escape($option) ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-12 col-md-4 col-lg-2">
-                    <label class="form-label" for="blockDate">Tanggal</label>
-                    <input id="blockDate" type="date" name="tanggal" class="form-control" value="<?= html_escape($filters['tanggal'] ?? '') ?>">
-                </div>
-                <div class="col-12 col-md-4 col-lg-1 d-grid">
-                    <button type="submit" class="btn btn-fik rounded-pill" aria-label="Cari"><i class="bi bi-search"></i></button>
-                </div>
-                <div class="col-12 col-lg-2 d-grid">
-                    <a href="<?= base_url('index.php/admin/blokir') ?>" class="btn btn-outline-secondary rounded-pill"><i class="bi bi-arrow-counterclockwise me-1"></i> Reset</a>
-                </div>
-            </form>
-        </section>
+        <?php
+        $multi_filter_id = 'blockMultiFilter';
+        $multi_filter_mode = 'client';
+        $multi_filter_fields = [
+            'pengguna' => ['label' => 'Pengguna / NIM', 'placeholder' => 'Cari nama pengguna atau NIM/NIP'],
+            'periode' => ['label' => 'Periode', 'placeholder' => 'Pilih tanggal blokir atau batas blokir', 'type' => 'date'],
+            'alasan' => ['label' => 'Alasan', 'placeholder' => 'Cari alasan atau catatan pembukaan'],
+            'status' => ['label' => 'Status', 'placeholder' => 'Cari status blokir'],
+        ];
+        include APPPATH . 'views/admin/_multi_filter.php';
+        ?>
 
         <section class="blokir-panel overflow-hidden">
             <div class="blokir-table-wrap">
@@ -250,7 +234,7 @@ $format_date = static function ($value) {
                             ])));
                             $date_value = trim((string) ($b->tanggal_blokir ?? ''));
                         ?>
-                            <tr class="blokir-data-row" data-search="<?= html_escape($search_text) ?>" data-status="<?= html_escape($block_status) ?>" data-date="<?= html_escape($date_value) ?>">
+                            <tr class="blokir-data-row" data-filter-pengguna="<?= html_escape(($b->nama_peminjam ?? '') . ' ' . ($b->nim_nip ?? '')) ?>" data-filter-periode="<?= html_escape(($b->tanggal_blokir ?? '') . ' ' . ($b->batas_blokir ?? '')) ?>" data-filter-alasan="<?= html_escape(($b->alasan ?? '') . ' ' . ($b->catatan_buka ?? '')) ?>" data-filter-status="<?= html_escape($block_status) ?>">
                                 <td class="blokir-index-column"><span class="blokir-index"><?= $block_index + 1 ?></span></td>
                                 <td>
                                     <div class="blokir-user-name"><?= html_escape($b->nama_peminjam ?: '-') ?></div>
@@ -370,9 +354,7 @@ $format_date = static function ($value) {
             var pageInfo = document.getElementById('blockPageInfo');
             var totalItems = document.getElementById('blockTotalItems');
             var filteredEmpty = document.getElementById('blockFilteredEmpty');
-            var searchInput = document.getElementById('blockSearch');
-            var statusInput = document.getElementById('blockStatus');
-            var dateInput = document.getElementById('blockDate');
+            var filterRoot = document.getElementById('blockMultiFilter');
             var currentPage = 1;
 
             function getPageSize() {
@@ -402,16 +384,9 @@ $format_date = static function ($value) {
             }
 
             function render() {
-                var keyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
-                var status = statusInput ? statusInput.value.toLowerCase().trim() : '';
-                var date = dateInput ? dateInput.value : '';
+                var criteria = filterRoot ? AdminMultiFilter.getCriteria(filterRoot) : [];
                 var filtered = rows.filter(function (row) {
-                    var rowSearch = (row.getAttribute('data-search') || '').toLowerCase();
-                    var rowStatus = (row.getAttribute('data-status') || '').toLowerCase();
-                    var rowDate = row.getAttribute('data-date') || '';
-                    return (!keyword || rowSearch.indexOf(keyword) !== -1)
-                        && (!status || rowStatus === status)
-                        && (!date || rowDate.indexOf(date) === 0);
+                    return AdminMultiFilter.matches(row, criteria);
                 });
                 var pageSize = getPageSize();
                 var pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
@@ -438,9 +413,7 @@ $format_date = static function ($value) {
             }
 
             if (pageSizeSelect) pageSizeSelect.addEventListener('change', function () { currentPage = 1; render(); });
-            [searchInput, statusInput, dateInput].forEach(function (input) {
-                if (input) input.addEventListener(input.type === 'text' ? 'input' : 'change', function () { currentPage = 1; render(); });
-            });
+            if (filterRoot) filterRoot.addEventListener('admin-multi-filter-change', function () { currentPage = 1; render(); });
             render();
         }());
     </script>

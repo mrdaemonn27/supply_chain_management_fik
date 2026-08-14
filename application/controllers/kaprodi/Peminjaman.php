@@ -20,7 +20,9 @@ class Peminjaman extends CI_Controller {
     }
 
     public function index() {
-        $filters = ['q' => trim((string) $this->input->get('q', true))];
+        // Kedua tabel difilter langsung di browser agar hasil, sorting, total,
+        // dan pagination berubah seketika tanpa menyembunyikan filter server-side.
+        $filters = ['q' => ''];
         $data = [
             'title' => 'Approval Peminjaman - Kaprodi',
             'filters' => $filters,

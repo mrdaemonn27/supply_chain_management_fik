@@ -1,9 +1,9 @@
 <?php
-$master_filters = isset($filters) && is_array($filters) ? $filters : ['q' => ''];
+$master_filters = isset($filters) && is_array($filters) ? $filters : ['criteria' => []];
 $master_pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'per_page' => 10, 'total' => count($barang ?? []), 'total_pages' => 1];
 $master_page = (int) ($master_pagination['page'] ?? 1);
 $master_total_pages = (int) ($master_pagination['total_pages'] ?? 1);
-$master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_pagination['per_page'] ?? 10];
+$master_base_query = ['filter_field' => array_column($master_filters['criteria'] ?? [], 'field'), 'filter_value' => array_column($master_filters['criteria'] ?? [], 'value'), 'per_page' => $master_pagination['per_page'] ?? 10];
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -93,16 +93,21 @@ $master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_p
             </div>
         </div>
 
-        <form id="masterSearchForm" method="get" action="<?= base_url('index.php/admin/barang') ?>" class="card border-0 shadow-sm rounded-4 mb-4">
-            <div class="card-body d-flex flex-column flex-md-row gap-2 align-items-md-end">
-                <div class="flex-grow-1">
-                    <label for="masterSearch" class="form-label small fw-semibold text-muted">Cari aset</label>
-                    <input id="masterSearch" type="search" name="q" value="<?= html_escape($master_filters['q'] ?? '') ?>" class="form-control" placeholder="Kode, nama barang, ruangan, atau kondisi" autocomplete="off">
-                </div>
-                <input type="hidden" name="per_page" value="<?= (int) ($master_pagination['per_page'] ?? 10) ?>">
-                <button class="btn btn-fik-orange rounded-pill px-4" type="submit"><i class="bi bi-search me-1"></i> Cari</button>
-            </div>
-        </form>
+        <?php
+        $multi_filter_id = 'masterMultiFilter';
+        $multi_filter_mode = 'server';
+        $multi_filter_action = base_url('index.php/admin/barang');
+        $multi_filter_rows = $master_filters['criteria'] ?? [];
+        $multi_filter_hidden = ['per_page' => (int) ($master_pagination['per_page'] ?? 10), 'page' => 1];
+        $multi_filter_fields = [
+            'kode' => ['label' => 'Kode aset', 'placeholder' => 'Cari kode aset'],
+            'nama' => ['label' => 'Nama barang', 'placeholder' => 'Cari nama barang'],
+            'ruangan' => ['label' => 'Lokasi / Lab', 'placeholder' => 'Cari ruangan atau laboratorium'],
+            'total' => ['label' => 'Total fisik', 'placeholder' => 'Cari jumlah unit', 'type' => 'number'],
+            'kondisi' => ['label' => 'Kondisi', 'placeholder' => 'Cari kondisi barang'],
+        ];
+        include APPPATH . 'views/admin/_multi_filter.php';
+        ?>
 
         <?php if($this->session->flashdata('success')): ?>
             <div class="alert alert-success border-0 shadow-sm rounded-3">
@@ -201,25 +206,9 @@ $master_base_query = ['q' => $master_filters['q'] ?? '', 'per_page' => $master_p
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        const masterSearch = document.getElementById('masterSearch');
-        const masterSearchForm = document.getElementById('masterSearchForm');
         const masterPerPage = document.getElementById('masterPerPage');
-        let masterSearchTimer;
-        if (masterSearch && masterSearchForm) {
-            masterSearch.addEventListener('input', () => {
-                clearTimeout(masterSearchTimer);
-                masterSearchTimer = setTimeout(() => {
-                    const url = new URL(masterSearchForm.action, window.location.origin);
-                    url.searchParams.set('q', masterSearch.value.trim());
-                    url.searchParams.set('per_page', masterPerPage?.value || '10');
-                    url.searchParams.set('page', '1');
-                    window.location.href = url.toString();
-                }, 450);
-            });
-        }
         masterPerPage?.addEventListener('change', () => {
-            const url = new URL(masterSearchForm.action, window.location.origin);
-            url.searchParams.set('q', masterSearch?.value.trim() || '');
+            const url = new URL(window.location.href);
             url.searchParams.set('per_page', masterPerPage.value);
             url.searchParams.set('page', '1');
             window.location.href = url.toString();

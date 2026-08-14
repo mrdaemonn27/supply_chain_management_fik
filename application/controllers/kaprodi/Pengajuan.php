@@ -29,6 +29,27 @@ class Pengajuan extends CI_Controller {
         }
     }
 
+    private function export_multi_filters() {
+        $allowed_fields = ['kode', 'pengajuan', 'jenis', 'kebutuhan', 'status', 'tanggal'];
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
+        $valid_fields = [];
+        $valid_values = [];
+
+        foreach ($fields as $index => $field) {
+            if (count($valid_fields) >= 4) {
+                break;
+            }
+            $field = trim((string) $field);
+            if (!in_array($field, $allowed_fields, true)) {
+                continue;
+            }
+            $valid_fields[] = $field;
+            $valid_values[] = trim((string) ($values[$index] ?? ''));
+        }
+        return [$valid_fields, $valid_values];
+    }
+
     public function simpan() {
         $nama_prodi = trim($this->input->post('nama_prodi', true));
         $nama_pengajuan = trim($this->input->post('nama_pengajuan', true));
@@ -149,6 +170,7 @@ class Pengajuan extends CI_Controller {
     }
 
     public function export_pengajuan() {
+        [$filter_fields, $filter_values] = $this->export_multi_filters();
         $filters = [
             'q' => trim((string) $this->input->get('q', true)),
             'status' => trim((string) $this->input->get('status', true)),
@@ -156,6 +178,8 @@ class Pengajuan extends CI_Controller {
             'tanggal_dari' => trim((string) $this->input->get('tanggal_dari', true)),
             'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
             'id_pengajuan' => max(0, (int) $this->input->get('id_pengajuan')),
+            'filter_field' => $filter_fields,
+            'filter_value' => $filter_values,
         ];
 
         $rows = $this->Kaprodi_model->get_filtered_by_user($this->session->userdata('id_user'), $filters, null, null);

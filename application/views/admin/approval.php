@@ -195,12 +195,19 @@ $approval_total = count($pengajuan);
             </div>
         </section>
 
-        <section class="panel-card p-3 mb-3">
-            <form method="get" action="<?= base_url('index.php/admin/approval') ?>" class="row g-2 align-items-end">
-                <div class="col-md-9"><label for="approvalSearch" class="form-label small fw-semibold text-muted">Cari approval</label><div class="input-group"><span class="input-group-text bg-white"><i class="bi bi-search"></i></span><input id="approvalSearch" type="search" name="q" class="form-control" value="<?= html_escape($q ?? '') ?>" placeholder="Nama peminjam, nama barang, atau status"></div></div>
-                <div class="col-md-3 d-grid"><button class="btn btn-fik"><i class="bi bi-search me-1"></i> Cari</button></div>
-            </form>
-        </section>
+        <?php
+        $multi_filter_id = 'approvalMultiFilter';
+        $multi_filter_mode = 'client';
+        $multi_filter_fields = [
+            'peminjam' => ['label' => 'Peminjam / NIM', 'placeholder' => 'Cari nama peminjam atau NIM/NIP'],
+            'barang' => ['label' => 'Nama barang / kode', 'placeholder' => 'Cari barang yang diajukan'],
+            'jumlah' => ['label' => 'Jumlah', 'placeholder' => 'Cari jumlah unit', 'type' => 'number'],
+            'masa' => ['label' => 'Tanggal pinjam', 'placeholder' => 'Pilih tanggal pinjam', 'type' => 'date'],
+            'keperluan' => ['label' => 'Keperluan', 'placeholder' => 'Cari keperluan peminjaman'],
+            'status' => ['label' => 'Status', 'placeholder' => 'Cari status approval'],
+        ];
+        include APPPATH . 'views/admin/_multi_filter.php';
+        ?>
 
         <section class="panel-card overflow-hidden">
             <?php if(empty($pengajuan)): ?>
@@ -227,8 +234,11 @@ $approval_total = count($pengajuan);
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach($pengajuan as $index => $p): ?>
-                                <tr class="approval-data-row">
+                            <?php foreach($pengajuan as $index => $p):
+                                $approval_items = []; $approval_quantities = [];
+                                foreach (($p->detail_barang ?? []) as $filter_item) { $approval_items[] = ($filter_item->nama_aset ?? '') . ' ' . ($filter_item->kode_aset ?? ''); $approval_quantities[] = (string) ($filter_item->jumlah_pinjam ?? 0); }
+                            ?>
+                                <tr class="approval-data-row" data-filter-peminjam="<?= html_escape(($p->nama_peminjam ?? '') . ' ' . ($p->nim_nip ?? '')) ?>" data-filter-barang="<?= html_escape(implode(' ', $approval_items)) ?>" data-filter-jumlah="<?= html_escape(implode(' ', $approval_quantities)) ?>" data-filter-masa="<?= html_escape(($p->tanggal_pinjam ?? '') . ' ' . ($p->tanggal_kembali_rencana ?? '')) ?>" data-filter-keperluan="<?= html_escape($p->keperluan ?? '') ?>" data-filter-status="<?= html_escape(($p->status ?? '') . ' ' . ($p->status_laboran ?? '')) ?>">
                                     <td class="ps-3 fw-semibold text-muted"><?= $index + 1 ?></td>
                                     <td>
                                         <div class="fw-bold"><?= html_escape($p->nama_peminjam ?? '-') ?></div>
@@ -289,7 +299,7 @@ $approval_total = count($pengajuan);
                         <select id="approvalPageSize" class="form-select form-select-sm" aria-label="Jumlah data approval per halaman">
                             <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option>
                         </select>
-                        <span>Total item: <?= $approval_total ?></span>
+                        <span id="approvalTotalItems">Total item: <?= $approval_total ?></span>
                     </div>
                     <div class="loan-pagination-status" id="approvalPageStatus">Halaman: 1 dari 1</div>
                     <nav aria-label="Pagination approval"><ul class="pagination pagination-sm loan-pagination" id="approvalPageNav"></ul></nav>
@@ -331,8 +341,10 @@ $approval_total = count($pengajuan);
         (function () {
             const rows = Array.from(document.querySelectorAll('.approval-data-row'));
             const select = document.getElementById('approvalPageSize');
+            const filterRoot = document.getElementById('approvalMultiFilter');
             const status = document.getElementById('approvalPageStatus');
             const nav = document.getElementById('approvalPageNav');
+            const totalItems = document.getElementById('approvalTotalItems');
             if (!rows.length || !select || !status || !nav) return;
             let page = 1;
             const pageSize = () => select.value === 'all' ? Math.max(rows.length, 1) : Number(select.value) || 10;
@@ -346,17 +358,21 @@ $approval_total = count($pengajuan);
                 li.appendChild(a); nav.appendChild(li);
             };
             function render() {
-                const size = pageSize();
-                const totalPages = Math.max(1, Math.ceil(rows.length / size));
+                const filtered = rows.filter(row => !filterRoot || AdminMultiFilter.matches(row, AdminMultiFilter.getCriteria(filterRoot)));
+                const size = select.value === 'all' ? Math.max(filtered.length, 1) : Number(select.value) || 10;
+                const totalPages = Math.max(1, Math.ceil(filtered.length / size));
                 page = Math.min(page, totalPages);
-                rows.forEach((row, index) => { row.hidden = index < (page - 1) * size || index >= page * size; });
+                const visible = new Set(filtered.slice((page - 1) * size, page * size));
+                rows.forEach(row => { row.hidden = !visible.has(row); });
                 status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
+                if (totalItems) totalItems.textContent = 'Total item: ' + filtered.length;
                 nav.innerHTML = '';
                 button('Previous', Math.max(1, page - 1), page === 1, false);
                 for (let index = 1; index <= totalPages; index += 1) button(String(index), index, false, index === page);
                 button('Next', Math.min(totalPages, page + 1), page === totalPages, false);
             }
             select.addEventListener('change', function () { page = 1; render(); });
+            filterRoot?.addEventListener('admin-multi-filter-change', function () { page = 1; render(); });
             render();
         }());
     </script>

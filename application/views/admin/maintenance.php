@@ -217,25 +217,21 @@ $maintenance_condition_class = static function ($condition) {
             </button>
         </div>
 
-        <div class="maintenance-toolbar" role="search" aria-label="Pencarian maintenance">
-            <div>
-                <label for="maintenanceSearch" class="form-label">Cari aset</label>
-                <input type="search" id="maintenanceSearch" class="form-control" placeholder="Nama aset, kode, lab, atau deskripsi" autocomplete="off">
-            </div>
-            <div>
-                <label for="maintenanceConditionFilter" class="form-label">Kondisi</label>
-                <select id="maintenanceConditionFilter" class="form-select" aria-label="Filter kondisi maintenance">
-                    <option value="">Semua Kondisi</option>
-                    <option value="Baik">Baik</option>
-                    <option value="Rusak">Rusak</option>
-                    <option value="Perlu Perbaikan">Perlu Perbaikan</option>
-                    <option value="Sudah Diperbaiki">Sudah Diperbaiki</option>
-                </select>
-            </div>
-            <button type="button" id="maintenanceFilterReset" class="btn btn-outline-secondary maintenance-toolbar-reset">
-                <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-            </button>
-        </div>
+        <?php
+        $multi_filter_id = 'maintenanceMultiFilter';
+        $multi_filter_mode = 'server';
+        $multi_filter_action = base_url('index.php/admin/maintenance');
+        $multi_filter_rows = $filter_criteria ?? [];
+        $multi_filter_hidden = ['per_page' => $current_per_page, 'page' => 1];
+        $multi_filter_fields = [
+            'aset' => ['label' => 'Aset / kode', 'placeholder' => 'Cari nama aset atau kode'],
+            'ruangan' => ['label' => 'Lokasi / Lab', 'placeholder' => 'Cari lokasi aset'],
+            'tanggal' => ['label' => 'Tanggal', 'placeholder' => 'Pilih tanggal maintenance', 'type' => 'date'],
+            'kondisi' => ['label' => 'Kondisi', 'placeholder' => 'Cari kondisi setelah maintenance'],
+            'deskripsi' => ['label' => 'Deskripsi / catatan', 'placeholder' => 'Cari deskripsi atau catatan'],
+        ];
+        include APPPATH . 'views/admin/_multi_filter.php';
+        ?>
 
         <div class="panel-card p-0 maintenance-table-card">
             <div class="table-responsive">
@@ -318,12 +314,12 @@ $maintenance_condition_class = static function ($condition) {
                 <div class="maintenance-pagination-status">Halaman: <?= $page ?> dari <?= $total_pages ?></div>
                 <nav aria-label="Pagination maintenance">
                     <ul class="pagination pagination-sm maintenance-pagination">
-                        <?php $prev_query = http_build_query(['page' => max(1, $page - 1), 'per_page' => $current_per_page]); ?>
+                        <?php $maintenance_filter_query = ['filter_field' => array_column($filter_criteria ?? [], 'field'), 'filter_value' => array_column($filter_criteria ?? [], 'value')]; $prev_query = http_build_query(array_merge($maintenance_filter_query, ['page' => max(1, $page - 1), 'per_page' => $current_per_page])); ?>
                         <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/maintenance?' . $prev_query) ?>">Previous</a></li>
-                        <?php for ($i = 1; $i <= $total_pages; $i++): $page_query = http_build_query(['page' => $i, 'per_page' => $current_per_page]); ?>
+                        <?php for ($i = 1; $i <= $total_pages; $i++): $page_query = http_build_query(array_merge($maintenance_filter_query, ['page' => $i, 'per_page' => $current_per_page])); ?>
                             <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/maintenance?' . $page_query) ?>"><?= $i ?></a></li>
                         <?php endfor; ?>
-                        <?php $next_query = http_build_query(['page' => min($total_pages, $page + 1), 'per_page' => $current_per_page]); ?>
+                        <?php $next_query = http_build_query(array_merge($maintenance_filter_query, ['page' => min($total_pages, $page + 1), 'per_page' => $current_per_page])); ?>
                         <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/maintenance?' . $next_query) ?>">Next</a></li>
                     </ul>
                 </nav>
@@ -388,42 +384,6 @@ $maintenance_condition_class = static function ($condition) {
             });
         }
 
-        (() => {
-            const searchInput = document.getElementById('maintenanceSearch');
-            const conditionFilter = document.getElementById('maintenanceConditionFilter');
-            const resetButton = document.getElementById('maintenanceFilterReset');
-            const rows = Array.from(document.querySelectorAll('.maintenance-data-row'));
-            const filteredEmpty = document.getElementById('maintenanceFilteredEmpty');
-
-            if (!searchInput || !conditionFilter || !rows.length) return;
-
-            const applyFilters = () => {
-                const keyword = searchInput.value.trim().toLowerCase();
-                const condition = conditionFilter.value.trim().toLowerCase();
-                let visibleRows = 0;
-
-                rows.forEach((row) => {
-                    const matchesKeyword = !keyword || (row.dataset.search || '').toLowerCase().includes(keyword);
-                    const matchesCondition = !condition || (row.dataset.condition || '').toLowerCase() === condition;
-                    const visible = matchesKeyword && matchesCondition;
-                    row.hidden = !visible;
-                    if (visible) visibleRows += 1;
-                });
-
-                if (filteredEmpty) filteredEmpty.hidden = visibleRows !== 0;
-            };
-
-            searchInput.addEventListener('input', applyFilters);
-            conditionFilter.addEventListener('change', applyFilters);
-            if (resetButton) {
-                resetButton.addEventListener('click', () => {
-                    searchInput.value = '';
-                    conditionFilter.value = '';
-                    applyFilters();
-                    searchInput.focus();
-                });
-            }
-        })();
     </script>
 </body>
 </html>

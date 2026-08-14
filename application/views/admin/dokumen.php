@@ -113,33 +113,17 @@ $formatDocumentDate = static function ($value) {
         </button>
     </div>
 
-    <div class="document-toolbar" role="search" aria-label="Pencarian dokumen">
-        <div>
-            <label for="documentSearch" class="form-label">Cari dokumen</label>
-            <input type="search" id="documentSearch" class="form-control" placeholder="Judul, nama file, peminjam, atau keterangan" autocomplete="off">
-        </div>
-        <div>
-            <label for="documentTypeFilter" class="form-label">Jenis</label>
-            <select id="documentTypeFilter" class="form-select" aria-label="Filter jenis dokumen">
-                <option value="">Semua Jenis</option>
-                <option value="SOP">SOP</option>
-                <option value="Bukti">Bukti</option>
-                <option value="Berita Acara">Berita Acara</option>
-                <option value="Lainnya">Lainnya</option>
-            </select>
-        </div>
-        <div>
-            <label for="documentRelationFilter" class="form-label">Relasi Peminjaman</label>
-            <select id="documentRelationFilter" class="form-select" aria-label="Filter relasi peminjaman">
-                <option value="">Semua Relasi</option>
-                <option value="linked">Dikaitkan</option>
-                <option value="unlinked">Tidak dikaitkan</option>
-            </select>
-        </div>
-        <button type="button" id="documentFilterReset" class="btn btn-outline-secondary document-toolbar-reset">
-            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-        </button>
-    </div>
+    <?php
+    $multi_filter_id = 'documentMultiFilter';
+    $multi_filter_mode = 'client';
+    $multi_filter_fields = [
+        'dokumen' => ['label' => 'Dokumen', 'placeholder' => 'Cari judul, nama file, atau keterangan'],
+        'jenis' => ['label' => 'Jenis', 'placeholder' => 'Cari jenis dokumen'],
+        'relasi' => ['label' => 'Relasi peminjaman', 'placeholder' => 'Cari peminjam, NIM/NIP, atau status relasi'],
+        'tanggal' => ['label' => 'Tanggal', 'placeholder' => 'Pilih tanggal dokumen', 'type' => 'date'],
+    ];
+    include APPPATH . 'views/admin/_multi_filter.php';
+    ?>
 
     <div class="panel-card p-0 document-table-card">
         <div class="table-responsive">
@@ -169,7 +153,7 @@ $formatDocumentDate = static function ($value) {
                         (string) ($d->keterangan ?? ''),
                     ]));
                     ?>
-                    <tr class="document-data-row" data-search="<?= html_escape($document_search) ?>" data-type="<?= html_escape($d->jenis) ?>" data-relation="<?= $has_relation ? 'linked' : 'unlinked' ?>">
+                    <tr class="document-data-row" data-filter-dokumen="<?= html_escape($document_search) ?>" data-filter-jenis="<?= html_escape($d->jenis) ?>" data-filter-relasi="<?= html_escape($has_relation ? ('dikaitkan ' . ($d->nama_peminjam ?? '') . ' ' . ($d->nim_nip ?? '')) : 'tidak dikaitkan') ?>" data-filter-tanggal="<?= html_escape(substr((string) ($d->created_at ?? ''), 0, 10)) ?>">
                         <td class="document-index-column"><span class="document-index"><?= $document_index + 1 ?></span></td>
                         <td class="ps-3">
                             <div class="fw-semibold"><?= html_escape($d->judul) ?></div>
@@ -376,26 +360,18 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 (function () {
-    const searchInput = document.getElementById('documentSearch');
-    const typeFilter = document.getElementById('documentTypeFilter');
-    const relationFilter = document.getElementById('documentRelationFilter');
-    const resetButton = document.getElementById('documentFilterReset');
+    const filterRoot = document.getElementById('documentMultiFilter');
     const rows = Array.from(document.querySelectorAll('.document-data-row'));
     const filteredEmpty = document.getElementById('documentFilteredEmpty');
 
-    if (!searchInput || !typeFilter || !relationFilter || !rows.length) return;
+    if (!filterRoot || !rows.length) return;
 
     const applyFilters = function () {
-        const keyword = searchInput.value.trim().toLowerCase();
-        const type = typeFilter.value.trim().toLowerCase();
-        const relation = relationFilter.value.trim().toLowerCase();
+        const criteria = AdminMultiFilter.getCriteria(filterRoot);
         let visibleRows = 0;
 
         rows.forEach(function (row) {
-            const matchesKeyword = !keyword || (row.dataset.search || '').toLowerCase().includes(keyword);
-            const matchesType = !type || (row.dataset.type || '').toLowerCase() === type;
-            const matchesRelation = !relation || (row.dataset.relation || '').toLowerCase() === relation;
-            const visible = matchesKeyword && matchesType && matchesRelation;
+            const visible = AdminMultiFilter.matches(row, criteria);
             row.hidden = !visible;
             if (visible) visibleRows += 1;
         });
@@ -403,18 +379,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (filteredEmpty) filteredEmpty.hidden = visibleRows !== 0;
     };
 
-    searchInput.addEventListener('input', applyFilters);
-    typeFilter.addEventListener('change', applyFilters);
-    relationFilter.addEventListener('change', applyFilters);
-    if (resetButton) {
-        resetButton.addEventListener('click', function () {
-            searchInput.value = '';
-            typeFilter.value = '';
-            relationFilter.value = '';
-            applyFilters();
-            searchInput.focus();
-        });
-    }
+    filterRoot.addEventListener('admin-multi-filter-change', applyFilters);
 })();
 </script>
 </body>

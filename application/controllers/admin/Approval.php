@@ -27,18 +27,6 @@ class Approval extends CI_Controller {
     public function index() {
         $data['title'] = 'Approval Peminjaman';
         $data['pengajuan'] = $this->Peminjaman_model->get_pending_laboran();
-        $query = trim((string) $this->input->get('q', true));
-        if ($query !== '') {
-            $needle = strtolower($query);
-            $data['pengajuan'] = array_values(array_filter($data['pengajuan'], static function ($row) use ($needle) {
-                $haystack = ($row->nama_peminjam ?? '') . ' ' . ($row->nim_nip ?? '') . ' ' . ($row->status ?? '');
-                foreach (($row->detail_barang ?? []) as $item) {
-                    $haystack .= ' ' . ($item->nama_aset ?? '');
-                }
-                return strpos(strtolower($haystack), $needle) !== false;
-            }));
-        }
-        $data['q'] = $query;
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);
         $this->load->view('admin/approval', $data);

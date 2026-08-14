@@ -285,6 +285,9 @@ class Peminjaman_model extends CI_Model {
                             $this->db->where('p.status', $value);
                         }
                         break;
+                    case 'status_approval':
+                        $this->db->like('p.status', $value);
+                        break;
                     case 'tanggal':
                         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
                             $this->db->where('DATE(p.tanggal_pinjam)', $value);

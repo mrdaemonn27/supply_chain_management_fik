@@ -36,7 +36,7 @@ class Barang extends CI_Controller {
             $per_page = 10;
         }
         $page = max(1, (int) $this->input->get('page', true));
-        $filters = ['q' => trim((string) $this->input->get('q', true))];
+        $filters = ['criteria' => $this->read_filter_criteria(['kode', 'nama', 'ruangan', 'total', 'kondisi'])];
         $total = $this->Barang_model->count_all($filters);
         $data['barang'] = $this->Barang_model->get_all(array_merge($filters, [
             'limit' => $per_page,
@@ -51,6 +51,19 @@ class Barang extends CI_Controller {
             'total_pages' => max(1, (int) ceil($total / $per_page)),
         ];
         $this->load->view('admin/barang_list', $data);
+    }
+
+    private function read_filter_criteria($allowed) {
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
+        $criteria = [];
+        foreach (array_slice($fields, 0, 4) as $index => $field) {
+            $value = trim((string) ($values[$index] ?? ''));
+            if (in_array($field, $allowed, true) && $value !== '') {
+                $criteria[] = ['field' => $field, 'value' => $value];
+            }
+        }
+        return $criteria;
     }
 
     public function import() {

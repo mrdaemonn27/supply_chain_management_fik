@@ -33,6 +33,57 @@ if (!function_exists('kaprodi_loan_status_tone')) {
         return 'is-pending';
     }
 }
+if (!function_exists('kaprodi_client_filter_fields')) {
+    function kaprodi_client_filter_fields($scope)
+    {
+        if ($scope === 'return') {
+            return [
+                'peminjam' => ['label' => 'Peminjam / NIM', 'placeholder' => 'Cari peminjam / NIM'],
+                'barang' => ['label' => 'Nama barang', 'placeholder' => 'Cari nama barang'],
+                'masa' => ['label' => 'Masa pinjam', 'placeholder' => 'Pilih tanggal pinjam', 'type' => 'date'],
+                'status' => ['label' => 'Status pengembalian', 'placeholder' => 'Cari status pengembalian'],
+            ];
+        }
+        return [
+            'number' => ['label' => 'No. peminjaman', 'placeholder' => 'Cari nomor peminjaman'],
+            'peminjam' => ['label' => 'Peminjam / NIM', 'placeholder' => 'Cari peminjam / NIM'],
+            'barang' => ['label' => 'Nama barang / kode', 'placeholder' => 'Cari nama barang / kode'],
+            'lab' => ['label' => 'Laboratorium', 'placeholder' => 'Cari laboratorium'],
+            'masa' => ['label' => 'Masa pinjam', 'placeholder' => 'Pilih tanggal pinjam', 'type' => 'date'],
+            'status' => ['label' => 'Status', 'placeholder' => 'Cari status approval'],
+        ];
+    }
+}
+if (!function_exists('render_kaprodi_client_filter')) {
+    function render_kaprodi_client_filter($scope, $id, $description)
+    {
+        $fields = kaprodi_client_filter_fields($scope);
+        $default_field = (string) array_key_first($fields);
+        $default_meta = $fields[$default_field];
+        ?>
+        <div id="<?= html_escape($id) ?>" class="kp-multi-filter" data-kp-multi-filter data-max-filters="4">
+            <div class="kp-multi-filter-heading">
+                <div><h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3><p><?= html_escape($description) ?></p></div>
+                <span class="kp-multi-filter-note"><i class="bi bi-lightning-charge me-1" aria-hidden="true"></i>Hasil diperbarui saat Anda mengetik</span>
+            </div>
+            <div class="kp-multi-filter-list" data-filter-list>
+                <div class="kp-multi-filter-row" data-filter-row>
+                    <select class="form-select kp-multi-filter-field" aria-label="Jenis filter 1">
+                        <?php foreach ($fields as $key => $meta): ?>
+                            <option value="<?= html_escape($key) ?>" data-input-type="<?= html_escape($meta['type'] ?? 'search') ?>" data-placeholder="<?= html_escape($meta['placeholder']) ?>"><?= html_escape($meta['label']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="<?= html_escape($default_meta['type'] ?? 'search') ?>" class="form-control kp-multi-filter-value" placeholder="<?= html_escape($default_meta['placeholder']) ?>" autocomplete="off" aria-label="Nilai filter 1">
+                    <div class="kp-multi-filter-tools">
+                        <button type="button" class="btn btn-outline-secondary kp-multi-filter-icon kp-multi-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>
+                        <button type="button" class="btn btn-outline-primary kp-multi-filter-icon kp-multi-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -349,6 +400,45 @@ if (!function_exists('kaprodi_loan_status_tone')) {
             padding: 14px 18px 13px;
         }
 
+        .kp-multi-filter {
+            padding: 17px 18px;
+            border-bottom: 1px solid var(--kp-border);
+            background: var(--kp-surface);
+        }
+
+        .kp-filter-card .kp-multi-filter {
+            padding: 0;
+            border: 0;
+        }
+
+        .kp-multi-filter-heading {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
+        }
+
+        .kp-multi-filter-heading h3 {
+            margin: 0;
+            color: var(--kp-text);
+            font-size: .92rem;
+            font-weight: 700;
+        }
+
+        .kp-multi-filter-heading h3 i { color: var(--kp-orange); }
+        .kp-multi-filter-heading p { margin: 3px 0 0; color: var(--kp-muted); font-size: .69rem; }
+        .kp-multi-filter-note { color: var(--kp-muted); font-size: .68rem; white-space: nowrap; }
+        .kp-multi-filter-list { display: grid; gap: 9px; }
+        .kp-multi-filter-row { display: grid; grid-template-columns: minmax(205px, .72fr) minmax(270px, 1.55fr) auto; align-items: center; gap: 9px; }
+        .kp-multi-filter-row .form-select, .kp-multi-filter-row .form-control { min-height: 42px; border-color: #cbd3dc; background-color: var(--kp-surface); color: var(--kp-text); font-size: .74rem; box-shadow: none; }
+        .kp-multi-filter-row .form-select:focus, .kp-multi-filter-row .form-control:focus { border-color: var(--kp-orange); box-shadow: 0 0 0 .2rem rgba(255, 107, 0, .12); }
+        .kp-multi-filter-tools { display: flex; align-items: center; gap: 8px; }
+        .kp-multi-filter-icon { width: 42px; height: 42px; display: inline-flex; flex: 0 0 42px; align-items: center; justify-content: center; padding: 0; border-radius: 50%; }
+        .kp-multi-filter-add { border-color: var(--kp-orange); color: var(--kp-orange); }
+        .kp-multi-filter-add:hover { border-color: var(--kp-orange); background: var(--kp-orange); color: #fff; }
+        .kp-multi-filter-icon:disabled { opacity: .38; }
+
         .kp-filter-grid {
             display: grid;
             grid-template-columns: minmax(280px, 1.7fr) minmax(170px, .72fr) minmax(170px, .72fr) auto;
@@ -468,6 +558,33 @@ if (!function_exists('kaprodi_loan_status_tone')) {
 
         .kp-table tbody tr:hover td {
             background: var(--kp-surface-soft);
+        }
+
+        .kp-return-table {
+            min-width: 1180px;
+        }
+
+        .kp-return-table th:nth-child(1),
+        .kp-return-table td:nth-child(1) {
+            width: 64px;
+            min-width: 64px;
+            text-align: center;
+        }
+
+        .kp-return-table th:nth-child(2),
+        .kp-return-table td:nth-child(2) { min-width: 260px; }
+        .kp-return-table th:nth-child(3),
+        .kp-return-table td:nth-child(3) { min-width: 300px; }
+        .kp-return-table th:nth-child(4),
+        .kp-return-table td:nth-child(4) { min-width: 300px; }
+        .kp-return-table th:nth-child(5),
+        .kp-return-table td:nth-child(5) { min-width: 260px; }
+
+        .kp-number-cell {
+            color: var(--kp-muted) !important;
+            font-weight: 600;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
         }
 
         .kp-sort-button {
@@ -813,6 +930,11 @@ if (!function_exists('kaprodi_loan_status_tone')) {
         }
 
         @media (max-width: 767.98px) {
+            .kp-multi-filter { padding: 14px; }
+            .kp-multi-filter-heading { flex-direction: column; gap: 7px; }
+            .kp-multi-filter-note { white-space: normal; }
+            .kp-multi-filter-row { grid-template-columns: 1fr; gap: 8px; padding: 11px; border: 1px solid var(--kp-border); border-radius: 9px; }
+            .kp-multi-filter-tools { justify-content: flex-end; }
             .topbar-actions {
                 width: 100%;
                 justify-content: flex-end;
@@ -1030,39 +1152,7 @@ if (!function_exists('kaprodi_loan_status_tone')) {
     </section>
 
     <section class="kp-card kp-filter-card mt-3" aria-label="Filter pengajuan peminjaman">
-        <div class="kp-filter-grid">
-            <div class="kp-keyword-field">
-                <label for="kaprodiLoanSearch" class="kp-field-label">Kata Kunci</label>
-                <div class="input-group kp-search-group">
-                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input
-                        id="kaprodiLoanSearch"
-                        type="search"
-                        class="form-control kp-control"
-                        value="<?= html_escape($filter_keyword) ?>"
-                        placeholder="Nama peminjam, barang, laboratorium, nomor, atau status"
-                        autocomplete="off"
-                    >
-                </div>
-            </div>
-            <div>
-                <label for="kaprodiDateFrom" class="kp-field-label">Tanggal Pinjam Dari</label>
-                <input id="kaprodiDateFrom" type="date" class="form-control kp-control">
-            </div>
-            <div>
-                <label for="kaprodiDateTo" class="kp-field-label">Sampai</label>
-                <input id="kaprodiDateTo" type="date" class="form-control kp-control">
-            </div>
-            <div class="kp-filter-actions">
-                <button id="kaprodiApplyDate" type="button" class="btn kp-btn-primary">
-                    <i class="bi bi-calendar-check me-1"></i>Terapkan Tanggal
-                </button>
-                <button id="kaprodiResetFilter" type="button" class="btn kp-btn-reset">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
-                </button>
-            </div>
-        </div>
-        <div class="kp-filter-hint">Hasil kata kunci diperbarui langsung. Gunakan tombol Terapkan Tanggal untuk periode pinjam.</div>
+        <?php render_kaprodi_client_filter('approval', 'kaprodiApprovalFilters', 'Tambahkan hingga 4 kriteria untuk mempersempit pengajuan yang menunggu ACC.'); ?>
     </section>
 
     <section class="kp-card kp-table-card mb-3" aria-labelledby="kaprodiApprovalTitle">
@@ -1117,9 +1207,11 @@ if (!function_exists('kaprodi_loan_status_tone')) {
                         <?php
                         $number = $p->group_id ?? $p->id_peminjaman ?? '-';
                         $item_names = [];
+                        $item_search = [];
                         $laboratories = [];
                         foreach (($p->detail_barang ?? []) as $detail) {
                             $item_names[] = $detail->nama_aset ?? '-';
+                            $item_search[] = trim((string) ($detail->nama_aset ?? '') . ' ' . (string) ($detail->kode_aset ?? ''));
                             if (!empty($detail->nama_ruangan)) {
                                 $laboratories[] = $detail->nama_ruangan;
                             }
@@ -1142,6 +1234,12 @@ if (!function_exists('kaprodi_loan_status_tone')) {
                             data-approval-row
                             data-search="<?= html_escape($search_text) ?>"
                             data-date-start="<?= html_escape(substr((string) ($p->tanggal_pinjam ?? ''), 0, 10)) ?>"
+                            data-filter-number="<?= html_escape(trim((string) $number . ' ' . (string) ($p->id_peminjaman ?? ''))) ?>"
+                            data-filter-peminjam="<?= html_escape(trim((string) ($p->nama_peminjam ?? '') . ' ' . (string) ($p->nim_nip ?? ''))) ?>"
+                            data-filter-barang="<?= html_escape(implode(' ', $item_search)) ?>"
+                            data-filter-lab="<?= html_escape(implode(' ', $laboratories)) ?>"
+                            data-filter-masa="<?= html_escape(implode(' ', [substr((string) ($p->tanggal_pinjam ?? ''), 0, 10), substr((string) ($p->tanggal_kembali_rencana ?? ''), 0, 10), $period])) ?>"
+                            data-filter-status="<?= html_escape($status) ?>"
                             data-sort-number="<?= html_escape($number) ?>"
                             data-sort-peminjam="<?= html_escape($p->nama_peminjam ?? '') ?>"
                             data-sort-barang="<?= html_escape(implode(' ', $item_names)) ?>"
@@ -1226,29 +1324,13 @@ if (!function_exists('kaprodi_loan_status_tone')) {
             <p class="kp-section-copy">Pengembalian hanya dikonfirmasi Laboran; Kaprodi memantau status tanpa tombol approve atau tolak.</p>
         </div>
         <?php if (!empty($pengembalian)): ?>
-            <div class="kp-toolbar">
-                <div class="input-group kp-search-group">
-                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input
-                        id="kaprodiReturnSearch"
-                        type="search"
-                        class="form-control kp-control"
-                        placeholder="Cari peminjam, NIM/NIP, barang, masa pinjam, atau status"
-                        autocomplete="off"
-                    >
-                </div>
-                <button id="kaprodiReturnReset" type="button" class="btn kp-btn-reset">
-                    <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
-                </button>
-            </div>
-            <div class="kp-toolbar-hint">
-                <i class="bi bi-lightning-charge me-1"></i>Hasil diperbarui saat Anda mengetik. Klik judul kolom untuk mengurutkan.
-            </div>
+            <?php render_kaprodi_client_filter('return', 'kaprodiReturnFilters', 'Tambahkan hingga 4 kriteria untuk mempersempit status pengembalian.'); ?>
         <?php endif; ?>
         <div class="table-responsive">
-            <table class="table kp-table">
+            <table class="table kp-table kp-return-table">
                 <thead>
                 <tr>
+                    <th scope="col">No</th>
                     <th scope="col">
                         <button class="kp-sort-button" type="button" data-return-sort="peminjam">
                             Peminjam <i class="bi bi-arrow-down-up"></i>
@@ -1274,10 +1356,10 @@ if (!function_exists('kaprodi_loan_status_tone')) {
                 <tbody id="kaprodiReturnBody">
                 <?php if (empty($pengembalian)): ?>
                     <tr class="kp-empty-row">
-                        <td colspan="4">Belum ada data pengembalian.</td>
+                        <td colspan="5">Belum ada data pengembalian.</td>
                     </tr>
                 <?php else: ?>
-                    <?php foreach ($pengembalian as $p): ?>
+                    <?php foreach ($pengembalian as $return_index => $p): ?>
                         <?php
                         $item_names = [];
                         foreach (($p->detail_barang ?? []) as $detail) {
@@ -1296,11 +1378,16 @@ if (!function_exists('kaprodi_loan_status_tone')) {
                         <tr
                             data-return-row
                             data-search="<?= html_escape($search_text) ?>"
+                            data-filter-peminjam="<?= html_escape(trim((string) ($p->nama_peminjam ?? '') . ' ' . (string) ($p->nim_nip ?? ''))) ?>"
+                            data-filter-barang="<?= html_escape(implode(' ', $item_names)) ?>"
+                            data-filter-masa="<?= html_escape(implode(' ', [substr((string) ($p->tanggal_pinjam ?? ''), 0, 10), substr((string) ($p->tanggal_kembali_rencana ?? ''), 0, 10), $period])) ?>"
+                            data-filter-status="<?= html_escape($status) ?>"
                             data-sort-peminjam="<?= html_escape($p->nama_peminjam ?? '') ?>"
                             data-sort-barang="<?= html_escape(implode(' ', $item_names)) ?>"
                             data-sort-masa="<?= (int) strtotime((string) ($p->tanggal_pinjam ?? '')) ?>"
                             data-sort-status="<?= html_escape($status) ?>"
                         >
+                            <td class="kp-number-cell" data-row-number><?= (int) $return_index + 1 ?></td>
                             <td>
                                 <div class="kp-primary-text"><?= html_escape($p->nama_peminjam ?? '-') ?></div>
                                 <div class="kp-secondary-text"><?= html_escape($p->nim_nip ?? '-') ?></div>
@@ -1315,7 +1402,7 @@ if (!function_exists('kaprodi_loan_status_tone')) {
                         </tr>
                     <?php endforeach; ?>
                     <tr id="kaprodiReturnEmpty" class="kp-empty-row d-none">
-                        <td colspan="4">Tidak ada hasil yang sesuai dengan pencarian.</td>
+                        <td colspan="5">Tidak ada hasil yang sesuai dengan pencarian.</td>
                     </tr>
                 <?php endif; ?>
                 </tbody>
@@ -1467,12 +1554,89 @@ document.addEventListener('DOMContentLoaded', function () {
         new bootstrap.Tooltip(element);
     });
 
+    function initMultiFilter(rootId) {
+        var root = document.getElementById(rootId);
+        if (!root) return null;
+        var list = root.querySelector('[data-filter-list]');
+        var maxFilters = Number(root.dataset.maxFilters || 4);
+        if (!list) return root;
+
+        function notify() {
+            root.dispatchEvent(new CustomEvent('kp:filterchange'));
+        }
+
+        function syncInput(row, clearValue) {
+            var select = row.querySelector('.kp-multi-filter-field');
+            var input = row.querySelector('.kp-multi-filter-value');
+            var option = select && select.options[select.selectedIndex];
+            if (!select || !input || !option) return;
+            if (clearValue) input.value = '';
+            input.type = option.dataset.inputType || 'search';
+            input.placeholder = option.dataset.placeholder || 'Ketik untuk mencari';
+        }
+
+        function updateButtons() {
+            var rows = Array.prototype.slice.call(list.querySelectorAll('[data-filter-row]'));
+            rows.forEach(function (row, index) {
+                row.querySelector('.kp-multi-filter-remove').disabled = rows.length === 1;
+                row.querySelector('.kp-multi-filter-add').disabled = rows.length >= maxFilters || index !== rows.length - 1;
+            });
+        }
+
+        function addRow() {
+            var rows = list.querySelectorAll('[data-filter-row]');
+            if (!rows.length || rows.length >= maxFilters) return null;
+            var sourceSelect = rows[0].querySelector('.kp-multi-filter-field');
+            var row = document.createElement('div');
+            row.className = 'kp-multi-filter-row';
+            row.dataset.filterRow = '';
+            row.innerHTML =
+                '<select class="form-select kp-multi-filter-field" aria-label="Jenis filter ' + (rows.length + 1) + '">' + sourceSelect.innerHTML + '</select>' +
+                '<input type="search" class="form-control kp-multi-filter-value" autocomplete="off" aria-label="Nilai filter ' + (rows.length + 1) + '">' +
+                '<div class="kp-multi-filter-tools">' +
+                    '<button type="button" class="btn btn-outline-secondary kp-multi-filter-icon kp-multi-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>' +
+                    '<button type="button" class="btn btn-outline-primary kp-multi-filter-icon kp-multi-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>' +
+                '</div>';
+            list.appendChild(row);
+            syncInput(row, false);
+            updateButtons();
+            return row;
+        }
+
+        list.querySelectorAll('[data-filter-row]').forEach(function (row) { syncInput(row, false); });
+        updateButtons();
+        list.addEventListener('click', function (event) {
+            var row = event.target.closest('[data-filter-row]');
+            if (!row) return;
+            if (event.target.closest('.kp-multi-filter-add')) {
+                var added = addRow();
+                if (added) added.querySelector('.kp-multi-filter-value').focus();
+            } else if (event.target.closest('.kp-multi-filter-remove') && list.querySelectorAll('[data-filter-row]').length > 1) {
+                row.remove();
+                updateButtons();
+                notify();
+            }
+        });
+        list.addEventListener('change', function (event) {
+            if (!event.target.matches('.kp-multi-filter-field')) return;
+            var row = event.target.closest('[data-filter-row]');
+            syncInput(row, true);
+            row.querySelector('.kp-multi-filter-value').focus();
+            notify();
+        });
+        list.addEventListener('input', function (event) {
+            if (event.target.matches('.kp-multi-filter-value')) notify();
+        });
+        return root;
+    }
+
     function initClientTable(options) {
         var body = document.getElementById(options.bodyId);
         if (!body) {
             return;
         }
 
+        var filterRoot = initMultiFilter(options.filterRootId);
         var rows = Array.prototype.slice.call(body.querySelectorAll(options.rowSelector));
         if (!rows.length) {
             return;
@@ -1482,16 +1646,11 @@ document.addEventListener('DOMContentLoaded', function () {
             row.dataset.originalIndex = String(index);
         });
 
-        var searchInput = document.getElementById(options.searchId);
-        var resetButton = document.getElementById(options.resetId);
         var pageSizeSelect = document.getElementById(options.pageSizeId);
         var totalElement = document.getElementById(options.totalId);
         var pageStatusElement = document.getElementById(options.pageStatusId);
         var paginationElement = document.getElementById(options.paginationId);
         var emptyElement = document.getElementById(options.emptyId);
-        var dateFromInput = options.dateFromId ? document.getElementById(options.dateFromId) : null;
-        var dateToInput = options.dateToId ? document.getElementById(options.dateToId) : null;
-        var applyDateButton = options.applyDateId ? document.getElementById(options.applyDateId) : null;
         var sortButtons = Array.prototype.slice.call(document.querySelectorAll(options.sortSelector));
         var currentPage = 1;
         var sortKey = '';
@@ -1502,16 +1661,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         function filteredRows() {
-            var keyword = searchInput ? normalized(searchInput.value) : '';
-            var dateFrom = dateFromInput ? dateFromInput.value : '';
-            var dateTo = dateToInput ? dateToInput.value : '';
+            var criteria = filterRoot ? Array.prototype.slice.call(filterRoot.querySelectorAll('[data-filter-row]')).map(function (filterRow) {
+                return {
+                    field: filterRow.querySelector('.kp-multi-filter-field').value,
+                    value: normalized(filterRow.querySelector('.kp-multi-filter-value').value)
+                };
+            }).filter(function (criterion) { return criterion.value !== ''; }) : [];
 
             return rows.filter(function (row) {
-                var matchesKeyword = !keyword || normalized(row.dataset.search).indexOf(keyword) !== -1;
-                var rowDate = row.dataset.dateStart || '';
-                var matchesFrom = !dateFrom || (rowDate && rowDate >= dateFrom);
-                var matchesTo = !dateTo || (rowDate && rowDate <= dateTo);
-                return matchesKeyword && matchesFrom && matchesTo;
+                return criteria.every(function (criterion) {
+                    var key = 'filter' + criterion.field.charAt(0).toUpperCase() + criterion.field.slice(1);
+                    return normalized(row.dataset[key]).indexOf(criterion.value) !== -1;
+                });
             });
         }
 
@@ -1623,6 +1784,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
             visibleRows.forEach(function (row, index) {
                 body.insertBefore(row, emptyElement || null);
+                var numberElement = row.querySelector('[data-row-number]');
+                if (numberElement) {
+                    numberElement.textContent = String(index + 1);
+                }
                 row.classList.toggle('d-none', index < start || index >= end);
             });
 
@@ -1640,8 +1805,8 @@ document.addEventListener('DOMContentLoaded', function () {
             updateSortButtons();
         }
 
-        if (searchInput) {
-            searchInput.addEventListener('input', function () {
+        if (filterRoot) {
+            filterRoot.addEventListener('kp:filterchange', function () {
                 currentPage = 1;
                 render();
             });
@@ -1649,13 +1814,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (pageSizeSelect) {
             pageSizeSelect.addEventListener('change', function () {
-                currentPage = 1;
-                render();
-            });
-        }
-
-        if (applyDateButton) {
-            applyDateButton.addEventListener('click', function () {
                 currentPage = 1;
                 render();
             });
@@ -1675,40 +1833,18 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        if (resetButton) {
-            resetButton.addEventListener('click', function () {
-                if (searchInput) {
-                    searchInput.value = '';
-                }
-                if (dateFromInput) {
-                    dateFromInput.value = '';
-                }
-                if (dateToInput) {
-                    dateToInput.value = '';
-                }
-                sortKey = '';
-                sortDirection = 'asc';
-                currentPage = 1;
-                render();
-            });
-        }
-
         render();
     }
 
     initClientTable({
         bodyId: 'kaprodiApprovalBody',
         rowSelector: '[data-approval-row]',
-        searchId: 'kaprodiLoanSearch',
-        resetId: 'kaprodiResetFilter',
+        filterRootId: 'kaprodiApprovalFilters',
         pageSizeId: 'kaprodiApprovalPageSize',
         totalId: 'kaprodiApprovalTotal',
         pageStatusId: 'kaprodiApprovalPageStatus',
         paginationId: 'kaprodiApprovalPagination',
         emptyId: 'kaprodiApprovalEmpty',
-        dateFromId: 'kaprodiDateFrom',
-        dateToId: 'kaprodiDateTo',
-        applyDateId: 'kaprodiApplyDate',
         sortSelector: '[data-approval-sort]',
         sortAttribute: 'data-approval-sort'
     });
@@ -1716,8 +1852,7 @@ document.addEventListener('DOMContentLoaded', function () {
     initClientTable({
         bodyId: 'kaprodiReturnBody',
         rowSelector: '[data-return-row]',
-        searchId: 'kaprodiReturnSearch',
-        resetId: 'kaprodiReturnReset',
+        filterRootId: 'kaprodiReturnFilters',
         pageSizeId: 'kaprodiReturnPageSize',
         totalId: 'kaprodiReturnTotal',
         pageStatusId: 'kaprodiReturnPageStatus',

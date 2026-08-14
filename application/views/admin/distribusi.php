@@ -135,33 +135,19 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         </button>
     </div>
 
-    <section class="panel-card mb-3" aria-label="Filter distribusi">
-        <div class="distribution-toolbar">
-            <div class="toolbar-search">
-                <label for="distributionSearch">Cari aset</label>
-                <input id="distributionSearch" type="search" class="form-control" placeholder="Nama aset, kode, atau petugas" autocomplete="off">
-            </div>
-            <div>
-                <label for="distributionOrigin">Ruangan Asal</label>
-                <select id="distributionOrigin" class="form-select">
-                    <option value="">Semua Ruangan Asal</option>
-                    <?php foreach ($distributionOrigins as $origin): ?><option value="<?= html_escape($origin) ?>"><?= html_escape($origin) ?></option><?php endforeach; ?>
-                </select>
-            </div>
-            <div>
-                <label for="distributionDestination">Ruangan Tujuan</label>
-                <select id="distributionDestination" class="form-select">
-                    <option value="">Semua Ruangan Tujuan</option>
-                    <?php foreach ($distributionDestinations as $destination): ?><option value="<?= html_escape($destination) ?>"><?= html_escape($destination) ?></option><?php endforeach; ?>
-                </select>
-            </div>
-            <div>
-                <label for="distributionDate">Tanggal</label>
-                <input id="distributionDate" type="date" class="form-control">
-            </div>
-            <button id="distributionReset" type="button" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-counterclockwise me-1"></i> Reset</button>
-        </div>
-    </section>
+    <?php
+    $multi_filter_id = 'distributionMultiFilter';
+    $multi_filter_mode = 'client';
+    $multi_filter_fields = [
+        'aset' => ['label' => 'Aset / kode', 'placeholder' => 'Cari nama aset atau kode'],
+        'asal' => ['label' => 'Ruangan asal', 'placeholder' => 'Cari ruangan asal'],
+        'tujuan' => ['label' => 'Ruangan tujuan', 'placeholder' => 'Cari ruangan tujuan'],
+        'jumlah' => ['label' => 'Jumlah', 'placeholder' => 'Cari jumlah barang', 'type' => 'number'],
+        'tanggal' => ['label' => 'Tanggal', 'placeholder' => 'Pilih tanggal distribusi', 'type' => 'date'],
+        'petugas' => ['label' => 'Petugas', 'placeholder' => 'Cari nama petugas'],
+    ];
+    include APPPATH . 'views/admin/_multi_filter.php';
+    ?>
 
     <section class="panel-card overflow-hidden" aria-labelledby="distributionHistoryTitle">
         <div class="d-flex align-items-center justify-content-between gap-2 px-3 px-lg-4 py-3 border-bottom">
@@ -194,7 +180,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                     $dateValue = (string) ($d->tanggal_distribusi ?? '');
                     $searchText = strtolower(implode(' ', [$assetName, $assetCode, $origin, $destination, (string) ($d->nama_petugas ?? ''), (string) ($d->keterangan ?? '')]));
                     ?>
-                    <tr class="distribution-data-row" data-search="<?= html_escape($searchText) ?>" data-origin="<?= html_escape($origin) ?>" data-destination="<?= html_escape($destination) ?>" data-date="<?= html_escape($dateValue) ?>">
+                    <tr class="distribution-data-row" data-filter-aset="<?= html_escape($assetName . ' ' . $assetCode) ?>" data-filter-asal="<?= html_escape($origin) ?>" data-filter-tujuan="<?= html_escape($destination) ?>" data-filter-jumlah="<?= (int) $d->jumlah ?>" data-filter-tanggal="<?= html_escape($dateValue) ?>" data-filter-petugas="<?= html_escape($d->nama_petugas ?? '-') ?>">
                         <td class="distribution-index-column"><span class="distribution-index"><?= $distribution_index + 1 ?></span></td>
                         <td class="ps-3"><div class="asset-name"><?= html_escape($assetName) ?></div><div class="asset-meta"><?= html_escape($assetCode) ?></div></td>
                         <td><div class="distribution-route"><span><?= html_escape($origin) ?></span><i class="bi bi-arrow-right" aria-hidden="true"></i><span class="route-destination"><?= html_escape($destination) ?></span></div><?php if (trim((string) ($d->keterangan ?? '')) !== ''): ?><div class="distribution-note" title="<?= html_escape($d->keterangan) ?>"><?= html_escape($d->keterangan) ?></div><?php endif; ?></td>
@@ -246,11 +232,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const search = document.getElementById('distributionSearch');
-    const origin = document.getElementById('distributionOrigin');
-    const destination = document.getElementById('distributionDestination');
-    const date = document.getElementById('distributionDate');
-    const reset = document.getElementById('distributionReset');
+    const filterRoot = document.getElementById('distributionMultiFilter');
     const pageSizeSelect = document.getElementById('distributionPageSize');
     const total = document.getElementById('distributionTotal');
     const pageInfo = document.getElementById('distributionPageInfo');
@@ -259,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const rows = Array.from(document.querySelectorAll('.distribution-data-row'));
     let currentPage = 1;
 
-    if (!search || !origin || !destination || !date || !pageSizeSelect || !total || !pageInfo || !pagination) return;
+    if (!filterRoot || !pageSizeSelect || !total || !pageInfo || !pagination) return;
 
     const getPageSize = function () {
         return pageSizeSelect.value === 'all' ? Math.max(rows.length, 1) : Math.max(parseInt(pageSizeSelect.value, 10) || 10, 1);
@@ -297,17 +279,8 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const render = function () {
-        const keyword = search.value.trim().toLowerCase();
-        const originValue = origin.value.trim().toLowerCase();
-        const destinationValue = destination.value.trim().toLowerCase();
-        const dateValue = date.value.trim();
-        const filteredRows = rows.filter(function (row) {
-            const matchesKeyword = !keyword || (row.dataset.search || '').includes(keyword);
-            const matchesOrigin = !originValue || (row.dataset.origin || '').toLowerCase() === originValue;
-            const matchesDestination = !destinationValue || (row.dataset.destination || '').toLowerCase() === destinationValue;
-            const matchesDate = !dateValue || row.dataset.date === dateValue;
-            return matchesKeyword && matchesOrigin && matchesDestination && matchesDate;
-        });
+        const criteria = AdminMultiFilter.getCriteria(filterRoot);
+        const filteredRows = rows.filter(function (row) { return AdminMultiFilter.matches(row, criteria); });
         const pageSize = getPageSize();
         const pageCount = Math.max(Math.ceil(filteredRows.length / pageSize), 1);
         currentPage = Math.min(currentPage, pageCount);
@@ -327,21 +300,8 @@ document.addEventListener('DOMContentLoaded', function () {
         render();
     };
 
-    search.addEventListener('input', filterChanged);
-    origin.addEventListener('change', filterChanged);
-    destination.addEventListener('change', filterChanged);
-    date.addEventListener('change', filterChanged);
+    filterRoot.addEventListener('admin-multi-filter-change', filterChanged);
     pageSizeSelect.addEventListener('change', filterChanged);
-    if (reset) reset.addEventListener('click', function () {
-        search.value = '';
-        origin.value = '';
-        destination.value = '';
-        date.value = '';
-        pageSizeSelect.value = '10';
-        currentPage = 1;
-        render();
-        search.focus();
-    });
     render();
 });
 </script>

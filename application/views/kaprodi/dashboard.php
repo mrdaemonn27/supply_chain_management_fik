@@ -41,6 +41,60 @@ function query_kaprodi($filters, $page, $tab = 'riwayat', $kategori = '', $per_p
     }
     return http_build_query($params);
 }
+function table_row_number_kaprodi($index, $page = 1, $per_page = '10') {
+    $page = max(1, (int) $page);
+    if ((string) $per_page === 'all') {
+        return (int) $index + 1;
+    }
+    $page_size = max(1, (int) $per_page ?: 10);
+    return (($page - 1) * $page_size) + (int) $index + 1;
+}
+function history_filter_config_kaprodi() {
+    return [
+        'kode' => ['label' => 'Kode pengajuan', 'placeholder' => 'Cari kode pengajuan'],
+        'pengajuan' => ['label' => 'Pengajuan / prodi', 'placeholder' => 'Cari nama pengajuan atau program studi'],
+        'jenis' => ['label' => 'Jenis', 'placeholder' => 'Cari Barang, Jasa, atau Barang dan Jasa'],
+        'kebutuhan' => ['label' => 'Kebutuhan / item', 'placeholder' => 'Cari kebutuhan atau nama item'],
+        'status' => ['label' => 'Status', 'placeholder' => 'Cari status pengajuan'],
+        'tanggal' => ['label' => 'Tanggal', 'placeholder' => 'Pilih tanggal pengajuan', 'type' => 'date'],
+    ];
+}
+function render_history_filter_kaprodi($rows, $hidden = []) {
+    $fields = history_filter_config_kaprodi();
+    $rows = is_array($rows) && !empty($rows) ? array_slice(array_values($rows), 0, 4) : [['field' => 'kode', 'value' => '']];
+    ?>
+    <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="kaprodi-multi-filter" data-kaprodi-multi-filter data-max-filters="4">
+        <?php foreach ($hidden as $name => $value): ?>
+            <input type="hidden" name="<?= html_escape($name) ?>" value="<?= html_escape((string) $value) ?>">
+        <?php endforeach; ?>
+        <div class="kaprodi-filter-heading">
+            <div><h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3><p>Tambahkan hingga 4 kriteria untuk mempersempit riwayat pengajuan.</p></div>
+            <span class="kaprodi-filter-note"><i class="bi bi-lightning-charge me-1" aria-hidden="true"></i>Hasil diperbarui saat Anda mengetik</span>
+        </div>
+        <div class="kaprodi-filter-list" data-filter-list>
+            <?php foreach ($rows as $index => $row): ?>
+                <?php
+                    $field = isset($fields[$row['field'] ?? '']) ? (string) $row['field'] : 'kode';
+                    $meta = $fields[$field];
+                ?>
+                <div class="kaprodi-filter-row" data-filter-row>
+                    <select name="filter_field[]" class="form-select kaprodi-filter-field" aria-label="Jenis filter <?= $index + 1 ?>">
+                        <?php foreach ($fields as $field_key => $field_meta): ?>
+                            <option value="<?= html_escape($field_key) ?>" data-input-type="<?= html_escape($field_meta['type'] ?? 'search') ?>" data-placeholder="<?= html_escape($field_meta['placeholder']) ?>" <?= $field === $field_key ? 'selected' : '' ?>><?= html_escape($field_meta['label']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="<?= html_escape($meta['type'] ?? 'search') ?>" name="filter_value[]" class="form-control kaprodi-filter-value" value="<?= html_escape($row['value'] ?? '') ?>" placeholder="<?= html_escape($meta['placeholder']) ?>" autocomplete="off" aria-label="Nilai filter <?= $index + 1 ?>">
+                    <div class="kaprodi-filter-tools">
+                        <button type="button" class="btn btn-outline-secondary kaprodi-filter-icon kaprodi-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>
+                        <button type="button" class="btn btn-outline-primary kaprodi-filter-icon kaprodi-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <button type="submit" class="visually-hidden">Terapkan filter</button>
+    </form>
+    <?php
+}
 $filters = $filters ?? [];
 $stats = $stats ?? ['total' => 0, 'pengajuan' => 0, 'negosiasi' => 0, 'deal' => 0, 'selesai' => 0];
 $dashboard_stats = $dashboard_stats ?? [
@@ -83,6 +137,19 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         .btn-fik { background: #ea5b1a; color: #fff; border: 0; }
         .btn-fik:hover { background: #c24a13; color: #fff; }
         .form-control:focus, .form-select:focus { border-color: #ea5b1a; box-shadow: 0 0 0 .2rem rgba(234, 91, 26, .16); }
+        .kaprodi-filter-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+        .kaprodi-filter-heading h3 { margin: 0; color: var(--scm-text, #202124); font-size: 1rem; font-weight: 700; }
+        .kaprodi-filter-heading h3 i { color: #ea5b1a; }
+        .kaprodi-filter-heading p { margin: 3px 0 0; color: var(--scm-muted, #6b7280); font-size: .76rem; }
+        .kaprodi-filter-note { color: var(--scm-muted, #6b7280); font-size: .73rem; white-space: nowrap; }
+        .kaprodi-filter-list { display: grid; gap: 10px; }
+        .kaprodi-filter-row { display: grid; grid-template-columns: minmax(210px, .72fr) minmax(280px, 1.55fr) auto; align-items: center; gap: 10px; }
+        .kaprodi-filter-row .form-select, .kaprodi-filter-row .form-control { min-height: 44px; border-color: var(--scm-border, #d8dde3); color: var(--scm-text, #202124); background-color: var(--scm-surface, #fff); }
+        .kaprodi-filter-tools { display: flex; align-items: center; gap: 8px; }
+        .kaprodi-filter-icon { width: 44px; height: 44px; display: inline-flex; flex: 0 0 44px; align-items: center; justify-content: center; padding: 0; border-radius: 50%; }
+        .kaprodi-filter-add { border-color: #ea5b1a; color: #ea5b1a; }
+        .kaprodi-filter-add:hover { border-color: #ea5b1a; color: #fff; background: #ea5b1a; }
+        .kaprodi-filter-icon:disabled { opacity: .38; }
         .summary-card { min-height: 96px; padding: 18px; }
         .summary-card .value { font-weight: 700; font-size: 1.5rem; line-height: 1; }
         .summary-card .label { color: #6c757d; font-size: .82rem; margin-top: 8px; }
@@ -142,7 +209,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         }
         .history-table-card .table-responsive { scrollbar-color: #cfd4da transparent; }
         .scm-dashboard .history-table {
-            min-width: 1120px;
+            min-width: 1184px;
             margin: 0;
             --bs-table-bg: var(--history-bg) !important;
             --bs-table-color: var(--history-text) !important;
@@ -169,26 +236,28 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             transition: background-color .16s ease;
         }
         .scm-dashboard .history-table tbody tr:hover > td { background: rgba(234, 91, 26, .045); }
-        .scm-dashboard .history-table th:nth-child(1), .scm-dashboard .history-table td:nth-child(1) { min-width: 180px; }
-        .scm-dashboard .history-table th:nth-child(2), .scm-dashboard .history-table td:nth-child(2) { min-width: 250px; }
-        .scm-dashboard .history-table th:nth-child(3), .scm-dashboard .history-table td:nth-child(3) { width: 160px; text-align: center; }
-        .scm-dashboard .history-table th:nth-child(4), .scm-dashboard .history-table td:nth-child(4) { min-width: 320px; }
-        .scm-dashboard .history-table th:nth-child(5), .scm-dashboard .history-table td:nth-child(5) { width: 180px; text-align: center; }
-        .scm-dashboard .history-table th:nth-child(6), .scm-dashboard .history-table td:nth-child(6) { min-width: 145px; white-space: nowrap; }
-        .scm-dashboard .history-table th:nth-child(7), .scm-dashboard .history-table td:nth-child(7) { min-width: 120px; white-space: nowrap; }
-        .scm-dashboard .history-table td:nth-child(2) > .fw-semibold,
-        .scm-dashboard .history-table td:nth-child(4) > .text-muted {
+        .scm-dashboard .history-table th:nth-child(1), .scm-dashboard .history-table td:nth-child(1) { width: 64px; min-width: 64px; text-align: center; }
+        .scm-dashboard .history-table th:nth-child(2), .scm-dashboard .history-table td:nth-child(2) { min-width: 180px; }
+        .scm-dashboard .history-table th:nth-child(3), .scm-dashboard .history-table td:nth-child(3) { min-width: 250px; }
+        .scm-dashboard .history-table th:nth-child(4), .scm-dashboard .history-table td:nth-child(4) { width: 160px; text-align: center; }
+        .scm-dashboard .history-table th:nth-child(5), .scm-dashboard .history-table td:nth-child(5) { min-width: 320px; }
+        .scm-dashboard .history-table th:nth-child(6), .scm-dashboard .history-table td:nth-child(6) { width: 180px; text-align: center; }
+        .scm-dashboard .history-table th:nth-child(7), .scm-dashboard .history-table td:nth-child(7) { min-width: 145px; white-space: nowrap; }
+        .scm-dashboard .history-table th:nth-child(8), .scm-dashboard .history-table td:nth-child(8) { min-width: 120px; white-space: nowrap; }
+        .scm-dashboard .history-table td:nth-child(3) > .fw-semibold,
+        .scm-dashboard .history-table td:nth-child(5) > .text-muted {
             display: -webkit-box;
             overflow: hidden;
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 2;
         }
-        .scm-dashboard .history-table td:nth-child(4) > .small:not(.text-muted) {
+        .scm-dashboard .history-table td:nth-child(5) > .small:not(.text-muted) {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .scm-dashboard .history-table td:nth-child(4) > .small:nth-of-type(n + 4) { display: none; }
+        .scm-dashboard .history-table td:nth-child(5) > .small:nth-of-type(n + 4) { display: none; }
+        .history-row-number { color: var(--history-muted) !important; font-weight: 600; font-variant-numeric: tabular-nums; }
         .scm-dashboard .history-table .jenis-badge,
         .scm-dashboard .history-table .status-pill {
             min-height: 32px;
@@ -575,6 +644,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             .request-row-controls { width: 100%; justify-content: flex-start; }
         }
         @media (max-width: 767.98px) {
+            .kaprodi-filter-heading { flex-direction: column; gap: 7px; }
+            .kaprodi-filter-note { white-space: normal; }
+            .kaprodi-filter-row { grid-template-columns: 1fr; gap: 8px; padding: 12px; border: 1px solid var(--scm-border, #e8eaed); border-radius: 10px; }
+            .kaprodi-filter-tools { justify-content: flex-end; }
             .topbar-actions { width: 100%; }
             .topbar-actions { justify-content: flex-end; }
             .topbar-actions .btn { flex: 0 0 auto; }
@@ -986,43 +1059,11 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     <?php endforeach; ?>
                 </div>
                 <div class="panel-card p-3 p-lg-4 mb-3">
-                    <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="row g-2 align-items-end">
-                        <input type="hidden" name="tab" value="riwayat">
-                        <input type="hidden" name="kategori" value="<?= html_escape($active_category) ?>">
-                        <input type="hidden" name="per_page" value="<?= html_escape((string) $per_page) ?>">
-                        <div class="col-md-3">
-                            <label class="form-label small fw-semibold">Kata Kunci</label>
-                            <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, kebutuhan">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-semibold">Jenis</label>
-                            <select name="jenis_pengajuan" class="form-select">
-                                <option value="">Semua</option>
-                                <option value="Barang" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang') ? 'selected' : '' ?>>Barang</option>
-                                <option value="Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-semibold">Status</label>
-                            <select name="status" class="form-select">
-                                <option value="">Semua</option>
-                                <?php foreach (($status_options ?? []) as $option): ?>
-                                    <option value="<?= html_escape($option) ?>" <?= (($filters['status'] ?? '') === $option) ? 'selected' : '' ?>><?= html_escape($option) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-semibold">Dari</label>
-                            <input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="form-label small fw-semibold">Sampai</label>
-                            <input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>">
-                        </div>
-                        <div class="col-md-1 d-grid">
-                            <button class="btn btn-fik"><i class="bi bi-search"></i></button>
-                        </div>
-                    </form>
+                    <?php render_history_filter_kaprodi($filter_rows ?? [], [
+                        'tab' => 'riwayat',
+                        'kategori' => $active_category,
+                        'per_page' => $per_page,
+                    ]); ?>
                 </div>
 
                 <div class="panel-card overflow-hidden history-table-card">
@@ -1030,6 +1071,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         <table class="table table-clean align-middle mb-0 history-table">
                             <thead>
                                 <tr>
+                                    <th>No</th>
                                     <th>Kode</th>
                                     <th>Pengajuan</th>
                                     <th>Jenis</th>
@@ -1041,9 +1083,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                             </thead>
                             <tbody>
                                 <?php if (empty($pengajuan)): ?>
-                                    <tr><td colspan="7" class="text-center text-muted py-5">Belum ada data pengajuan sesuai filter.</td></tr>
-                                <?php else: foreach ($pengajuan as $p): ?>
+                                    <tr><td colspan="8" class="text-center text-muted py-5">Belum ada data pengajuan sesuai filter.</td></tr>
+                                <?php else: foreach ($pengajuan as $history_index => $p): ?>
                                     <tr>
+                                        <td class="history-row-number"><?= table_row_number_kaprodi($history_index, $page, $per_page) ?></td>
                                         <td class="fw-semibold"><?= html_escape($p->kode_pengajuan) ?></td>
                                         <td>
                                             <div class="fw-semibold"><?= html_escape($p->nama_pengajuan) ?></div>
@@ -1227,6 +1270,79 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             if (typeof window.kaprodiSyncChartTheme === 'function') window.kaprodiSyncChartTheme();
         });
         if (typeof window.kaprodiSyncChartTheme === 'function') window.kaprodiSyncChartTheme();
+    </script>
+    <script>
+        (() => {
+            document.querySelectorAll('[data-kaprodi-multi-filter]').forEach((form) => {
+                const list = form.querySelector('[data-filter-list]');
+                if (!list) return;
+                const maxFilters = Number(form.dataset.maxFilters || 4);
+                let submitTimer;
+
+                const syncInput = (row, clearValue = false) => {
+                    const select = row.querySelector('.kaprodi-filter-field');
+                    const input = row.querySelector('.kaprodi-filter-value');
+                    const option = select?.selectedOptions?.[0];
+                    if (!select || !input || !option) return;
+                    if (clearValue) input.value = '';
+                    input.type = option.dataset.inputType || 'search';
+                    input.placeholder = option.dataset.placeholder || 'Ketik untuk mencari';
+                };
+
+                const updateButtons = () => {
+                    const rows = Array.from(list.querySelectorAll('[data-filter-row]'));
+                    rows.forEach((row, index) => {
+                        row.querySelector('.kaprodi-filter-remove').disabled = rows.length === 1;
+                        row.querySelector('.kaprodi-filter-add').disabled = rows.length >= maxFilters || index !== rows.length - 1;
+                    });
+                };
+
+                const addRow = () => {
+                    const rows = list.querySelectorAll('[data-filter-row]');
+                    if (!rows.length || rows.length >= maxFilters) return null;
+                    const sourceSelect = rows[0].querySelector('.kaprodi-filter-field');
+                    const row = document.createElement('div');
+                    row.className = 'kaprodi-filter-row';
+                    row.dataset.filterRow = '';
+                    row.innerHTML = `
+                        <select name="filter_field[]" class="form-select kaprodi-filter-field" aria-label="Jenis filter ${rows.length + 1}">${sourceSelect.innerHTML}</select>
+                        <input type="search" name="filter_value[]" class="form-control kaprodi-filter-value" value="" autocomplete="off" aria-label="Nilai filter ${rows.length + 1}">
+                        <div class="kaprodi-filter-tools">
+                            <button type="button" class="btn btn-outline-secondary kaprodi-filter-icon kaprodi-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>
+                            <button type="button" class="btn btn-outline-primary kaprodi-filter-icon kaprodi-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+                        </div>`;
+                    list.appendChild(row);
+                    syncInput(row);
+                    updateButtons();
+                    return row;
+                };
+
+                list.querySelectorAll('[data-filter-row]').forEach((row) => syncInput(row));
+                updateButtons();
+                list.addEventListener('click', (event) => {
+                    const row = event.target.closest('[data-filter-row]');
+                    if (!row) return;
+                    if (event.target.closest('.kaprodi-filter-add')) {
+                        addRow()?.querySelector('.kaprodi-filter-value')?.focus();
+                    } else if (event.target.closest('.kaprodi-filter-remove') && list.querySelectorAll('[data-filter-row]').length > 1) {
+                        row.remove();
+                        updateButtons();
+                        form.requestSubmit();
+                    }
+                });
+                list.addEventListener('change', (event) => {
+                    if (!event.target.matches('.kaprodi-filter-field')) return;
+                    const row = event.target.closest('[data-filter-row]');
+                    syncInput(row, true);
+                    row.querySelector('.kaprodi-filter-value')?.focus();
+                });
+                list.addEventListener('input', (event) => {
+                    if (!event.target.matches('.kaprodi-filter-value')) return;
+                    window.clearTimeout(submitTimer);
+                    submitTimer = window.setTimeout(() => form.requestSubmit(), 650);
+                });
+            });
+        })();
     </script>
     <script>
         const historyPageSize = document.getElementById('historyPageSize');

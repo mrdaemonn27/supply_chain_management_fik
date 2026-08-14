@@ -35,9 +35,10 @@ class Maintenance_model extends CI_Model
     /**
      * Semua data maintenance
      */
-    public function get_all_maintenance($limit = null, $offset = 0)
+    public function get_all_maintenance($limit = null, $offset = 0, $criteria = [])
     {
         $this->baseQuery();
+        $this->applyCriteria($criteria);
 
         $this->db->order_by('maintenance.tanggal_maintenance', 'DESC');
 
@@ -133,9 +134,31 @@ class Maintenance_model extends CI_Model
     /**
      * Total seluruh maintenance
      */
-    public function count()
+    public function count($criteria = [])
     {
-        return $this->db->count_all($this->table);
+        $this->baseQuery();
+        $this->applyCriteria($criteria);
+        return (int) $this->db->count_all_results();
+    }
+
+    private function applyCriteria($criteria)
+    {
+        foreach ((array) $criteria as $criterion) {
+            $field = $criterion['field'] ?? '';
+            $value = trim((string) ($criterion['value'] ?? ''));
+            if ($value === '') continue;
+            if ($field === 'aset') {
+                $this->db->group_start()->like('aset.nama_aset', $value)->or_like('aset.kode_aset', $value)->group_end();
+            } elseif ($field === 'ruangan') {
+                $this->db->like('ruangan.nama_ruangan', $value);
+            } elseif ($field === 'tanggal') {
+                $this->db->like('maintenance.tanggal_maintenance', $value, 'after');
+            } elseif ($field === 'kondisi') {
+                $this->db->like('maintenance.kondisi_setelah', $value);
+            } elseif ($field === 'deskripsi') {
+                $this->db->group_start()->like('maintenance.deskripsi', $value)->or_like('maintenance.catatan', $value)->group_end();
+            }
+        }
     }
 
     /**

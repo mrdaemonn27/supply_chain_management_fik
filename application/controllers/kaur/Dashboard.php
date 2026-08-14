@@ -24,6 +24,116 @@ class Dashboard extends CI_Controller {
         }
     }
 
+    private function multi_filter_fields($module) {
+        $fields = [
+            'pengajuan' => ['kode', 'prodi', 'jenis', 'kebutuhan', 'status', 'tanggal'],
+            'negosiasi' => ['kode', 'pengajuan', 'prodi', 'jenis', 'item', 'vendor', 'status_negosiasi'],
+            'approval' => ['kode', 'tanggal', 'prodi', 'jenis', 'vendor', 'total_harga', 'status_negosiasi', 'status'],
+            'peminjaman' => ['peminjam', 'barang', 'tanggal', 'status_approval'],
+            'bast' => ['kode', 'prodi', 'jenis', 'nomor_bast', 'tanggal_bast'],
+            'laporan' => ['pengajuan', 'item', 'vendor', 'harga_awal', 'harga_akhir', 'selisih', 'volume', 'garansi', 'catatan'],
+        ];
+        return $fields[$module] ?? [];
+    }
+
+    private function read_multi_filters($module) {
+        $allowed_fields = $this->multi_filter_fields($module);
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
+        $rows = [];
+
+        foreach ($fields as $index => $field) {
+            if (count($rows) >= 4) {
+                break;
+            }
+            $field = trim((string) $field);
+            if (!in_array($field, $allowed_fields, true)) {
+                continue;
+            }
+            $rows[] = [
+                'field' => $field,
+                'value' => trim((string) ($values[$index] ?? '')),
+            ];
+        }
+
+        if (empty($rows) && !empty($allowed_fields)) {
+            $rows[] = ['field' => $allowed_fields[0], 'value' => ''];
+        }
+
+        return $rows;
+    }
+
+    private function merge_bast_rows($ready_rows, $bast_rows) {
+        $rows = [];
+        $bast_by_submission = [];
+        foreach ((array) $bast_rows as $bast) {
+            if (!empty($bast->id_pengajuan)) {
+                $bast_by_submission[(int) $bast->id_pengajuan] = $bast;
+            }
+        }
+
+        foreach ((array) $ready_rows as $submission) {
+            $match = $bast_by_submission[(int) $submission->id_pengajuan] ?? null;
+            $submission->nomor_bast = $match->nomor_bast ?? null;
+            $submission->tanggal_bast = $match->tanggal_bast ?? null;
+            $submission->file_bast = $match->file_bast ?? null;
+            $submission->catatan_bast = $match->catatan ?? null;
+            unset($bast_by_submission[(int) $submission->id_pengajuan]);
+            $rows[] = $submission;
+        }
+
+        foreach ($bast_by_submission as $bast) {
+            $submission = $this->Kaur_model->get_kaprodi_by_id((int) $bast->id_pengajuan);
+            if ($submission) {
+                $submission->nomor_bast = $bast->nomor_bast ?? null;
+                $submission->tanggal_bast = $bast->tanggal_bast ?? null;
+                $submission->file_bast = $bast->file_bast ?? null;
+                $submission->catatan_bast = $bast->catatan ?? null;
+                $rows[] = $submission;
+            } else {
+                $bast->kode_pengajuan = $bast->kode_pengajuan ?? ($bast->nomor_bast ?? '-');
+                $rows[] = $bast;
+            }
+        }
+        return $rows;
+    }
+
+    private function filter_bast_rows($rows, $filter_rows) {
+        return array_values(array_filter((array) $rows, static function ($row) use ($filter_rows) {
+            foreach ((array) $filter_rows as $filter) {
+                $field = (string) ($filter['field'] ?? '');
+                $value = trim((string) ($filter['value'] ?? ''));
+                if ($value === '') {
+                    continue;
+                }
+
+                if ($field === 'tanggal_bast') {
+                    $date = !empty($row->tanggal_bast) ? date('Y-m-d', strtotime($row->tanggal_bast)) : '';
+                    if ($date !== $value) {
+                        return false;
+                    }
+                    continue;
+                }
+
+                $haystack = '';
+                if ($field === 'kode') {
+                    $haystack = (string) ($row->kode_pengajuan ?? '');
+                } elseif ($field === 'prodi') {
+                    $haystack = trim((string) ($row->nama_prodi ?? '') . ' ' . (string) ($row->nama_pengajuan ?? ''));
+                } elseif ($field === 'jenis') {
+                    $haystack = (string) ($row->jenis_pengajuan ?? '');
+                } elseif ($field === 'nomor_bast') {
+                    $haystack = (string) ($row->nomor_bast ?? '');
+                }
+
+                if ($haystack === '' || stripos($haystack, $value) === false) {
+                    return false;
+                }
+            }
+            return true;
+        }));
+    }
+
     public function index() {
         $this->render('overview');
     }
@@ -57,6 +167,11 @@ class Dashboard extends CI_Controller {
     }
 
     private function render($active_module = 'overview') {
+        $allowed_modules = ['overview', 'pengajuan', 'negosiasi', 'approval', 'peminjaman', 'anggaran', 'bast', 'laporan'];
+        if (!in_array($active_module, $allowed_modules, true)) {
+            $active_module = 'overview';
+        }
+        $multi_filter_rows = $this->read_multi_filters($active_module);
         $id_user = $this->session->userdata('id_user');
         $current_year = (int) date('Y');
         $dashboard_year = (int) $this->input->get('tahun');
@@ -80,6 +195,8 @@ class Dashboard extends CI_Controller {
             'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
             'sort_by' => trim((string) $this->input->get('sort_by', true)),
             'sort_dir' => trim((string) $this->input->get('sort_dir', true)),
+            'filter_field' => array_column($multi_filter_rows, 'field'),
+            'filter_value' => array_column($multi_filter_rows, 'value'),
         ];
         $page = max(1, (int) $this->input->get('page'));
         $per_page = '8';
@@ -112,6 +229,7 @@ class Dashboard extends CI_Controller {
         $data['active_module'] = array_key_exists($active_module, $titles) ? $active_module : 'overview';
         $data['title'] = $titles[$data['active_module']] . ' - Kaur Laboratorium';
         $data['filters'] = $filters;
+        $data['filter_rows'] = $multi_filter_rows;
         $data['page'] = $page;
         $data['limit'] = $limit;
         $data['per_page'] = $per_page;
@@ -139,14 +257,22 @@ class Dashboard extends CI_Controller {
         $bast_source_limit = $active_module === 'bast' ? null : 12;
         $data['bast_ready'] = $this->Kaur_model->get_bast_ready_pengajuan($bast_source_limit);
         $data['bast_list'] = $this->Kaur_model->get_bast_list($bast_source_limit);
+        if ($active_module === 'bast') {
+            $data['bast_rows'] = $this->filter_bast_rows(
+                $this->merge_bast_rows($data['bast_ready'], $data['bast_list']),
+                $multi_filter_rows
+            );
+        }
         $loan_filters = $filters;
         if ($active_module === 'peminjaman') {
-            // Kata kunci difilter langsung di browser agar hasil berubah saat mengetik.
             $loan_filters['q'] = '';
             $loan_filters['pencarian'] = '';
+            $loan_filters['multi_filters'] = $multi_filter_rows;
         }
         $data['peminjaman_pending_kaur'] = $this->Peminjaman_model->get_pending_kaur($loan_filters);
-        $data['pengembalian_readonly'] = $this->Peminjaman_model->get_pengembalian_readonly($loan_filters);
+        $return_filters = $loan_filters;
+        unset($return_filters['multi_filters']);
+        $data['pengembalian_readonly'] = $this->Peminjaman_model->get_pengembalian_readonly($return_filters);
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('kaur', null);
         $data['pengajuan'] = $this->Kaur_model->get_all_by_user($id_user);

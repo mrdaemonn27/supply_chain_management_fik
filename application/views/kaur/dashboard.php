@@ -51,6 +51,14 @@ function loan_approval_states_kaur($loan) {
         'selesai' => $state($status === 'Dikembalikan', in_array($status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dipinjam'], true)),
     ];
 }
+function table_row_number_kaur($index, $page = 1, $per_page = '10') {
+    $page = max(1, (int) $page);
+    if ((string) $per_page === 'all') {
+        return (int) $index + 1;
+    }
+    $page_size = max(1, (int) $per_page ?: 10);
+    return (($page - 1) * $page_size) + (int) $index + 1;
+}
 function query_kaur($filters, $page, $per_page = null) {
     $params = [];
     foreach ((array) $filters as $key => $value) {
@@ -82,6 +90,100 @@ function sort_icon_kaur($filters, $field) {
     return $current_dir === 'ASC'
         ? '<i class="bi bi-sort-up-alt ms-1" style="font-size:.8rem;"></i>'
         : '<i class="bi bi-sort-down ms-1" style="font-size:.8rem;"></i>';
+}
+function kaur_filter_config($module) {
+    $configs = [
+        'pengajuan' => [
+            'kode' => ['label' => 'Kode pengajuan', 'placeholder' => 'Cari kode pengajuan'],
+            'prodi' => ['label' => 'Program studi', 'placeholder' => 'Cari program studi'],
+            'jenis' => ['label' => 'Jenis', 'placeholder' => 'Cari Barang, Jasa, atau Barang dan Jasa'],
+            'kebutuhan' => ['label' => 'Kebutuhan / item', 'placeholder' => 'Cari kebutuhan atau nama item'],
+            'status' => ['label' => 'Status', 'placeholder' => 'Cari status pengajuan'],
+            'tanggal' => ['label' => 'Tanggal pengajuan', 'placeholder' => 'Pilih tanggal pengajuan', 'type' => 'date'],
+        ],
+        'negosiasi' => [
+            'kode' => ['label' => 'Kode pengajuan', 'placeholder' => 'Cari kode pengajuan'],
+            'pengajuan' => ['label' => 'Nama pengajuan', 'placeholder' => 'Cari nama pengajuan'],
+            'prodi' => ['label' => 'Program studi', 'placeholder' => 'Cari program studi'],
+            'jenis' => ['label' => 'Jenis', 'placeholder' => 'Cari jenis pengajuan'],
+            'item' => ['label' => 'Item', 'placeholder' => 'Cari nama item'],
+            'vendor' => ['label' => 'Vendor', 'placeholder' => 'Cari nama vendor'],
+            'status_negosiasi' => ['label' => 'Status negosiasi', 'placeholder' => 'Cari status negosiasi'],
+        ],
+        'approval' => [
+            'kode' => ['label' => 'Kode pengajuan', 'placeholder' => 'Cari kode pengajuan'],
+            'tanggal' => ['label' => 'Tanggal', 'placeholder' => 'Pilih tanggal pengajuan', 'type' => 'date'],
+            'prodi' => ['label' => 'Program studi', 'placeholder' => 'Cari program studi'],
+            'jenis' => ['label' => 'Jenis', 'placeholder' => 'Cari jenis pengajuan'],
+            'vendor' => ['label' => 'Vendor', 'placeholder' => 'Cari nama vendor'],
+            'total_harga' => ['label' => 'Total harga', 'placeholder' => 'Cari nominal total harga'],
+            'status_negosiasi' => ['label' => 'Status negosiasi', 'placeholder' => 'Cari status negosiasi'],
+            'status' => ['label' => 'Status approval', 'placeholder' => 'Cari status approval'],
+        ],
+        'peminjaman' => [
+            'peminjam' => ['label' => 'Peminjam / NIM', 'placeholder' => 'Cari peminjam / NIM'],
+            'barang' => ['label' => 'Nama barang / kode', 'placeholder' => 'Cari nama barang / kode'],
+            'tanggal' => ['label' => 'Masa pinjam', 'placeholder' => 'Pilih tanggal pinjam', 'type' => 'date'],
+            'status_approval' => ['label' => 'Alur approval', 'placeholder' => 'Cari status alur approval'],
+        ],
+        'bast' => [
+            'kode' => ['label' => 'Kode pengajuan', 'placeholder' => 'Cari kode pengajuan'],
+            'prodi' => ['label' => 'Prodi / kegiatan', 'placeholder' => 'Cari prodi atau kegiatan'],
+            'jenis' => ['label' => 'Jenis', 'placeholder' => 'Cari jenis pengajuan'],
+            'nomor_bast' => ['label' => 'Nomor BAST', 'placeholder' => 'Cari nomor BAST'],
+            'tanggal_bast' => ['label' => 'Tanggal BAST', 'placeholder' => 'Pilih tanggal BAST', 'type' => 'date'],
+        ],
+        'laporan' => [
+            'pengajuan' => ['label' => 'Pengajuan', 'placeholder' => 'Cari kode, nama pengajuan, atau prodi'],
+            'item' => ['label' => 'Item', 'placeholder' => 'Cari nama item'],
+            'vendor' => ['label' => 'Vendor', 'placeholder' => 'Cari nama vendor'],
+            'harga_awal' => ['label' => 'Harga awal', 'placeholder' => 'Cari nominal harga awal'],
+            'harga_akhir' => ['label' => 'Harga akhir', 'placeholder' => 'Cari nominal harga akhir'],
+            'selisih' => ['label' => 'Selisih', 'placeholder' => 'Cari nominal selisih'],
+            'volume' => ['label' => 'Volume', 'placeholder' => 'Cari jumlah volume'],
+            'garansi' => ['label' => 'Garansi', 'placeholder' => 'Cari keterangan garansi'],
+            'catatan' => ['label' => 'Catatan', 'placeholder' => 'Cari isi catatan'],
+        ],
+    ];
+    return $configs[$module] ?? [];
+}
+function render_kaur_multi_filter($module, $rows, $hidden = []) {
+    $fields = kaur_filter_config($module);
+    if (empty($fields)) return;
+    $rows = is_array($rows) && !empty($rows) ? array_slice(array_values($rows), 0, 4) : [['field' => array_key_first($fields), 'value' => '']];
+    ?>
+    <form method="get" action="<?= kaur_module_url($module) ?>" class="kaur-multi-filter" data-kaur-multi-filter data-max-filters="4">
+        <?php foreach ($hidden as $name => $value): ?>
+            <input type="hidden" name="<?= html_escape($name) ?>" value="<?= html_escape((string) $value) ?>">
+        <?php endforeach; ?>
+        <div class="kaur-filter-heading">
+            <div><h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3><p>Tambahkan hingga 4 kriteria untuk mempersempit data.</p></div>
+            <span class="kaur-filter-note"><i class="bi bi-lightning-charge me-1" aria-hidden="true"></i>Hasil diperbarui saat Anda mengetik</span>
+        </div>
+        <div class="kaur-filter-list" data-filter-list>
+            <?php foreach ($rows as $index => $row): ?>
+                <?php
+                    $field = isset($fields[$row['field'] ?? '']) ? (string) $row['field'] : (string) array_key_first($fields);
+                    $meta = $fields[$field];
+                    $input_type = $meta['type'] ?? 'search';
+                ?>
+                <div class="kaur-filter-row" data-filter-row>
+                    <select name="filter_field[]" class="form-select kaur-filter-field" aria-label="Jenis filter <?= $index + 1 ?>">
+                        <?php foreach ($fields as $field_key => $field_meta): ?>
+                            <option value="<?= html_escape($field_key) ?>" data-input-type="<?= html_escape($field_meta['type'] ?? 'search') ?>" data-placeholder="<?= html_escape($field_meta['placeholder']) ?>" <?= $field === $field_key ? 'selected' : '' ?>><?= html_escape($field_meta['label']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                    <input type="<?= html_escape($input_type) ?>" name="filter_value[]" class="form-control kaur-filter-value" value="<?= html_escape($row['value'] ?? '') ?>" placeholder="<?= html_escape($meta['placeholder']) ?>" autocomplete="off" aria-label="Nilai filter <?= $index + 1 ?>">
+                    <div class="kaur-filter-tools">
+                        <button type="button" class="btn btn-outline-secondary kaur-filter-icon kaur-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>
+                        <button type="button" class="btn btn-outline-primary kaur-filter-icon kaur-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+        <button type="submit" class="visually-hidden">Terapkan filter</button>
+    </form>
+    <?php
 }
 function terbilang_kaur($number) {
     $number = (int) $number;
@@ -162,6 +264,21 @@ function kaur_module_url($module) {
         .btn-fik { background: #ea5b1a; color: #fff; border: 0; }
         .btn-fik:hover { background: #c24a13; color: #fff; }
         .form-control:focus, .form-select:focus { border-color: #ea5b1a; box-shadow: 0 0 0 .2rem rgba(234, 91, 26, .16); }
+        .kaur-multi-filter { padding: 18px; border: 1px solid var(--scm-border, #e8eaed); border-radius: 10px; background: var(--scm-surface, #fff); }
+        .panel-card .kaur-multi-filter { padding: 0; border: 0; border-radius: 0; background: transparent; }
+        .kaur-filter-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+        .kaur-filter-heading h3 { margin: 0; color: var(--scm-text, #202124); font-size: 1rem; font-weight: 700; }
+        .kaur-filter-heading h3 i { color: #ea5b1a; }
+        .kaur-filter-heading p { margin: 3px 0 0; color: var(--scm-muted, #6b7280); font-size: .76rem; }
+        .kaur-filter-note { color: var(--scm-muted, #6b7280); font-size: .73rem; white-space: nowrap; }
+        .kaur-filter-list { display: grid; gap: 10px; }
+        .kaur-filter-row { display: grid; grid-template-columns: minmax(210px, .72fr) minmax(280px, 1.55fr) auto; align-items: center; gap: 10px; }
+        .kaur-filter-row .form-select, .kaur-filter-row .form-control { min-height: 44px; border-color: var(--scm-border, #d8dde3); color: var(--scm-text, #202124); background-color: var(--scm-surface, #fff); }
+        .kaur-filter-tools { display: flex; align-items: center; gap: 8px; }
+        .kaur-filter-icon { width: 44px; height: 44px; display: inline-flex; flex: 0 0 44px; align-items: center; justify-content: center; padding: 0; border-radius: 50%; }
+        .kaur-filter-add { border-color: #ea5b1a; color: #ea5b1a; }
+        .kaur-filter-add:hover { border-color: #ea5b1a; color: #fff; background: #ea5b1a; }
+        .kaur-filter-icon:disabled { opacity: .38; }
         .summary-card { min-height: 96px; padding: 18px; }
         .summary-card .value { font-weight: 700; font-size: 1.5rem; line-height: 1; }
         .summary-card .label { color: #6c757d; font-size: .82rem; margin-top: 8px; }
@@ -208,8 +325,9 @@ function kaur_module_url($module) {
             box-shadow: 0 8px 24px rgba(15, 23, 42, .06) !important;
         }
         .kaur-submission-table-card .table-responsive { scrollbar-color: #cfd4da transparent; }
+        .scm-dashboard .kaur-row-number { color: var(--submission-muted, var(--scm-muted)); font-weight: 600; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
         .scm-dashboard .kaur-submission-table {
-            min-width: 1120px;
+            min-width: 1184px;
             margin: 0;
             --bs-table-bg: var(--submission-bg) !important;
             --bs-table-color: var(--submission-text) !important;
@@ -230,7 +348,7 @@ function kaur_module_url($module) {
             background: #f9fafb !important;
             border-color: #e5e7eb !important;
         }
-        .scm-dashboard .kaur-submission-table tbody tr { height: 152px; }
+        .scm-dashboard .kaur-submission-table tbody tr { height: auto; }
         .scm-dashboard .kaur-submission-table tbody td {
             padding: 16px 18px;
             color: var(--submission-text);
@@ -241,26 +359,27 @@ function kaur_module_url($module) {
             transition: background-color .16s ease;
         }
         .scm-dashboard .kaur-submission-table tbody tr:hover > td { background: rgba(234, 91, 26, .045); }
-        .scm-dashboard .kaur-submission-table th:nth-child(1), .scm-dashboard .kaur-submission-table td:nth-child(1) { min-width: 185px; }
-        .scm-dashboard .kaur-submission-table th:nth-child(2), .scm-dashboard .kaur-submission-table td:nth-child(2) { min-width: 250px; }
-        .scm-dashboard .kaur-submission-table th:nth-child(3), .scm-dashboard .kaur-submission-table td:nth-child(3) { width: 160px; text-align: center; }
-        .scm-dashboard .kaur-submission-table th:nth-child(4), .scm-dashboard .kaur-submission-table td:nth-child(4) { min-width: 360px; }
-        .scm-dashboard .kaur-submission-table th:nth-child(5), .scm-dashboard .kaur-submission-table td:nth-child(5) { width: 180px; text-align: center; }
-        .scm-dashboard .kaur-submission-table th:nth-child(6), .scm-dashboard .kaur-submission-table td:nth-child(6) { min-width: 145px; white-space: nowrap; }
-        .scm-dashboard .kaur-submission-table th:nth-child(7), .scm-dashboard .kaur-submission-table td:nth-child(7) { min-width: 120px; white-space: nowrap; }
-        .scm-dashboard .kaur-submission-table td:nth-child(2) > .small,
-        .scm-dashboard .kaur-submission-table td:nth-child(4) > .text-muted {
+        .scm-dashboard .kaur-submission-table th:nth-child(1), .scm-dashboard .kaur-submission-table td:nth-child(1) { width: 64px; min-width: 64px; text-align: center; }
+        .scm-dashboard .kaur-submission-table th:nth-child(2), .scm-dashboard .kaur-submission-table td:nth-child(2) { min-width: 185px; }
+        .scm-dashboard .kaur-submission-table th:nth-child(3), .scm-dashboard .kaur-submission-table td:nth-child(3) { min-width: 250px; }
+        .scm-dashboard .kaur-submission-table th:nth-child(4), .scm-dashboard .kaur-submission-table td:nth-child(4) { width: 160px; text-align: center; }
+        .scm-dashboard .kaur-submission-table th:nth-child(5), .scm-dashboard .kaur-submission-table td:nth-child(5) { min-width: 360px; }
+        .scm-dashboard .kaur-submission-table th:nth-child(6), .scm-dashboard .kaur-submission-table td:nth-child(6) { width: 180px; text-align: center; }
+        .scm-dashboard .kaur-submission-table th:nth-child(7), .scm-dashboard .kaur-submission-table td:nth-child(7) { min-width: 145px; white-space: nowrap; }
+        .scm-dashboard .kaur-submission-table th:nth-child(8), .scm-dashboard .kaur-submission-table td:nth-child(8) { min-width: 120px; white-space: nowrap; }
+        .scm-dashboard .kaur-submission-table td:nth-child(3) > .small,
+        .scm-dashboard .kaur-submission-table td:nth-child(5) > .text-muted {
             display: -webkit-box;
             overflow: hidden;
             -webkit-box-orient: vertical;
             -webkit-line-clamp: 2;
         }
-        .scm-dashboard .kaur-submission-table td:nth-child(4) > .small:not(.text-muted) {
+        .scm-dashboard .kaur-submission-table td:nth-child(5) > .small:not(.text-muted) {
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
         }
-        .scm-dashboard .kaur-submission-table td:nth-child(4) > .small:nth-of-type(n + 4) { display: none; }
+        .scm-dashboard .kaur-submission-table td:nth-child(5) > .small:nth-of-type(n + 4) { display: none; }
         .scm-dashboard .kaur-submission-table .kaur-kind-badge,
         .scm-dashboard .kaur-submission-table .status-pill {
             display: inline-flex;
@@ -334,7 +453,7 @@ function kaur_module_url($module) {
         .kaur-report-sort-link.is-active i { color: inherit !important; }
         .kaur-report-sort-link i { font-size: .72rem; }
         .scm-dashboard .kaur-report-table {
-            min-width: 1380px;
+            min-width: 1444px;
             margin: 0;
             --bs-table-bg: var(--submission-bg) !important;
             --bs-table-color: var(--submission-text) !important;
@@ -360,16 +479,22 @@ function kaur_module_url($module) {
             transition: background-color .16s ease;
         }
         .scm-dashboard .kaur-report-table tbody tr:hover > td { background: rgba(234, 91, 26, .045); }
-        .scm-dashboard .kaur-report-table th:nth-child(1), .scm-dashboard .kaur-report-table td:nth-child(1) { min-width: 245px; }
-        .scm-dashboard .kaur-report-table th:nth-child(2), .scm-dashboard .kaur-report-table td:nth-child(2) { min-width: 230px; }
-        .scm-dashboard .kaur-report-table th:nth-child(3), .scm-dashboard .kaur-report-table td:nth-child(3) { min-width: 190px; }
-        .scm-dashboard .kaur-report-table th:nth-child(4), .scm-dashboard .kaur-report-table td:nth-child(4),
+        .scm-dashboard .kaur-report-table th:nth-child(1), .scm-dashboard .kaur-report-table td:nth-child(1) { width: 64px; min-width: 64px; text-align: center; }
+        .scm-dashboard .kaur-report-table th:nth-child(2), .scm-dashboard .kaur-report-table td:nth-child(2) { min-width: 245px; }
+        .scm-dashboard .kaur-report-table th:nth-child(3), .scm-dashboard .kaur-report-table td:nth-child(3) { min-width: 230px; }
+        .scm-dashboard .kaur-report-table th:nth-child(4), .scm-dashboard .kaur-report-table td:nth-child(4) { min-width: 190px; }
         .scm-dashboard .kaur-report-table th:nth-child(5), .scm-dashboard .kaur-report-table td:nth-child(5),
-        .scm-dashboard .kaur-report-table th:nth-child(6), .scm-dashboard .kaur-report-table td:nth-child(6) { min-width: 130px; white-space: nowrap; }
-        .scm-dashboard .kaur-report-table th:nth-child(7), .scm-dashboard .kaur-report-table td:nth-child(7) { min-width: 105px; }
-        .scm-dashboard .kaur-report-table th:nth-child(8), .scm-dashboard .kaur-report-table td:nth-child(8) { min-width: 145px; }
-        .scm-dashboard .kaur-report-table th:nth-child(9), .scm-dashboard .kaur-report-table td:nth-child(9) { min-width: 210px; }
+        .scm-dashboard .kaur-report-table th:nth-child(6), .scm-dashboard .kaur-report-table td:nth-child(6),
+        .scm-dashboard .kaur-report-table th:nth-child(7), .scm-dashboard .kaur-report-table td:nth-child(7) { min-width: 130px; white-space: nowrap; }
+        .scm-dashboard .kaur-report-table th:nth-child(8), .scm-dashboard .kaur-report-table td:nth-child(8) { min-width: 105px; }
+        .scm-dashboard .kaur-report-table th:nth-child(9), .scm-dashboard .kaur-report-table td:nth-child(9) { min-width: 145px; }
+        .scm-dashboard .kaur-report-table th:nth-child(10), .scm-dashboard .kaur-report-table td:nth-child(10) { min-width: 210px; }
         @media (max-width: 767.98px) {
+            .kaur-multi-filter { padding: 14px; }
+            .kaur-filter-heading { flex-direction: column; gap: 7px; }
+            .kaur-filter-note { white-space: normal; }
+            .kaur-filter-row { grid-template-columns: 1fr; gap: 8px; padding: 12px; border: 1px solid var(--scm-border, #e8eaed); border-radius: 10px; }
+            .kaur-filter-tools { justify-content: flex-end; }
             .kaur-report-table-header, .kaur-report-toolbar { padding-left: 16px; padding-right: 16px; }
             .kaur-report-search { grid-template-columns: 1fr; }
             .kaur-report-search-actions { width: 100%; flex-wrap: wrap; margin-top: 0; }
@@ -556,7 +681,7 @@ function kaur_module_url($module) {
         .approval-table-heading .text-muted { color: var(--approval-muted) !important; }
         .approval-table-card .table-responsive { scrollbar-color: #cfd4da transparent; }
         .scm-dashboard .approval-table {
-            min-width: 1380px;
+            min-width: 1444px;
             margin: 0;
             --bs-table-bg: var(--approval-bg) !important;
             --bs-table-color: var(--approval-text) !important;
@@ -584,15 +709,16 @@ function kaur_module_url($module) {
             transition: background-color .16s ease;
         }
         .scm-dashboard .approval-table tbody tr:hover > td { background: rgba(234, 91, 26, .04); }
-        .scm-dashboard .approval-table th:nth-child(1), .scm-dashboard .approval-table td:nth-child(1) { min-width: 215px; }
-        .scm-dashboard .approval-table th:nth-child(2), .scm-dashboard .approval-table td:nth-child(2) { min-width: 145px; white-space: nowrap; }
-        .scm-dashboard .approval-table th:nth-child(3), .scm-dashboard .approval-table td:nth-child(3) { min-width: 170px; }
-        .scm-dashboard .approval-table th:nth-child(4), .scm-dashboard .approval-table td:nth-child(4) { width: 165px; text-align: center; }
-        .scm-dashboard .approval-table th:nth-child(5), .scm-dashboard .approval-table td:nth-child(5) { min-width: 230px; }
-        .scm-dashboard .approval-table th:nth-child(6), .scm-dashboard .approval-table td:nth-child(6) { min-width: 155px; white-space: nowrap; }
-        .scm-dashboard .approval-table th:nth-child(7), .scm-dashboard .approval-table td:nth-child(7),
-        .scm-dashboard .approval-table th:nth-child(8), .scm-dashboard .approval-table td:nth-child(8) { width: 175px; text-align: center; }
-        .scm-dashboard .approval-table th:nth-child(9), .scm-dashboard .approval-table td:nth-child(9) { width: 125px; text-align: right; }
+        .scm-dashboard .approval-table th:nth-child(1), .scm-dashboard .approval-table td:nth-child(1) { width: 64px; min-width: 64px; text-align: center; }
+        .scm-dashboard .approval-table th:nth-child(2), .scm-dashboard .approval-table td:nth-child(2) { min-width: 215px; }
+        .scm-dashboard .approval-table th:nth-child(3), .scm-dashboard .approval-table td:nth-child(3) { min-width: 145px; white-space: nowrap; }
+        .scm-dashboard .approval-table th:nth-child(4), .scm-dashboard .approval-table td:nth-child(4) { min-width: 170px; }
+        .scm-dashboard .approval-table th:nth-child(5), .scm-dashboard .approval-table td:nth-child(5) { width: 165px; text-align: center; }
+        .scm-dashboard .approval-table th:nth-child(6), .scm-dashboard .approval-table td:nth-child(6) { min-width: 230px; }
+        .scm-dashboard .approval-table th:nth-child(7), .scm-dashboard .approval-table td:nth-child(7) { min-width: 155px; white-space: nowrap; }
+        .scm-dashboard .approval-table th:nth-child(8), .scm-dashboard .approval-table td:nth-child(8),
+        .scm-dashboard .approval-table th:nth-child(9), .scm-dashboard .approval-table td:nth-child(9) { width: 175px; text-align: center; }
+        .scm-dashboard .approval-table th:nth-child(10), .scm-dashboard .approval-table td:nth-child(10) { width: 125px; text-align: right; }
         .scm-dashboard .approval-table .approval-badge {
             display: inline-flex;
             align-items: center;
@@ -688,7 +814,7 @@ function kaur_module_url($module) {
         }
         .bast-table-card .table-responsive { scrollbar-color: #cfd4da transparent; }
         .scm-dashboard .bast-table {
-            min-width: 1240px;
+            min-width: 1304px;
             margin: 0;
             --bs-table-bg: var(--bast-bg) !important;
             --bs-table-color: var(--bast-text) !important;
@@ -716,12 +842,13 @@ function kaur_module_url($module) {
             transition: background-color .16s ease;
         }
         .scm-dashboard .bast-table tbody tr:hover > td { background: rgba(234, 91, 26, .04); }
-        .scm-dashboard .bast-table th:nth-child(1), .scm-dashboard .bast-table td:nth-child(1) { min-width: 215px; }
-        .scm-dashboard .bast-table th:nth-child(2), .scm-dashboard .bast-table td:nth-child(2) { min-width: 300px; }
-        .scm-dashboard .bast-table th:nth-child(3), .scm-dashboard .bast-table td:nth-child(3) { width: 160px; text-align: center; }
-        .scm-dashboard .bast-table th:nth-child(4), .scm-dashboard .bast-table td:nth-child(4) { min-width: 140px; }
-        .scm-dashboard .bast-table th:nth-child(5), .scm-dashboard .bast-table td:nth-child(5) { min-width: 145px; white-space: nowrap; }
-        .scm-dashboard .bast-table th:nth-child(6), .scm-dashboard .bast-table td:nth-child(6) { min-width: 330px; text-align: right; }
+        .scm-dashboard .bast-table th:nth-child(1), .scm-dashboard .bast-table td:nth-child(1) { width: 64px; min-width: 64px; text-align: center; }
+        .scm-dashboard .bast-table th:nth-child(2), .scm-dashboard .bast-table td:nth-child(2) { min-width: 215px; }
+        .scm-dashboard .bast-table th:nth-child(3), .scm-dashboard .bast-table td:nth-child(3) { min-width: 300px; }
+        .scm-dashboard .bast-table th:nth-child(4), .scm-dashboard .bast-table td:nth-child(4) { width: 160px; text-align: center; }
+        .scm-dashboard .bast-table th:nth-child(5), .scm-dashboard .bast-table td:nth-child(5) { min-width: 140px; }
+        .scm-dashboard .bast-table th:nth-child(6), .scm-dashboard .bast-table td:nth-child(6) { min-width: 145px; white-space: nowrap; }
+        .scm-dashboard .bast-table th:nth-child(7), .scm-dashboard .bast-table td:nth-child(7) { min-width: 330px; text-align: right; }
         .bast-badge {
             display: inline-flex;
             align-items: center;
@@ -1271,21 +1398,10 @@ function kaur_module_url($module) {
                     </div>
                 </div>
             </div>
-            <form id="kaurLoanFilterForm" method="get" action="<?= kaur_module_url('peminjaman') ?>" class="panel-card kaur-loan-filter-card mb-3">
-                <input type="hidden" name="sort_by" value="<?= html_escape($filters['sort_by'] ?? '') ?>">
-                <input type="hidden" name="sort_dir" value="<?= html_escape($filters['sort_dir'] ?? '') ?>">
-                <div class="kaur-loan-filter-grid">
-                    <div class="kaur-loan-filter-field kaur-loan-filter-keyword">
-                        <label for="kaurLoanLiveSearch">Kata Kunci</label>
-                        <div class="input-group"><span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span><input id="kaurLoanLiveSearch" type="search" name="q" class="form-control" list="kaurLoanSuggestions" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Nama peminjam, barang, laboratorium, atau status" autocomplete="off"></div>
-                        <datalist id="kaurLoanSuggestions"><?php foreach(($peminjaman_pending_kaur ?? []) as $suggestion): ?><option value="<?= html_escape($suggestion->nama_peminjam ?? '') ?>"><?php foreach(($suggestion->detail_barang ?? []) as $item): ?><option value="<?= html_escape($item->nama_aset ?? '') ?>"><?php endforeach; ?><?php endforeach; ?></datalist>
-                        <div class="kaur-loan-filter-helper">Hasil kata kunci diperbarui langsung saat Anda mengetik.</div>
-                    </div>
-                    <div class="kaur-loan-filter-field"><label for="kaurLoanDateFrom">Tanggal Pinjam Dari</label><input id="kaurLoanDateFrom" type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
-                    <div class="kaur-loan-filter-field"><label for="kaurLoanDateTo">Sampai</label><input id="kaurLoanDateTo" type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
-                    <div class="kaur-loan-filter-actions"><button type="submit" class="btn btn-fik px-3"><i class="bi bi-calendar-check me-1"></i>Terapkan Tanggal</button><a href="<?= kaur_module_url('peminjaman') ?>" class="btn btn-outline-secondary px-3"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</a></div>
-                </div>
-            </form>
+            <div class="mb-3"><?php render_kaur_multi_filter('peminjaman', $filter_rows ?? [], [
+                'sort_by' => $filters['sort_by'] ?? '',
+                'sort_dir' => $filters['sort_dir'] ?? '',
+            ]); ?></div>
             <div class="panel-card kaur-loan-table-card">
             <div class="table-responsive kaur-loan-table-wrap">
                 <table class="table table-hover table-clean kaur-loan-table align-middle">
@@ -1488,45 +1604,19 @@ function kaur_module_url($module) {
                 </div>
                 <a href="<?= base_url('index.php/kaur/pengajuan/export_pengajuan_acc?' . query_kaur($filters, 1)) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3 align-self-start"><i class="bi bi-file-earmark-excel me-1"></i> Export Pengajuan ACC</a>
             </div>
-            <form method="get" action="<?= kaur_module_url('pengajuan') ?>" class="row g-2 align-items-end mb-3">
-                <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
-                <div class="col-md-3">
-                    <label class="form-label small fw-semibold">Kata Kunci</label>
-                    <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, barang">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-semibold">Jenis</label>
-                    <select name="jenis_pengajuan" class="form-select">
-                        <option value="">Semua</option>
-                        <option value="Barang" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang') ? 'selected' : '' ?>>Barang</option>
-                                <option value="Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option>
-                                <option value="Barang dan Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang dan Jasa') ? 'selected' : '' ?>>Barang dan Jasa</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-semibold">Status</label>
-                    <select name="status" class="form-select">
-                        <option value="">Semua</option>
-                        <?php foreach (['Pengajuan','Revisi','Sedang Negosiasi','Deal','Disetujui','Approval','BAST','Selesai','Ditolak'] as $status): ?>
-                            <option value="<?= $status ?>" <?= (($filters['status'] ?? '') === $status) ? 'selected' : '' ?>><?= $status ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-2"><label class="form-label small fw-semibold">Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
-                <div class="col-md-2"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
-                <div class="col-md-1 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
-            </form>
+            <?php render_kaur_multi_filter('pengajuan', $filter_rows ?? [], ['per_page' => $per_page ?? '10']); ?>
             </div>
 
             <div class="panel-card kaur-submission-table-card">
             <div class="table-responsive">
                 <table class="table table-clean align-middle mb-0 kaur-submission-table">
-                    <thead><tr><th>Kode</th><th>Prodi</th><th>Jenis</th><th>Kebutuhan</th><th>Status</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
+                    <thead><tr><th>No</th><th>Kode</th><th>Prodi</th><th>Jenis</th><th>Kebutuhan</th><th>Status</th><th>Tanggal</th><th class="text-end">Aksi</th></tr></thead>
                     <tbody>
                         <?php if (empty($pengajuan_kaprodi)): ?>
-                            <tr><td colspan="7" class="text-center text-muted py-5">Belum ada pengajuan sesuai filter.</td></tr>
-                        <?php else: foreach ($pengajuan_kaprodi as $p): ?>
+                            <tr><td colspan="8" class="text-center text-muted py-5">Belum ada pengajuan sesuai filter.</td></tr>
+                        <?php else: foreach ($pengajuan_kaprodi as $submission_index => $p): ?>
                             <tr>
+                                <td class="kaur-row-number"><?= table_row_number_kaur($submission_index, $page ?? 1, $per_page ?? '10') ?></td>
                                 <td class="fw-semibold"><?= html_escape($p->kode_pengajuan) ?></td>
                                 <td><div class="fw-semibold"><?= html_escape($p->nama_prodi) ?></div><div class="small text-muted"><?= html_escape($p->nama_pengajuan) ?></div></td>
                                 <td><span class="kaur-kind-badge"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
@@ -1579,38 +1669,7 @@ function kaur_module_url($module) {
                 </div>
             </div>
             <div class="panel-card p-3 p-lg-4 mb-3">
-                <form method="get" action="<?= kaur_module_url('negosiasi') ?>" class="row g-2 align-items-end">
-                    <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
-                    <div class="col-md-3">
-                        <label class="form-label small fw-semibold">Kata Kunci</label>
-                        <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, item">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small fw-semibold">Status Negosiasi</label>
-                        <select name="status_negosiasi" class="form-select">
-                            <option value="">Semua</option>
-                            <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
-                                <option value="<?= $s ?>" <?= (($filters['status_negosiasi'] ?? '') === $s) ? 'selected' : '' ?>><?= $s ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small fw-semibold">Vendor</label>
-                        <input type="text" name="vendor" class="form-control" value="<?= html_escape($filters['vendor'] ?? '') ?>" placeholder="Nama vendor">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="form-label small fw-semibold">Jenis</label>
-                        <select name="jenis_pengajuan" class="form-select">
-                            <option value="">Semua</option>
-                            <option value="Barang" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang') ? 'selected' : '' ?>>Barang</option>
-                            <option value="Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option>
-                            <option value="Barang dan Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang dan Jasa') ? 'selected' : '' ?>>Barang dan Jasa</option>
-                        </select>
-                    </div>
-                    <div class="col-md-1"><label class="form-label small fw-semibold">Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
-                    <div class="col-md-1"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
-                    <div class="col-md-1 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
-                </form>
+                <?php render_kaur_multi_filter('negosiasi', $filter_rows ?? [], ['per_page' => $per_page ?? '10']); ?>
             </div>
             <div class="negotiation-request-list">
                 <?php if (empty($pengajuan_kaprodi)): ?>
@@ -1749,52 +1808,19 @@ function kaur_module_url($module) {
                 <h2 class="h5 fw-bold mb-1">Approval Kaur</h2>
                 <div class="text-muted small">Kaur dapat menyetujui, meminta revisi, atau menolak pengajuan sesuai kebutuhan proses bisnis.</div>
             </div>
-            <form method="get" action="<?= kaur_module_url('approval') ?>" class="row g-2 align-items-end">
-                <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
-                <input type="hidden" name="sort_by" value="<?= html_escape($filters['sort_by'] ?? '') ?>">
-                <input type="hidden" name="sort_dir" value="<?= html_escape($filters['sort_dir'] ?? '') ?>">
-                <div class="col-md-3">
-                    <label class="form-label small fw-semibold">Kata Kunci</label>
-                    <input type="text" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, barang">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-semibold">Jenis</label>
-                    <select name="jenis_pengajuan" class="form-select">
-                        <option value="">Semua</option>
-                        <option value="Barang" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang') ? 'selected' : '' ?>>Barang</option>
-                        <option value="Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Jasa') ? 'selected' : '' ?>>Jasa</option>
-                        <option value="Barang dan Jasa" <?= (($filters['jenis_pengajuan'] ?? '') === 'Barang dan Jasa') ? 'selected' : '' ?>>Barang dan Jasa</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-semibold">Status Approval</label>
-                    <select name="status" class="form-select">
-                        <option value="">Semua</option>
-                        <?php foreach (['Deal','Disetujui','Approval','BAST','Selesai','Ditolak'] as $status): ?>
-                            <option value="<?= $status ?>" <?= (($filters['status'] ?? '') === $status) ? 'selected' : '' ?>><?= $status ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-semibold">Status Negosiasi</label>
-                    <select name="status_negosiasi" class="form-select">
-                        <option value="">Semua</option>
-                        <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
-                            <option value="<?= $s ?>" <?= (($filters['status_negosiasi'] ?? '') === $s) ? 'selected' : '' ?>><?= $s ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-2"><label class="form-label small fw-semibold">Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
-                <div class="col-md-2"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
-                <div class="col-md-1 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
-            </form>
+            <?php render_kaur_multi_filter('approval', $filter_rows ?? [], [
+                'per_page' => $per_page ?? '10',
+                'sort_by' => $filters['sort_by'] ?? '',
+                'sort_dir' => $filters['sort_dir'] ?? '',
+            ]); ?>
             </div>
 
             <div class="panel-card kaur-submission-table-card approval-table-card">
             <div class="table-responsive">
                 <table class="table table-clean align-middle mb-0 approval-table">
                     <thead><tr>
-                        <th><a href="<?= sort_url_kaur('approval', $filters, 'kode', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">No. Pengajuan <?= sort_icon_kaur($filters, 'kode') ?></a></th>
+                        <th>No</th>
+                        <th><a href="<?= sort_url_kaur('approval', $filters, 'kode', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">Kode Pengajuan <?= sort_icon_kaur($filters, 'kode') ?></a></th>
                         <th><a href="<?= sort_url_kaur('approval', $filters, 'tanggal', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">Tanggal <?= sort_icon_kaur($filters, 'tanggal') ?></a></th>
                         <th><a href="<?= sort_url_kaur('approval', $filters, 'prodi', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">Program Studi <?= sort_icon_kaur($filters, 'prodi') ?></a></th>
                         <th><a href="<?= sort_url_kaur('approval', $filters, 'jenis', 1, $per_page ?? '10') ?>" class="text-decoration-none text-dark">Jenis <?= sort_icon_kaur($filters, 'jenis') ?></a></th>
@@ -1806,8 +1832,8 @@ function kaur_module_url($module) {
                     </tr></thead>
                     <tbody>
                     <?php if (empty($pengajuan_kaprodi)): ?>
-                        <tr><td colspan="9" class="text-center text-muted py-5">Belum ada pengajuan untuk approval.</td></tr>
-                    <?php else: foreach (($pengajuan_kaprodi ?? []) as $p): ?>
+                        <tr><td colspan="10" class="text-center text-muted py-5">Belum ada pengajuan untuk approval.</td></tr>
+                    <?php else: foreach (($pengajuan_kaprodi ?? []) as $approval_index => $p): ?>
                         <?php
                             $vendors = [];
                             $nego_statuses = [];
@@ -1829,6 +1855,7 @@ function kaur_module_url($module) {
                             $total_harga = ($p->summary['total_negosiasi'] ?? 0) > 0 ? $p->summary['total_negosiasi'] : ($p->summary['total_setelah_pajak'] ?? $p->summary['total_penawaran'] ?? 0);
                         ?>
                         <tr>
+                            <td class="kaur-row-number"><?= table_row_number_kaur($approval_index, $page ?? 1, $per_page ?? '10') ?></td>
                             <td class="fw-semibold"><?= html_escape($p->kode_pengajuan) ?></td>
                             <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($p->created_at)) ?></td>
                             <td><?= html_escape($p->nama_prodi) ?></td>
@@ -2009,47 +2036,16 @@ function kaur_module_url($module) {
                 <span class="bast-summary-badge align-self-start"><?= (int) $bast_pending_count ?> menunggu BAST</span>
             </div>
 
-            <form method="get" action="<?= kaur_module_url('bast') ?>" class="row g-2 align-items-end mb-3">
-                <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold">Kata Kunci</label>
-                    <input type="text" name="q" class="form-control" list="bastAutocompleteList" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode, prodi, nomor BAST" autocomplete="off">
-                    <datalist id="bastAutocompleteList">
-                        <?php
-                            $bast_suggestions = [];
-                            foreach ($bast_rows as $sugg) {
-                                if (!empty($sugg->kode_pengajuan)) { $bast_suggestions[$sugg->kode_pengajuan] = true; }
-                                if (!empty($sugg->nama_prodi)) { $bast_suggestions[$sugg->nama_prodi] = true; }
-                                if (!empty($sugg->nomor_bast)) { $bast_suggestions[$sugg->nomor_bast] = true; }
-                            }
-                        ?>
-                        <?php foreach (array_keys($bast_suggestions) as $sugg_value): ?>
-                            <option value="<?= html_escape($sugg_value) ?>">
-                        <?php endforeach; ?>
-                    </datalist>
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-semibold">Tahun</label>
-                    <select name="tahun" class="form-select">
-                        <option value="">Semua</option>
-                        <?php foreach ($bast_years as $year_opt): ?>
-                            <option value="<?= (int) $year_opt ?>" <?= ((string) ($filters['tahun'] ?? '') === (string) $year_opt) ? 'selected' : '' ?>><?= (int) $year_opt ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-                <div class="col-md-2"><label class="form-label small fw-semibold">Dari</label><input type="date" name="tanggal_dari" class="form-control" value="<?= html_escape($filters['tanggal_dari'] ?? '') ?>"></div>
-                <div class="col-md-2"><label class="form-label small fw-semibold">Sampai</label><input type="date" name="tanggal_sampai" class="form-control" value="<?= html_escape($filters['tanggal_sampai'] ?? '') ?>"></div>
-                <div class="col-md-1 d-grid"><button class="btn btn-fik"><i class="bi bi-search"></i></button></div>
-            </form>
+            <?php render_kaur_multi_filter('bast', $filter_rows ?? [], ['per_page' => $per_page ?? '10']); ?>
             </div>
 
             <div class="table-responsive">
                 <table class="table table-clean align-middle mb-0 bast-table">
-                    <thead><tr><th>Kode Pengajuan</th><th>Prodi / Kegiatan</th><th>Jenis</th><th>Nomor BAST</th><th>Tanggal BAST</th><th class="text-end">Aksi</th></tr></thead>
+                    <thead><tr><th>No</th><th>Kode Pengajuan</th><th>Prodi / Kegiatan</th><th>Jenis</th><th>Nomor BAST</th><th>Tanggal BAST</th><th class="text-end">Aksi</th></tr></thead>
                     <tbody>
                         <?php if (empty($bast_rows)): ?>
-                            <tr><td colspan="6" class="text-center text-muted py-5">Belum ada pengajuan yang siap BAST sesuai filter.</td></tr>
-                        <?php else: foreach ($bast_rows as $b): ?>
+                            <tr><td colspan="7" class="text-center text-muted py-5">Belum ada pengajuan yang siap BAST sesuai filter.</td></tr>
+                        <?php else: foreach ($bast_rows as $bast_index => $b): ?>
                             <?php
                                 $has_bast = !empty($b->nomor_bast);
                                 $b_items = [];
@@ -2063,6 +2059,7 @@ function kaur_module_url($module) {
                                 $terbilang = tanggal_terbilang_kaur($b->tanggal_bast ?? date('Y-m-d'));
                             ?>
                             <tr>
+                                <td class="kaur-row-number"><?= table_row_number_kaur($bast_index, $page ?? 1, $per_page ?? '10') ?></td>
                                 <td class="fw-semibold"><?= html_escape($b->kode_pengajuan ?? '-') ?></td>
                                 <td><div class="fw-semibold"><?= html_escape($b->nama_prodi ?? '-') ?></div><div class="small text-muted"><?= html_escape($b->nama_pengajuan ?? '-') ?></div></td>
                                 <td><span class="bast-badge"><?= html_escape($b->jenis_pengajuan ?? 'Barang') ?></span></td>
@@ -2176,22 +2173,17 @@ function kaur_module_url($module) {
                 <div class="text-muted small">Hanya data dengan status Deal yang tampil sebagai dokumentasi resmi hasil akhir.</div>
             </div>
             <div class="kaur-report-toolbar">
-                <form method="get" action="<?= kaur_module_url('laporan') ?>" class="kaur-report-search">
-                    <input type="hidden" name="sort_by" value="<?= html_escape($filters['sort_by'] ?? '') ?>">
-                    <input type="hidden" name="sort_dir" value="<?= html_escape($filters['sort_dir'] ?? '') ?>">
-                    <input type="hidden" name="per_page" value="<?= html_escape((string) ($per_page ?? '10')) ?>">
-                    <div>
-                        <label for="kaurReportSearch" class="form-label">Cari Laporan</label>
-                        <div class="input-group"><span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span><input id="kaurReportSearch" type="search" name="q" class="form-control" value="<?= html_escape($filters['q'] ?? '') ?>" placeholder="Kode pengajuan, nama pengajuan, item, vendor, garansi, atau catatan" autocomplete="off"></div>
-                        <div class="kaur-report-search-note"><i class="bi bi-arrow-down-up me-1"></i>Klik judul kolom untuk mengurutkan hasil.</div>
-                    </div>
-                    <div class="kaur-report-search-actions"><button type="submit" class="btn btn-fik rounded-pill px-4"><i class="bi bi-search me-1"></i>Cari</button><a href="<?= kaur_module_url('laporan') ?>" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</a></div>
-                </form>
+                <?php render_kaur_multi_filter('laporan', $filter_rows ?? [], [
+                    'sort_by' => $filters['sort_by'] ?? '',
+                    'sort_dir' => $filters['sort_dir'] ?? '',
+                    'per_page' => $per_page ?? '10',
+                ]); ?>
             </div>
             <div class="table-responsive">
                 <table class="table table-clean align-middle kaur-report-table">
                     <thead><tr>
                         <?php $report_sort_by = (string) ($filters['sort_by'] ?? ''); ?>
+                        <th>No</th>
                         <th><a class="kaur-report-sort-link <?= $report_sort_by === 'kode_pengajuan' ? 'is-active' : '' ?>" href="<?= sort_url_kaur('laporan', $filters, 'kode_pengajuan', 1, $per_page ?? '10') ?>">Pengajuan <?= sort_icon_kaur($filters, 'kode_pengajuan') ?></a></th>
                         <th><a class="kaur-report-sort-link <?= $report_sort_by === 'item' ? 'is-active' : '' ?>" href="<?= sort_url_kaur('laporan', $filters, 'item', 1, $per_page ?? '10') ?>">Item <?= sort_icon_kaur($filters, 'item') ?></a></th>
                         <th><a class="kaur-report-sort-link <?= $report_sort_by === 'vendor' ? 'is-active' : '' ?>" href="<?= sort_url_kaur('laporan', $filters, 'vendor', 1, $per_page ?? '10') ?>">Vendor <?= sort_icon_kaur($filters, 'vendor') ?></a></th>
@@ -2204,9 +2196,10 @@ function kaur_module_url($module) {
                     </tr></thead>
                     <tbody>
                         <?php if (empty($laporan_negosiasi)): ?>
-                            <tr><td colspan="9" class="text-center text-muted py-5"><?= !empty($filters['q']) ? 'Tidak ada laporan yang cocok dengan pencarian.' : 'Belum ada negosiasi yang Deal.' ?></td></tr>
-                        <?php else: foreach ($laporan_negosiasi as $lap): ?>
+                            <tr><td colspan="10" class="text-center text-muted py-5"><?= !empty($filters['q']) ? 'Tidak ada laporan yang cocok dengan pencarian.' : 'Belum ada negosiasi yang Deal.' ?></td></tr>
+                        <?php else: foreach ($laporan_negosiasi as $report_index => $lap): ?>
                             <tr>
+                                <td class="kaur-row-number"><?= table_row_number_kaur($report_index, $page ?? 1, $per_page ?? '10') ?></td>
                                 <td><div class="fw-semibold"><?= html_escape($lap->kode_pengajuan) ?></div><div class="small text-muted"><?= html_escape($lap->nama_pengajuan) ?></div></td>
                                 <td><?= html_escape($lap->uraian_barang) ?></td>
                                 <td><?= html_escape($lap->vendor ?: '-') ?></td>
@@ -2251,6 +2244,84 @@ function kaur_module_url($module) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script>
+        (() => {
+            document.querySelectorAll('[data-kaur-multi-filter]').forEach((form) => {
+                const list = form.querySelector('[data-filter-list]');
+                if (!list) return;
+                const maxFilters = Number(form.dataset.maxFilters || 4);
+                let submitTimer;
+
+                const syncInput = (row, clearValue = false) => {
+                    const select = row.querySelector('.kaur-filter-field');
+                    const input = row.querySelector('.kaur-filter-value');
+                    const option = select?.selectedOptions?.[0];
+                    if (!select || !input || !option) return;
+                    if (clearValue) input.value = '';
+                    input.type = option.dataset.inputType || 'search';
+                    input.placeholder = option.dataset.placeholder || 'Ketik untuk mencari';
+                };
+
+                const updateButtons = () => {
+                    const rows = Array.from(list.querySelectorAll('[data-filter-row]'));
+                    rows.forEach((row, index) => {
+                        const remove = row.querySelector('.kaur-filter-remove');
+                        const add = row.querySelector('.kaur-filter-add');
+                        if (remove) remove.disabled = rows.length === 1;
+                        if (add) add.disabled = rows.length >= maxFilters || index !== rows.length - 1;
+                    });
+                };
+
+                const addRow = () => {
+                    const currentRows = list.querySelectorAll('[data-filter-row]');
+                    if (!currentRows.length || currentRows.length >= maxFilters) return null;
+                    const sourceSelect = currentRows[0].querySelector('.kaur-filter-field');
+                    const row = document.createElement('div');
+                    row.className = 'kaur-filter-row';
+                    row.dataset.filterRow = '';
+                    row.innerHTML = `
+                        <select name="filter_field[]" class="form-select kaur-filter-field" aria-label="Jenis filter ${currentRows.length + 1}">${sourceSelect.innerHTML}</select>
+                        <input type="search" name="filter_value[]" class="form-control kaur-filter-value" value="" autocomplete="off" aria-label="Nilai filter ${currentRows.length + 1}">
+                        <div class="kaur-filter-tools">
+                            <button type="button" class="btn btn-outline-secondary kaur-filter-icon kaur-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>
+                            <button type="button" class="btn btn-outline-primary kaur-filter-icon kaur-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
+                        </div>`;
+                    list.appendChild(row);
+                    syncInput(row);
+                    updateButtons();
+                    return row;
+                };
+
+                list.querySelectorAll('[data-filter-row]').forEach((row) => syncInput(row));
+                updateButtons();
+
+                list.addEventListener('click', (event) => {
+                    const row = event.target.closest('[data-filter-row]');
+                    if (!row) return;
+                    if (event.target.closest('.kaur-filter-add')) {
+                        addRow()?.querySelector('.kaur-filter-value')?.focus();
+                    } else if (event.target.closest('.kaur-filter-remove') && list.querySelectorAll('[data-filter-row]').length > 1) {
+                        row.remove();
+                        updateButtons();
+                        form.requestSubmit();
+                    }
+                });
+
+                list.addEventListener('change', (event) => {
+                    if (!event.target.matches('.kaur-filter-field')) return;
+                    const row = event.target.closest('[data-filter-row]');
+                    syncInput(row, true);
+                    row.querySelector('.kaur-filter-value')?.focus();
+                });
+
+                list.addEventListener('input', (event) => {
+                    if (!event.target.matches('.kaur-filter-value')) return;
+                    window.clearTimeout(submitTimer);
+                    submitTimer = window.setTimeout(() => form.requestSubmit(), 650);
+                });
+            });
+        })();
+    </script>
     <script>
         (() => {
             const dashboardData = <?= json_encode([

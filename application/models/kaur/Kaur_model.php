@@ -360,6 +360,97 @@ class Kaur_model extends CI_Model {
             $this->db->group_end();
         }
 
+        $multi_fields = (array) ($filters['filter_field'] ?? []);
+        $multi_values = (array) ($filters['filter_value'] ?? []);
+        foreach (array_slice($multi_fields, 0, 4) as $index => $field) {
+            $field = trim((string) $field);
+            $value = trim((string) ($multi_values[$index] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+            $like = '%' . $value . '%';
+
+            switch ($field) {
+                case 'kode':
+                    $this->db->like('kaprodi_pengajuan.kode_pengajuan', $value);
+                    break;
+                case 'pengajuan':
+                    $this->db->group_start();
+                    $this->db->like('kaprodi_pengajuan.kode_pengajuan', $value);
+                    $this->db->or_like('kaprodi_pengajuan.nama_pengajuan', $value);
+                    $this->db->group_end();
+                    break;
+                case 'prodi':
+                    $this->db->like('kaprodi_pengajuan.nama_prodi', $value);
+                    break;
+                case 'jenis':
+                    $this->db->like('kaprodi_pengajuan.jenis_pengajuan', $value);
+                    break;
+                case 'kebutuhan':
+                    $this->db->group_start();
+                    $this->db->like('kaprodi_pengajuan.kebutuhan_lab', $value);
+                    $this->db->or_where("kaprodi_pengajuan.id_pengajuan IN (
+                        SELECT i.id_pengajuan FROM `{$this->kaprodiItemTable}` i
+                        WHERE i.uraian_barang LIKE " . $this->db->escape($like) . "
+                    )", null, false);
+                    $this->db->group_end();
+                    break;
+                case 'item':
+                    $this->db->where("kaprodi_pengajuan.id_pengajuan IN (
+                        SELECT i.id_pengajuan FROM `{$this->kaprodiItemTable}` i
+                        WHERE i.uraian_barang LIKE " . $this->db->escape($like) . "
+                    )", null, false);
+                    break;
+                case 'vendor':
+                    $this->db->where("kaprodi_pengajuan.id_pengajuan IN (
+                        SELECT n.id_pengajuan FROM `{$this->negosiasiTable}` n
+                        INNER JOIN (
+                            SELECT id_item, MAX(id_negosiasi) AS max_id
+                            FROM `{$this->negosiasiTable}` GROUP BY id_item
+                        ) latest ON latest.max_id = n.id_negosiasi
+                        WHERE n.vendor LIKE " . $this->db->escape($like) . "
+                    )", null, false);
+                    break;
+                case 'status_negosiasi':
+                    $this->db->where("kaprodi_pengajuan.id_pengajuan IN (
+                        SELECT n.id_pengajuan FROM `{$this->negosiasiTable}` n
+                        INNER JOIN (
+                            SELECT id_item, MAX(id_negosiasi) AS max_id
+                            FROM `{$this->negosiasiTable}` GROUP BY id_item
+                        ) latest ON latest.max_id = n.id_negosiasi
+                        WHERE n.status LIKE " . $this->db->escape($like) . "
+                    )", null, false);
+                    break;
+                case 'status':
+                    $this->db->like('kaprodi_pengajuan.status', $value);
+                    break;
+                case 'tanggal':
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                        $this->db->where('DATE(kaprodi_pengajuan.created_at)', $value);
+                    }
+                    break;
+                case 'total_harga':
+                    $numeric = preg_replace('/[^0-9]/', '', $value);
+                    if ($numeric !== '') {
+                        $numeric_like = '%' . $numeric . '%';
+                        $tax_multiplier = 1 + (defined('SCM_TAX_RATE') ? (float) SCM_TAX_RATE : 0.11);
+                        $this->db->where("CAST(COALESCE((
+                            SELECT CASE
+                                WHEN COALESCE(SUM(CASE WHEN n.status = 'Ditolak' THEN 0 ELSE COALESCE(n.harga_negosiasi, 0) * COALESCE(n.volume_negosiasi, i.vol) END), 0) > 0
+                                THEN SUM(CASE WHEN n.status = 'Ditolak' THEN 0 ELSE COALESCE(n.harga_negosiasi, 0) * COALESCE(n.volume_negosiasi, i.vol) END) * {$tax_multiplier}
+                                ELSE SUM(i.harga_penawaran_sat * i.vol) * {$tax_multiplier}
+                            END
+                            FROM `{$this->kaprodiItemTable}` i
+                            LEFT JOIN `{$this->negosiasiTable}` n ON n.id_negosiasi = (
+                                SELECT MAX(n2.id_negosiasi) FROM `{$this->negosiasiTable}` n2 WHERE n2.id_item = i.id_item
+                            )
+                            WHERE i.id_pengajuan = kaprodi_pengajuan.id_pengajuan
+                        ), 0) AS CHAR) LIKE " . $this->db->escape($numeric_like), null, false);
+                    }
+                    break;
+            }
+        }
+
         if (!empty($filters['status'])) {
             $this->db->where('kaprodi_pengajuan.status', $filters['status']);
         }
@@ -885,6 +976,49 @@ class Kaur_model extends CI_Model {
         if (!empty($filters['tanggal_sampai'])) {
             $sql .= " AND DATE(n.created_at) <= ?";
             $params[] = $filters['tanggal_sampai'];
+        }
+
+        $multi_fields = (array) ($filters['filter_field'] ?? []);
+        $multi_values = (array) ($filters['filter_value'] ?? []);
+        foreach (array_slice($multi_fields, 0, 4) as $index => $field) {
+            $field = trim((string) $field);
+            $value = trim((string) ($multi_values[$index] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+
+            if ($field === 'pengajuan') {
+                $sql .= " AND (p.kode_pengajuan LIKE ? OR p.nama_pengajuan LIKE ? OR p.nama_prodi LIKE ?)";
+                $like = '%' . $value . '%';
+                array_push($params, $like, $like, $like);
+            } elseif ($field === 'item') {
+                $sql .= " AND i.uraian_barang LIKE ?";
+                $params[] = '%' . $value . '%';
+            } elseif ($field === 'vendor') {
+                $sql .= " AND n.vendor LIKE ?";
+                $params[] = '%' . $value . '%';
+            } elseif ($field === 'garansi') {
+                $sql .= " AND n.garansi LIKE ?";
+                $params[] = '%' . $value . '%';
+            } elseif ($field === 'catatan') {
+                $sql .= " AND n.catatan LIKE ?";
+                $params[] = '%' . $value . '%';
+            } elseif (in_array($field, ['harga_awal', 'harga_akhir', 'selisih', 'volume'], true)) {
+                $numeric = $field === 'volume'
+                    ? str_replace(',', '.', preg_replace('/[^0-9,.]/', '', $value))
+                    : preg_replace('/[^0-9]/', '', $value);
+                if ($numeric === '') {
+                    continue;
+                }
+                $expression = [
+                    'harga_awal' => 'n.harga_awal',
+                    'harga_akhir' => 'n.harga_negosiasi',
+                    'selisih' => '(n.harga_awal - n.harga_negosiasi)',
+                    'volume' => 'n.volume_negosiasi',
+                ][$field];
+                $sql .= " AND CAST({$expression} AS CHAR) LIKE ?";
+                $params[] = '%' . $numeric . '%';
+            }
         }
 
         return $sql;

@@ -154,6 +154,49 @@ class Kaprodi_model extends CI_Model {
             $this->db->group_end();
         }
 
+        $multi_fields = (array) ($filters['filter_field'] ?? []);
+        $multi_values = (array) ($filters['filter_value'] ?? []);
+        foreach (array_slice($multi_fields, 0, 4) as $index => $field) {
+            $field = trim((string) $field);
+            $value = trim((string) ($multi_values[$index] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+            $like = '%' . $value . '%';
+
+            switch ($field) {
+                case 'kode':
+                    $this->db->like('kaprodi_pengajuan.kode_pengajuan', $value);
+                    break;
+                case 'pengajuan':
+                    $this->db->group_start();
+                    $this->db->like('kaprodi_pengajuan.nama_pengajuan', $value);
+                    $this->db->or_like('kaprodi_pengajuan.nama_prodi', $value);
+                    $this->db->group_end();
+                    break;
+                case 'jenis':
+                    $this->db->like('kaprodi_pengajuan.jenis_pengajuan', $value);
+                    break;
+                case 'kebutuhan':
+                    $this->db->group_start();
+                    $this->db->like('kaprodi_pengajuan.kebutuhan_lab', $value);
+                    $this->db->or_where("kaprodi_pengajuan.id_pengajuan IN (
+                        SELECT i.id_pengajuan FROM `{$this->itemTable}` i
+                        WHERE i.uraian_barang LIKE " . $this->db->escape($like) . "
+                    )", null, false);
+                    $this->db->group_end();
+                    break;
+                case 'status':
+                    $this->db->like('kaprodi_pengajuan.status', $value);
+                    break;
+                case 'tanggal':
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                        $this->db->where('DATE(kaprodi_pengajuan.created_at)', $value);
+                    }
+                    break;
+            }
+        }
+
         if (!empty($filters['status'])) {
             $this->db->where('kaprodi_pengajuan.status', $filters['status']);
         }

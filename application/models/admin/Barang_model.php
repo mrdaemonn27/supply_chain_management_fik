@@ -26,14 +26,7 @@ class Barang_model extends CI_Model {
         $this->db->from('aset');
         // Join dengan tabel ruangan untuk mendapatkan nama lab yang sesuai
         $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
-        if (!empty($filters['q'])) {
-            $this->db->group_start();
-            $this->db->like('aset.kode_aset', trim($filters['q']));
-            $this->db->or_like('aset.nama_aset', trim($filters['q']));
-            $this->db->or_like('ruangan.nama_ruangan', trim($filters['q']));
-            $this->db->or_like('aset.kondisi', trim($filters['q']));
-            $this->db->group_end();
-        }
+        $this->apply_criteria($filters['criteria'] ?? []);
         $this->db->order_by('aset.nama_aset', 'ASC');
         if (!empty($filters['limit'])) {
             $this->db->limit((int) $filters['limit'], max(0, (int) ($filters['offset'] ?? 0)));
@@ -43,18 +36,29 @@ class Barang_model extends CI_Model {
     }
 
     public function count_all($filters = []) {
-        if (!empty($filters['q'])) {
-            $q = trim($filters['q']);
-            $this->db->group_start();
-            $this->db->like('aset.kode_aset', $q);
-            $this->db->or_like('aset.nama_aset', $q);
-            $this->db->or_like('ruangan.nama_ruangan', $q);
-            $this->db->or_like('aset.kondisi', $q);
-            $this->db->group_end();
-        }
         $this->db->from('aset');
         $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
+        $this->apply_criteria($filters['criteria'] ?? []);
         return (int) $this->db->count_all_results();
+    }
+
+    private function apply_criteria($criteria) {
+        $columns = [
+            'kode' => 'aset.kode_aset',
+            'nama' => 'aset.nama_aset',
+            'ruangan' => 'ruangan.nama_ruangan',
+            'kondisi' => 'aset.kondisi',
+        ];
+        foreach ((array) $criteria as $criterion) {
+            $field = $criterion['field'] ?? '';
+            $value = trim((string) ($criterion['value'] ?? ''));
+            if ($value === '') continue;
+            if ($field === 'total') {
+                $this->db->where("CAST(aset.jumlah_total AS CHAR) LIKE " . $this->db->escape('%' . $value . '%'), null, false);
+            } elseif (isset($columns[$field])) {
+                $this->db->like($columns[$field], $value);
+            }
+        }
     }
 
     public function find_duplicate($data, $exclude_id = null) {

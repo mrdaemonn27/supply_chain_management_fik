@@ -159,16 +159,15 @@
 
         <div class="card shadow-sm border-0 rounded-4">
             <div class="card-body p-0">
-                <div class="room-table-toolbar">
-                    <div class="input-group room-table-search">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input id="ruanganSearch" type="search" class="form-control" placeholder="Cari nama ruangan atau deskripsi" autocomplete="off" aria-label="Cari data ruangan">
-                    </div>
-                    <button id="ruanganSearchReset" type="button" class="btn room-table-reset">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
-                    </button>
-                </div>
-                <div class="room-table-hint"><i class="bi bi-lightning-charge me-1"></i>Hasil diperbarui saat Anda mengetik. Klik judul kolom untuk mengurutkan.</div>
+                <div class="p-3 pb-0"><?php
+                    $multi_filter_id = 'ruanganMultiFilter';
+                    $multi_filter_mode = 'client';
+                    $multi_filter_fields = [
+                        'nama' => ['label' => 'Nama ruangan', 'placeholder' => 'Cari nama ruangan atau laboratorium'],
+                        'deskripsi' => ['label' => 'Deskripsi', 'placeholder' => 'Cari deskripsi ruangan'],
+                    ];
+                    include APPPATH . 'views/admin/_multi_filter.php';
+                ?></div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
@@ -190,6 +189,8 @@
                                 <tr
                                     class="ruangan-data-row"
                                     data-search="<?= html_escape(($r['nama_ruangan'] ?? '') . ' ' . ($r['deskripsi'] ?? '')) ?>"
+                                    data-filter-nama="<?= html_escape($r['nama_ruangan'] ?? '') ?>"
+                                    data-filter-deskripsi="<?= html_escape($r['deskripsi'] ?? '') ?>"
                                     data-sort-index="<?= $no ?>"
                                     data-sort-name="<?= html_escape($r['nama_ruangan'] ?? '') ?>"
                                     data-sort-description="<?= html_escape($r['deskripsi'] ?? '') ?>"
@@ -462,8 +463,7 @@
             const select = document.getElementById('ruanganPageSize');
             const status = document.getElementById('ruanganPageStatus');
             const nav = document.getElementById('ruanganPageNav');
-            const search = document.getElementById('ruanganSearch');
-            const reset = document.getElementById('ruanganSearchReset');
+            const filterRoot = document.getElementById('ruanganMultiFilter');
             const total = document.getElementById('ruanganTotalItems');
             const empty = document.getElementById('ruanganFilterEmpty');
             const body = rows.length ? rows[0].parentElement : null;
@@ -486,8 +486,8 @@
             };
 
             function filteredRows() {
-                const keyword = search ? normalize(search.value) : '';
-                return rows.filter(row => !keyword || normalize(row.dataset.search).includes(keyword));
+                const criteria = filterRoot ? AdminMultiFilter.getCriteria(filterRoot) : [];
+                return rows.filter(row => AdminMultiFilter.matches(row, criteria));
             }
 
             function sortedRows(items) {
@@ -543,7 +543,7 @@
                 updateSortButtons();
             }
 
-            if (search) search.addEventListener('input', function () { page = 1; render(); });
+            filterRoot?.addEventListener('admin-multi-filter-change', function () { page = 1; render(); });
             select.addEventListener('change', function () { page = 1; render(); });
 
             sortButtons.forEach(sortButton => {
@@ -559,16 +559,6 @@
                     render();
                 });
             });
-
-            if (reset) {
-                reset.addEventListener('click', function () {
-                    if (search) search.value = '';
-                    sortKey = '';
-                    sortDirection = 'asc';
-                    page = 1;
-                    render();
-                });
-            }
 
             render();
         }());

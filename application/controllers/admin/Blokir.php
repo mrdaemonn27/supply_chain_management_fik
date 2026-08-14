@@ -25,11 +25,7 @@ class Blokir extends CI_Controller {
     }
 
     public function index() {
-        $filters = [
-            'status' => $this->input->get('status', true),
-            'pencarian' => $this->input->get('q', true),
-            'tanggal' => $this->input->get('tanggal', true),
-        ];
+        $filters = [];
 
         $data['title'] = 'Blokir Pengguna';
         $data['filters'] = $filters;

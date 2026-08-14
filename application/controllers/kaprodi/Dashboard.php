@@ -24,13 +24,42 @@ class Dashboard extends CI_Controller {
         }
     }
 
+    private function read_history_filters() {
+        $allowed_fields = ['kode', 'pengajuan', 'jenis', 'kebutuhan', 'status', 'tanggal'];
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
+        $rows = [];
+
+        foreach ($fields as $index => $field) {
+            if (count($rows) >= 4) {
+                break;
+            }
+            $field = trim((string) $field);
+            if (!in_array($field, $allowed_fields, true)) {
+                continue;
+            }
+            $rows[] = [
+                'field' => $field,
+                'value' => trim((string) ($values[$index] ?? '')),
+            ];
+        }
+
+        if (empty($rows)) {
+            $rows[] = ['field' => 'kode', 'value' => ''];
+        }
+        return $rows;
+    }
+
     public function index() {
+        $filter_rows = $this->read_history_filters();
         $filters = [
             'q' => trim((string) $this->input->get('q', true)),
             'status' => trim((string) $this->input->get('status', true)),
             'jenis_pengajuan' => trim((string) $this->input->get('jenis_pengajuan', true)),
             'tanggal_dari' => trim((string) $this->input->get('tanggal_dari', true)),
             'tanggal_sampai' => trim((string) $this->input->get('tanggal_sampai', true)),
+            'filter_field' => array_column($filter_rows, 'field'),
+            'filter_value' => array_column($filter_rows, 'value'),
         ];
         $kategori = trim((string) $this->input->get('kategori', true));
         if (in_array($kategori, ['barang', 'jasa'], true)) {
@@ -60,12 +89,21 @@ class Dashboard extends CI_Controller {
         }
         $offset = $limit === null ? 0 : (($page - 1) * $limit);
         $id_user = $this->session->userdata('id_user');
-        $has_filter = (bool) array_filter($filters, static function ($value) {
+        $has_filter = (bool) array_filter($filters, static function ($value, $key) {
+            if (in_array($key, ['filter_field', 'filter_value'], true)) {
+                return false;
+            }
             return $value !== '' && $value !== null;
-        });
+        }, ARRAY_FILTER_USE_BOTH);
+        if (!$has_filter) {
+            $has_filter = (bool) array_filter(array_column($filter_rows, 'value'), static function ($value) {
+                return trim((string) $value) !== '';
+            });
+        }
 
         $data['title'] = 'Dashboard Kaprodi';
         $data['filters'] = $filters;
+        $data['filter_rows'] = $filter_rows;
         $data['active_category'] = $kategori;
         $data['page'] = $page;
         $data['limit'] = $limit;
