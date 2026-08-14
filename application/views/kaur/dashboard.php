@@ -36,6 +36,21 @@ function loan_status_tone_kaur($status) {
     ], true)) return 'is-current';
     return 'is-pending';
 }
+function loan_approval_states_kaur($loan) {
+    $status = (string) ($loan->status ?? '');
+    $state = static function ($complete, $current) {
+        return $complete ? 'is-complete' : ($current ? 'is-current' : 'is-pending');
+    };
+    return [
+        'status' => $status,
+        'diajukan' => $status !== '' ? 'is-complete' : 'is-current',
+        'kaprodi' => $state(($loan->status_kaprodi ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaprodi'),
+        'laboran' => $state(($loan->status_laboran ?? '') === 'Disetujui', in_array($status, ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran'], true)),
+        'kaur' => $state(($loan->status_kaur ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaur'),
+        'qr' => $state((int) ($loan->qr_locked ?? 0) === 1 || !empty($loan->qr_finalized_at), $status === 'Disetujui (Menunggu Finalisasi QR)'),
+        'selesai' => $state($status === 'Dikembalikan', in_array($status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dipinjam'], true)),
+    ];
+}
 function query_kaur($filters, $page, $per_page = null) {
     $params = [];
     foreach ((array) $filters as $key => $value) {
@@ -870,30 +885,35 @@ function kaur_module_url($module) {
         .kaur-loan-heading__actions .btn { min-height: 34px; font-size: .7rem; font-weight: 600; }
         .kaur-loan-count { display: inline-flex; align-items: center; min-height: 34px; padding: 6px 11px; border: 1px solid #f2cf85; border-radius: 999px; color: #8a5800; background: #fff8e8; font-size: .72rem; font-weight: 700; white-space: nowrap; }
         .kaur-loan-filter-card { padding: 16px 18px; }
-        .kaur-loan-filter-grid { display: grid; grid-template-columns: minmax(280px, 1.7fr) minmax(170px, .72fr) minmax(170px, .72fr) auto; align-items: end; gap: 12px; }
+        .kaur-loan-filter-grid { display: grid; grid-template-columns: minmax(280px, 1.7fr) minmax(170px, .72fr) minmax(170px, .72fr) auto; align-items: start; gap: 12px; }
         .kaur-loan-filter-field label { display: block; margin: 0 0 6px; color: var(--scm-text); font-size: .72rem; font-weight: 700; }
         .kaur-loan-filter-field .form-control { min-height: 42px; border-color: var(--scm-border); border-radius: 8px; font-size: .78rem; }
         .kaur-loan-filter-field .input-group-text { min-width: 42px; justify-content: center; border-color: var(--scm-border); border-radius: 8px 0 0 8px; color: var(--scm-muted); }
         .kaur-loan-filter-field .input-group .form-control { border-radius: 0 8px 8px 0; }
         .kaur-loan-filter-helper { margin-top: 6px; color: var(--scm-muted); font-size: .68rem; }
-        .kaur-loan-filter-actions { display: flex; align-items: center; gap: 8px; }
+        .kaur-loan-filter-actions { display: flex; align-items: center; gap: 8px; margin-top: 23px; }
         .kaur-loan-filter-actions .btn { min-height: 42px; border-radius: 999px !important; font-size: .72rem; font-weight: 600; white-space: nowrap; }
         .kaur-loan-table-wrap, .kaur-loan-return-table-wrap { scrollbar-color: #cfd4da transparent; }
         .scm-dashboard .kaur-loan-table, .scm-dashboard .kaur-loan-return-table { min-width: 1160px; margin: 0; --bs-table-bg: var(--scm-surface) !important; --bs-table-color: var(--scm-text) !important; --bs-table-border-color: var(--scm-border) !important; }
+        .scm-dashboard .kaur-loan-table { min-width: 1180px; }
         .scm-dashboard .kaur-loan-table thead th, .scm-dashboard .kaur-loan-return-table thead th { padding: 12px 16px; color: var(--scm-text) !important; background: var(--scm-surface-strong) !important; border-color: var(--scm-border) !important; font-family: inherit; font-size: .7rem; font-weight: 700 !important; letter-spacing: .035em; text-transform: uppercase; white-space: nowrap; vertical-align: middle; }
         .scm-dashboard .kaur-loan-table thead th *, .scm-dashboard .kaur-loan-return-table thead th * { color: inherit !important; font-weight: 700 !important; }
         .scm-dashboard .kaur-loan-table tbody td, .scm-dashboard .kaur-loan-return-table tbody td { padding: 12px 16px; color: var(--scm-text); background: var(--scm-surface); border-color: var(--scm-border); font-size: .76rem; line-height: 1.4; vertical-align: middle; }
+        .scm-dashboard .kaur-loan-table thead th { padding: 14px 18px; }
+        .scm-dashboard .kaur-loan-table tbody tr { min-height: 82px; }
+        .scm-dashboard .kaur-loan-table tbody td { padding: 16px 18px; line-height: 1.5; }
         .scm-dashboard .kaur-loan-table tbody tr:hover > td, .scm-dashboard .kaur-loan-return-table tbody tr:hover > td { background: rgba(234, 91, 26, .04); }
-        .scm-dashboard .kaur-loan-table th:nth-child(1), .scm-dashboard .kaur-loan-table td:nth-child(1) { min-width: 170px; }
-        .scm-dashboard .kaur-loan-table th:nth-child(2), .scm-dashboard .kaur-loan-table td:nth-child(2) { min-width: 180px; }
-        .scm-dashboard .kaur-loan-table th:nth-child(3), .scm-dashboard .kaur-loan-table td:nth-child(3) { min-width: 250px; }
-        .scm-dashboard .kaur-loan-table th:nth-child(4), .scm-dashboard .kaur-loan-table td:nth-child(4) { min-width: 190px; }
-        .scm-dashboard .kaur-loan-table th:nth-child(5), .scm-dashboard .kaur-loan-table td:nth-child(5) { min-width: 160px; white-space: nowrap; }
-        .scm-dashboard .kaur-loan-table th:nth-child(6), .scm-dashboard .kaur-loan-table td:nth-child(6) { min-width: 210px; }
-        .scm-dashboard .kaur-loan-table th:nth-child(7), .scm-dashboard .kaur-loan-table td:nth-child(7) { min-width: 104px; text-align: right; white-space: nowrap; }
+        .scm-dashboard .kaur-loan-table th:nth-child(1), .scm-dashboard .kaur-loan-table td:nth-child(1) { width: 72px; min-width: 72px; }
+        .scm-dashboard .kaur-loan-table th:nth-child(2), .scm-dashboard .kaur-loan-table td:nth-child(2) { min-width: 250px; }
+        .scm-dashboard .kaur-loan-table th:nth-child(3), .scm-dashboard .kaur-loan-table td:nth-child(3) { min-width: 360px; }
+        .scm-dashboard .kaur-loan-table th:nth-child(4), .scm-dashboard .kaur-loan-table td:nth-child(4) { min-width: 185px; white-space: nowrap; }
+        .scm-dashboard .kaur-loan-table th:nth-child(5), .scm-dashboard .kaur-loan-table td:nth-child(5) { min-width: 220px; }
+        .scm-dashboard .kaur-loan-table th:nth-child(6), .scm-dashboard .kaur-loan-table td:nth-child(6) { min-width: 140px; text-align: right; white-space: nowrap; }
         .kaur-loan-number, .kaur-loan-person { font-weight: 700; }
         .kaur-loan-meta { margin-top: 2px; color: var(--scm-muted); font-size: .68rem; }
-        .kaur-loan-assets { display: grid; gap: 4px; }
+        .kaur-loan-assets { display: grid; gap: 2px; }
+        .kaur-loan-assets__summary { color: var(--scm-text); font-weight: 700; }
+        .kaur-loan-assets__detail { color: var(--scm-muted); font-size: .7rem; white-space: normal; }
         .kaur-loan-asset { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; max-width: 300px; padding-bottom: 4px; border-bottom: 1px solid var(--scm-border); }
         .kaur-loan-asset:last-child { padding-bottom: 0; border-bottom: 0; }
         .kaur-loan-asset__name { min-width: 0; overflow: hidden; color: var(--scm-text); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -912,6 +932,47 @@ function kaur_module_url($module) {
         .kaur-loan-status-badge.is-pending { color: #5f6368; border-color: #dfe3e7; background: #f8f9fa; }
         .kaur-loan-status-badge.is-rejected { color: #b02a37; border-color: #f1aeb5; background: #fff4f5; }
         .kaur-loan-status-badge.is-rejected::before { background: #dc4c5a; }
+        .kaur-loan-approval-summary { display: grid; gap: 5px; width: 100%; min-width: 0; text-align: left; }
+        .kaur-loan-approval-status { display: inline-flex; align-items: center; min-width: 0; color: var(--scm-text); font-size: .72rem; font-weight: 600; line-height: 1.25; white-space: normal; }
+        .kaur-loan-approval-status::before { width: 7px; height: 7px; flex: 0 0 7px; margin-right: 7px; border-radius: 50%; background: #ea5b1a; content: ''; }
+        .kaur-loan-approval-detail { display: inline-flex; align-items: center; gap: 4px; width: fit-content; padding: 0; border: 0; color: var(--scm-muted); background: transparent; font-size: .68rem; font-weight: 600; text-decoration: none; }
+        .kaur-loan-approval-detail:hover { color: var(--scm-orange); text-decoration: underline; }
+        .kaur-loan-approval-detail i { transition: transform .16s ease; }
+        .kaur-loan-approval-detail:hover i { transform: translateX(2px); }
+        .kaur-loan-manage-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 108px; min-height: 36px; border-radius: 999px !important; font-size: .72rem; font-weight: 600; }
+        .kaur-approval-timeline { position: relative; display: grid; gap: 0; margin: 2px 0 18px; }
+        .kaur-approval-timeline::before { position: absolute; top: 15px; bottom: 15px; left: 14px; width: 1px; background: var(--scm-border); content: ''; }
+        .kaur-approval-timeline__item { position: relative; display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; min-height: 40px; }
+        .kaur-approval-timeline__marker { position: relative; z-index: 1; display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border: 1px solid var(--scm-border); border-radius: 50%; color: var(--scm-muted); background: var(--scm-surface-strong); font-size: .72rem; }
+        .kaur-approval-timeline__label { padding-left: 10px; color: var(--scm-muted); font-size: .78rem; font-weight: 600; }
+        .kaur-approval-timeline__item.is-complete .kaur-approval-timeline__marker { color: #177245; border-color: #bfe5cd; background: #ecf8f1; }
+        .kaur-approval-timeline__item.is-complete .kaur-approval-timeline__label { color: #177245; }
+        .kaur-approval-timeline__item.is-current .kaur-approval-timeline__marker { color: #a94714; border-color: #f1b28d; background: #fff4ec; }
+        .kaur-approval-timeline__item.is-current .kaur-approval-timeline__label { color: #a94714; }
+        .kaur-approval-timeline__item.is-rejected .kaur-approval-timeline__marker { color: #b4232f; border-color: #f1c4c8; background: #fff1f2; }
+        .kaur-approval-timeline__item.is-rejected .kaur-approval-timeline__label { color: #b4232f; }
+        .kaur-approval-detail-modal .modal-dialog { max-width: 440px; }
+        .kaur-approval-detail-modal .modal-content { overflow: hidden; border: 1px solid var(--scm-border); border-radius: 14px; background: var(--scm-surface); box-shadow: 0 18px 50px rgba(31, 41, 55, .14); }
+        .kaur-approval-detail-modal .modal-header { padding: 16px 18px 12px; border-bottom: 1px solid var(--scm-border); }
+        .kaur-approval-detail-modal .modal-title { color: var(--scm-text); font-size: 1rem; }
+        .kaur-approval-detail-modal .modal-body { padding: 16px 18px 18px; }
+        .kaur-approval-detail-modal__status { padding-top: 14px; border-top: 1px solid var(--scm-border); }
+        .kaur-approval-status-badge { display: inline-flex; max-width: 100%; align-items: center; padding: 6px 10px; border-radius: 999px; font-size: .7rem; font-weight: 700; line-height: 1.25; white-space: normal; }
+        .kaur-approval-status-badge.is-completed { color: #177245; background: #e8f5ee; }
+        .kaur-approval-status-badge.is-current { color: #a94714; background: #fff0e6; }
+        .kaur-approval-status-badge.is-pending { color: var(--scm-muted); background: var(--scm-surface-strong); }
+        .kaur-approval-status-badge.is-rejected { color: #b4232f; background: #fff1f2; }
+        .kaur-approval-detail-modal__evidence { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--scm-border); }
+        .kaur-approval-detail-modal__evidence-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .kaur-approval-evidence-btn { display: inline-flex; min-height: 36px; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border-radius: 999px; font-size: .68rem; font-weight: 600; }
+        .kaur-approval-detail-modal__evidence-empty { color: var(--scm-muted); font-size: .72rem; }
+        html.scm-theme-dark .kaur-approval-timeline__item.is-complete .kaur-approval-timeline__marker { color: #8ed9ae; border-color: rgba(67, 209, 122, .35); background: rgba(67, 209, 122, .1); }
+        html.scm-theme-dark .kaur-approval-timeline__item.is-complete .kaur-approval-timeline__label { color: #8ed9ae; }
+        html.scm-theme-dark .kaur-approval-timeline__item.is-current .kaur-approval-timeline__marker { color: #ffc078; border-color: rgba(255, 160, 70, .38); background: rgba(234, 91, 26, .12); }
+        html.scm-theme-dark .kaur-approval-timeline__item.is-current .kaur-approval-timeline__label { color: #ffc078; }
+        html.scm-theme-dark .kaur-approval-status-badge.is-completed { color: #8ed9ae; background: rgba(67, 209, 122, .1); }
+        html.scm-theme-dark .kaur-approval-status-badge.is-current { color: #ffc078; background: rgba(234, 91, 26, .12); }
+        html.scm-theme-dark .kaur-approval-status-badge.is-rejected { color: #ff9aa3; background: rgba(255, 92, 99, .1); }
         .kaur-loan-detail-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 92px; min-height: 34px; border-radius: 999px !important; font-size: .7rem; font-weight: 600; transition: transform .16s ease, background-color .16s ease; }
         .kaur-loan-detail-btn:hover { transform: translateY(-1px); }
         .kaur-loan-return-heading { padding: 18px 20px 14px; border-bottom: 1px solid var(--scm-border); }
@@ -970,7 +1031,7 @@ function kaur_module_url($module) {
         html.scm-theme-dark .kaur-loan-status-badge.is-rejected { color: #ff9aa3; border-color: rgba(255, 92, 99, .38); background: rgba(255, 92, 99, .1); }
         @media (max-width: 1199.98px) {
             .kaur-loan-filter-grid { grid-template-columns: minmax(260px, 1.5fr) repeat(2, minmax(160px, .75fr)); }
-            .kaur-loan-filter-actions { grid-column: 1 / -1; }
+            .kaur-loan-filter-actions { grid-column: 1 / -1; margin-top: 0; }
         }
         @media (max-width: 991.98px) {
             .scm-dashboard.kaur-loan-page .dashboard-sidebar { width: 100%; }
@@ -1226,20 +1287,19 @@ function kaur_module_url($module) {
             </form>
             <div class="panel-card kaur-loan-table-card">
             <div class="table-responsive kaur-loan-table-wrap">
-                <table class="table table-clean kaur-loan-table align-middle">
+                <table class="table table-hover table-clean kaur-loan-table align-middle">
                     <thead><tr>
-                        <th>No. Peminjaman</th>
-                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'nama_peminjam') ?>" class="text-decoration-none text-dark">Nama Peminjam <?= sort_icon_kaur($filters, 'nama_peminjam') ?></a></th>
+                        <th>No</th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'nama_peminjam') ?>" class="text-decoration-none text-dark">Peminjam <?= sort_icon_kaur($filters, 'nama_peminjam') ?></a></th>
                         <th>Barang</th>
-                        <th>Laboratorium</th>
                         <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'tanggal_pinjam') ?>" class="text-decoration-none text-dark">Masa Pinjam <?= sort_icon_kaur($filters, 'tanggal_pinjam') ?></a></th>
-                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'status') ?>" class="text-decoration-none text-dark">Status <?= sort_icon_kaur($filters, 'status') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'status') ?>" class="text-decoration-none text-dark">Alur Approval <?= sort_icon_kaur($filters, 'status') ?></a></th>
                         <th class="text-end">Aksi</th>
                     </tr></thead>
                     <tbody>
                     <?php if(empty($peminjaman_pending_kaur)): ?>
-                        <tr><td colspan="7" class="text-center text-muted py-5">Tidak ada peminjaman yang menunggu ACC Kaur.</td></tr>
-                    <?php else: foreach($peminjaman_pending_kaur as $p): ?>
+                        <tr><td colspan="6" class="text-center text-muted py-5">Tidak ada peminjaman yang menunggu ACC Kaur.</td></tr>
+                    <?php else: foreach($peminjaman_pending_kaur as $index => $p): ?>
                         <?php
                             $barang_names = [];
                             $labs = [];
@@ -1257,23 +1317,66 @@ function kaur_module_url($module) {
                             $loan_filter_keperluan = strtolower((string) ($p->keperluan ?? ''));
                         ?>
                         <tr data-kaur-loan-row data-search="<?= html_escape($loan_search_text) ?>" data-filter-peminjam="<?= html_escape($loan_filter_peminjam) ?>" data-filter-barang="<?= html_escape($loan_filter_barang) ?>" data-filter-status="<?= html_escape($loan_filter_status) ?>" data-filter-tanggal="<?= html_escape($loan_filter_tanggal) ?>" data-filter-keperluan="<?= html_escape($loan_filter_keperluan) ?>">
-                            <td><div class="kaur-loan-number"><?= html_escape($p->group_id ?: $p->id_peminjaman) ?></div><div class="kaur-loan-meta">ID transaksi</div></td>
+                            <td class="fw-semibold text-muted"><?= $index + 1 ?></td>
                             <td><div class="kaur-loan-person"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="kaur-loan-meta"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
-                            <td><div class="kaur-loan-assets"><?php if (!empty($p->detail_barang)): foreach (($p->detail_barang ?? []) as $d): ?><div class="kaur-loan-asset"><span class="kaur-loan-asset__name" title="<?= html_escape($d->nama_aset ?? '-') ?>"><?= html_escape($d->nama_aset ?? '-') ?></span><span class="kaur-loan-asset__qty"><?= (int)($d->jumlah_pinjam ?? 0) ?> unit</span></div><?php endforeach; else: ?><span class="text-muted">-</span><?php endif; ?></div></td>
-                            <td><div class="kaur-loan-labs"><?php if (!empty(array_unique($labs))): foreach (array_unique($labs) as $lab): ?><span class="kaur-loan-lab" title="<?= html_escape($lab) ?>"><?= html_escape($lab) ?></span><?php endforeach; else: ?><span class="text-muted">-</span><?php endif; ?></div></td>
+                            <td><div class="kaur-loan-assets"><div class="kaur-loan-assets__summary"><?= (int)($p->total_jenis ?? count($p->detail_barang ?? [])) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="kaur-loan-assets__detail"><?php if (!empty($p->detail_barang)): foreach (($p->detail_barang ?? []) as $d): ?><?= html_escape($d->nama_aset ?? '-') ?> (<?= (int)($d->jumlah_pinjam ?? 0) ?>), <?php endforeach; else: ?>-<?php endif; ?></div></div></td>
                             <td><span class="kaur-loan-dates" tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><span class="kaur-loan-dates__start"><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></span><span class="kaur-loan-dates__end">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></span></span></td>
                             <?php $kaur_status = trim((string) ($p->status ?? '')); $kaur_status_label = $kaur_status !== '' ? $kaur_status : 'Status belum tersedia'; ?>
-                            <td><span class="kaur-loan-status-badge <?= html_escape(loan_status_tone_kaur($kaur_status)) ?>"><?= html_escape($kaur_status_label) ?></span></td>
-                            <td class="text-end"><button class="btn btn-sm btn-outline-primary kaur-loan-detail-btn" data-bs-toggle="modal" data-bs-target="#loanApprovalModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-eye me-1"></i> Detail</button></td>
+                            <td><div class="kaur-loan-approval-summary"><span class="kaur-loan-approval-status"><?= html_escape($kaur_status_label) ?></span><button type="button" class="kaur-loan-approval-detail" data-bs-toggle="modal" data-bs-target="#kaurApprovalTimelineModal<?= (int)$p->id_peminjaman ?>">Lihat Detail <i class="bi bi-arrow-right" aria-hidden="true"></i></button></div></td>
+                            <td class="text-end"><div class="dropdown"><button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle kaur-loan-manage-btn" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots me-1"></i>Kelola</button><ul class="dropdown-menu dropdown-menu-end"><li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#loanApprovalModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-patch-check me-2"></i>Proses ACC</button></li></ul></div></td>
                         </tr>
                     <?php endforeach; endif; ?>
-                        <?php if(!empty($peminjaman_pending_kaur)): ?><tr id="kaurLoanEmptySearch" class="d-none"><td colspan="7" class="text-center text-muted py-4">Tidak ada hasil yang cocok.</td></tr><?php endif; ?>
+                        <?php if(!empty($peminjaman_pending_kaur)): ?><tr id="kaurLoanEmptySearch" class="d-none"><td colspan="6" class="text-center text-muted py-4">Tidak ada hasil yang cocok.</td></tr><?php endif; ?>
                     </tbody>
                 </table>
             </div>
             </div>
         </section>
         <?php foreach(($peminjaman_pending_kaur ?? []) as $p): ?>
+            <?php
+                $kaur_approval = loan_approval_states_kaur($p);
+                $kaur_approval_steps = ['diajukan' => 'Diajukan', 'kaprodi' => 'Kaprodi', 'laboran' => 'Laboran', 'kaur' => 'Kaur', 'qr' => 'Final QR', 'selesai' => 'Selesai'];
+                $kaur_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
+                $kaur_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
+            ?>
+            <div class="modal fade kaur-approval-detail-modal" id="kaurApprovalTimelineModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-labelledby="kaurApprovalTimelineTitle<?= (int)$p->id_peminjaman ?>" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <div class="small text-uppercase text-muted fw-semibold">Detail proses</div>
+                                <h2 class="modal-title h5 fw-bold mb-0" id="kaurApprovalTimelineTitle<?= (int)$p->id_peminjaman ?>">Alur Approval</h2>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="kaur-approval-timeline" aria-label="Timeline approval peminjaman">
+                                <?php foreach ($kaur_approval_steps as $step_key => $step_label): ?>
+                                    <?php $step_state = $kaur_approval[$step_key]; ?>
+                                    <div class="kaur-approval-timeline__item <?= html_escape($step_state) ?>">
+                                        <span class="kaur-approval-timeline__marker"><?php if ($step_state === 'is-complete'): ?><i class="bi bi-check2" aria-hidden="true"></i><?php elseif ($step_state === 'is-current'): ?><i class="bi bi-dot" aria-hidden="true"></i><?php else: ?><i class="bi bi-circle" aria-hidden="true"></i><?php endif; ?></span>
+                                        <span class="kaur-approval-timeline__label"><?= html_escape($step_label) ?></span>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                            <div class="kaur-approval-detail-modal__status">
+                                <div class="small text-muted mb-2">Status transaksi</div>
+                                <span class="kaur-approval-status-badge <?= html_escape(loan_status_tone_kaur($kaur_approval['status'])) ?>"><?= html_escape($kaur_approval['status'] ?: '-') ?></span>
+                            </div>
+                            <div class="kaur-approval-detail-modal__evidence">
+                                <div class="small text-muted">Bukti pendukung</div>
+                                <div class="kaur-approval-detail-modal__evidence-actions">
+                                    <?php if (!empty($p->foto_bukti)): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary kaur-approval-evidence-btn" data-bs-toggle="modal" data-bs-target="#kaurLoanEvidence<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button>
+                                    <?php else: ?>
+                                        <span class="kaur-approval-detail-modal__evidence-empty">Bukti kondisi belum tersedia</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="modal fade kaur-loan-modal" id="loanApprovalModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                     <form class="modal-content" method="post" action="<?= base_url('index.php/kaur/peminjaman/setujui/'.$p->id_peminjaman) ?>">
@@ -1327,6 +1430,16 @@ function kaur_module_url($module) {
                     </form>
                 </div>
             </div>
+            <?php if (!empty($p->foto_bukti)): ?>
+                <div class="modal fade" id="kaurLoanEvidence<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-labelledby="kaurLoanEvidenceTitle<?= (int)$p->id_peminjaman ?>" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header"><h2 class="modal-title h5 fw-bold" id="kaurLoanEvidenceTitle<?= (int)$p->id_peminjaman ?>">Bukti Kondisi Awal</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+                            <div class="modal-body text-center bg-light"><?php if ($kaur_evidence_exists): ?><img class="img-fluid rounded-3" style="max-height:70vh;object-fit:contain" src="<?= html_escape($kaur_evidence_url) ?>" alt="Bukti kondisi awal"><?php else: ?><div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>File bukti kondisi tidak ditemukan di penyimpanan.</div><?php endif; ?></div>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
         <?php endforeach; ?>
         <section class="panel-card kaur-loan-return-card mb-4">
             <div class="kaur-loan-return-heading"><h2 class="h5 fw-bold mb-1">Status Pengembalian (Read-only)</h2><div class="text-muted small">Pengembalian cukup dikonfirmasi Laboran. Kaur hanya memantau status tanpa tombol approve atau tolak.</div></div>
