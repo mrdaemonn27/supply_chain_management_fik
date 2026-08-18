@@ -122,7 +122,7 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
         .ld__hourglass svg { display: block; width: 100%; height: 100%; overflow: visible; }
         .ld__glass { fill: rgba(255, 255, 255, .34); stroke: rgba(26, 29, 33, .72); stroke-width: 2.4; stroke-linejoin: round; }
         .ld__frame { fill: none; stroke: #24272b; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
-        .ld__sand { fill: #f97316; filter: drop-shadow(0 0 3px rgba(249, 115, 22, .34)); transform-box: fill-box; transform-origin: center; }
+        .ld__sand { fill: #f97316; filter: drop-shadow(0 0 3px rgba(249, 115, 22, .34)); transform-box: fill-box; transform-origin: center; clip-path: url(#ld-hourglass-clip); }
         .ld__sand--top { animation: ld-sand-top 3.8s ease-in-out infinite; }
         .ld__sand--bottom { animation: ld-sand-bottom 3.8s ease-in-out infinite; }
         .ld__stream { stroke: #f97316; stroke-width: 2.4; stroke-linecap: round; animation: ld-sand-stream 3.8s ease-in-out infinite; }
@@ -411,9 +411,12 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
         <div class="ld__in" id="loaderIn">
             <div class="ld__hourglass" aria-hidden="true">
                 <svg viewBox="0 0 100 120" role="presentation">
+                    <clipPath id="ld-hourglass-clip">
+                        <path d="M29 15h42c0 17-8 27-21 40 13 13 21 23 21 40H29c0-17 8-27 21-40-13-13-21-23-21-40Z"></path>
+                    </clipPath>
                     <path class="ld__glass" d="M27 13h46c0 18-8 29-23 42 15 13 23 24 23 42H27c0-18 8-29 23-42C35 42 27 31 27 13Z"></path>
-                    <path class="ld__sand ld__sand--top" d="M33 20h34c-2 11-7 19-17 28-10-9-15-17-17-28Z"></path>
-                    <path class="ld__sand ld__sand--bottom" d="M33 100h34c-2-11-7-19-17-28-10 9-15 17-17 28Z"></path>
+                    <path class="ld__sand ld__sand--top" d="M33 18h34c-2 11-7 19-17 28-10-9-15-17-17-28Z"></path>
+                    <path class="ld__sand ld__sand--bottom" d="M33 98h34c-2-11-7-19-17-28-10 9-15 17-17 28Z"></path>
                     <path class="ld__stream" d="M50 48v24"></path>
                     <path class="ld__frame" d="M23 11h54M23 109h54"></path>
                 </svg>

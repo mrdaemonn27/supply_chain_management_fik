@@ -1677,15 +1677,6 @@ function kaur_module_url($module) {
                 <?php else: foreach ($pengajuan_kaprodi as $p): ?>
                     <?php
                         $negotiation_items = (array) ($p->items ?? []);
-                        $negotiation_statuses = [];
-                        foreach ($negotiation_items as $status_item) {
-                            $latest_status = $status_item->latest_negosiasi->status ?? 'Sedang Negosiasi';
-                            if (in_array($latest_status, ['Sedang Negosiasi', 'Deal', 'Ditolak'], true)) {
-                                $negotiation_statuses[] = $latest_status;
-                            }
-                        }
-                        $unique_negotiation_statuses = array_values(array_unique($negotiation_statuses));
-                        $group_negotiation_status = count($unique_negotiation_statuses) === 1 ? $unique_negotiation_statuses[0] : 'Sedang Negosiasi';
                         $collapse_id = 'negotiation-detail-' . (int) $p->id_pengajuan;
                         $total_estimate = (float) ($p->summary['total_penawaran'] ?? $p->summary['total_setelah_pajak'] ?? 0);
                     ?>
@@ -1714,18 +1705,7 @@ function kaur_module_url($module) {
                                 <div class="negotiation-detail-toolbar">
                                     <div>
                                         <h3>Rincian Negosiasi</h3>
-                                        <p>Harga dan volume awal berasal dari pengajuan Kaprodi.</p>
-                                    </div>
-                                    <div class="negotiation-group-status-wrap">
-                                        <label for="group-status-<?= (int) $p->id_pengajuan ?>">Status Negosiasi</label>
-                                        <form class="negotiation-group-status-form" method="post" action="<?= base_url('index.php/kaur/pengajuan/simpan_status_pengajuan/'.$p->id_pengajuan) ?>">
-                                            <select id="group-status-<?= (int) $p->id_pengajuan ?>" name="status_pengajuan" class="form-select form-select-sm negotiation-group-status">
-                                                <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
-                                                    <option value="<?= $s ?>" <?= $group_negotiation_status === $s ? 'selected' : '' ?>><?= $s ?></option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                            <button type="submit" class="btn btn-fik btn-sm negotiation-group-save-btn" title="Terapkan status ini ke semua item pada pengajuan ini"><i class="bi bi-save me-1"></i>Simpan</button>
-                                        </form>
+                                        <p>Harga dan volume awal berasal dari pengajuan Kaprodi. Status negosiasi diatur untuk setiap item.</p>
                                     </div>
                                 </div>
                                 <div class="negotiation-items-scroll">
@@ -1748,7 +1728,7 @@ function kaur_module_url($module) {
                                                 </div>
                                                 <div class="row negotiation-form-grid">
                                                     <div class="col-lg-4 col-md-6 negotiation-field">
-                                                        <label class="negotiation-field-label">Status Item</label>
+                                                        <label class="negotiation-field-label">Status Negosiasi</label>
                                                         <select name="status" class="form-select negotiation-item-status">
                                                             <?php foreach (['Sedang Negosiasi','Deal','Ditolak'] as $s): ?>
                                                                 <option value="<?= $s ?>" <?= $status_negosiasi === $s ? 'selected' : '' ?>><?= $s ?></option>

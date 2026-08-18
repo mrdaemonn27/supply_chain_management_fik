@@ -54,3 +54,65 @@ $sidebar_items = [
         .scm-admin-sidebar-link i { width: auto; flex-basis: auto; }
     }
 </style>
+<?php if (in_array($current_admin_section, ['barang', 'peminjaman', 'pengembalian', 'approval', 'dokumen', 'ruangan', 'maintenance', 'distribusi', 'blokir'], true)): ?>
+<style id="scm-laboran-light-header">
+    /* Keep the Laboran feature headers aligned with the light Kaur/Kaprodi shell. */
+    body.scm-admin-shell > .topbar,
+    body.scm-admin-shell > .admin-navbar {
+        background: #fff !important;
+        color: #17202a !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        box-shadow: 0 5px 18px rgba(23, 32, 42, .06) !important;
+    }
+
+    body.scm-admin-shell > .topbar .fw-bold,
+    body.scm-admin-shell > .topbar .navbar-brand,
+    body.scm-admin-shell > .admin-navbar .navbar-brand {
+        color: #17202a !important;
+    }
+
+    body.scm-admin-shell > .topbar .text-white-50,
+    body.scm-admin-shell > .topbar .text-white,
+    body.scm-admin-shell > .admin-navbar .text-white-50,
+    body.scm-admin-shell > .admin-navbar .text-white {
+        color: #667085 !important;
+    }
+
+    body.scm-admin-shell > .topbar .btn-outline-light,
+    body.scm-admin-shell > .admin-navbar .btn-outline-light {
+        color: #475467 !important;
+        background: #fff !important;
+        border-color: #cbd5e1 !important;
+    }
+
+    body.scm-admin-shell > .topbar .btn-outline-light:hover,
+    body.scm-admin-shell > .admin-navbar .btn-outline-light:hover {
+        color: #17202a !important;
+        background: #f8fafc !important;
+        border-color: #98a2b3 !important;
+    }
+
+    body.scm-admin-shell > .topbar .btn-danger,
+    body.scm-admin-shell > .topbar .btn-fik,
+    body.scm-admin-shell > .admin-navbar .btn-danger,
+    body.scm-admin-shell > .admin-navbar .btn-fik {
+        color: #fff !important;
+        background: #ff7900 !important;
+        border-color: #ff7900 !important;
+    }
+
+    body.scm-admin-shell > .topbar .btn-danger:hover,
+    body.scm-admin-shell > .topbar .btn-fik:hover,
+    body.scm-admin-shell > .admin-navbar .btn-danger:hover,
+    body.scm-admin-shell > .admin-navbar .btn-fik:hover {
+        color: #fff !important;
+        background: #e96d00 !important;
+        border-color: #e96d00 !important;
+    }
+
+    body.scm-admin-shell > .admin-navbar .text-fik-orange,
+    body.scm-admin-shell > .topbar .text-fik-orange {
+        color: #ff7900 !important;
+    }
+</style>
+<?php endif; ?>
