@@ -121,8 +121,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     <!-- CONTENT -->
     <div class="container py-5">
         <div class="mb-4 text-center" data-aos="fade-down">
-            <h2 class="fw-bold text-dark">RIWAYAT <span class="text-fik-orange">PEMINJAMAN</span></h2>
-            <p class="text-muted">Pantau status pengajuan dan akses QR Code bukti persetujuan Anda.</p>
+            <h2 class="fw-bold text-dark mb-0">RIWAYAT <span class="text-fik-orange">PEMINJAMAN</span></h2>
         </div>
 
         <!-- Notifikasi Sukses -->

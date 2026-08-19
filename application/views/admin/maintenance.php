@@ -190,7 +190,6 @@ $maintenance_condition_class = static function ($condition) {
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <div>
                     <div class="fw-bold"><i class="bi bi-tools me-2 text-warning"></i>Maintenance Barang</div>
-                    <div class="small text-white-50">Catat perawatan dan kondisi aset</div>
                 </div>
                 <div class="topbar-actions d-flex gap-2">
                     <a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
@@ -210,7 +209,6 @@ $maintenance_condition_class = static function ($condition) {
         <div class="maintenance-page-heading">
             <div>
                 <h1>Maintenance Barang</h1>
-                <p>Catat perawatan dan kondisi aset secara ringkas.</p>
             </div>
             <button type="button" class="btn btn-fik rounded-pill px-3" data-bs-toggle="offcanvas" data-bs-target="#maintenanceFormDrawer" aria-controls="maintenanceFormDrawer">
                 <i class="bi bi-plus-lg me-1"></i> Tambah Maintenance
@@ -331,7 +329,6 @@ $maintenance_condition_class = static function ($condition) {
         <div class="offcanvas-header">
             <div>
                 <h2 class="offcanvas-title" id="maintenanceFormDrawerLabel">Tambah Maintenance</h2>
-                <div class="small text-muted mt-1">Catat perawatan dan kondisi aset.</div>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
         </div>

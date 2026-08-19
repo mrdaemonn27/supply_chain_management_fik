@@ -21,7 +21,6 @@
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
             <div>
                 <div class="fw-bold"><i class="bi bi-upload me-2 text-warning"></i>Import Data Inventory</div>
-                <div class="small text-white-50">Upload CSV/XLSX atau copy-paste tabel dari Excel, lalu preview sebelum import.</div>
             </div>
             <a href="<?= base_url('index.php/admin/barang') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-arrow-left me-1"></i> Master Data</a>
         </div>
@@ -48,8 +47,7 @@
                 <section class="panel-card p-3 p-lg-4">
                     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
                         <div>
-                            <h2 class="h5 fw-bold mb-1">Preview Import</h2>
-                            <div class="small text-muted">Data baru masuk inventory setelah tombol Import ditekan.</div>
+                            <h2 class="h5 fw-bold mb-0">Preview Import</h2>
                         </div>
                         <?php if(!empty($preview_rows)): ?>
                             <form method="post" action="<?= base_url('index.php/admin/barang/proses_import') ?>" class="d-flex flex-wrap gap-2 align-items-center">

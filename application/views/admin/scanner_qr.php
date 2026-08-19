@@ -19,7 +19,7 @@
     <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
-            <div><div class="fw-bold"><i class="bi bi-qr-code-scan me-2 text-warning"></i><?= html_escape($scanner_label ?? 'Scanner QR Transaksi') ?></div><div class="small text-white-50"><?= html_escape($scanner_desc ?? 'Scan QR transaksi dari akun peminjam') ?></div></div>
+            <div class="fw-bold"><i class="bi bi-qr-code-scan me-2 text-warning"></i><?= html_escape($scanner_label ?? 'Scanner QR Transaksi') ?></div>
             <a href="<?= html_escape($back_url ?? base_url('index.php/admin/peminjaman')) ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><?= html_escape($back_label ?? 'Data Peminjaman') ?></a>
         </div>
     </header>
@@ -27,8 +27,7 @@
     <main class="container py-4">
         <?php if($this->session->flashdata('error')): ?><div class="alert alert-danger"><?= html_escape($this->session->flashdata('error')) ?></div><?php endif; ?>
         <section class="panel-card p-3 p-lg-4 text-center">
-            <h1 class="h5 fw-bold mb-2">Arahkan kamera ke QR peminjam</h1>
-            <p class="text-muted small mb-3">Setelah QR terbaca, sistem langsung membuka halaman serah atau pengembalian sesuai status transaksi.</p>
+            <h1 class="h5 fw-bold mb-3">Arahkan kamera ke QR peminjam</h1>
             <div id="reader"></div>
             <div id="scanStatus" class="small text-muted mt-3">Menunggu kamera aktif...</div>
         </section>

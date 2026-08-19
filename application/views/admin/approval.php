@@ -149,7 +149,6 @@ $approval_total = count($pengajuan);
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <div>
                     <div class="fw-bold"><i class="bi bi-patch-check me-2 text-warning"></i>Pengecekan Laboran</div>
-                    <div class="small text-white-50">Tahap setelah ACC Kaprodi: cek stok fisik lalu teruskan ke Kaur</div>
                 </div>
                 <div class="topbar-actions d-flex gap-2">
                     <div class="dropdown">
@@ -185,8 +184,7 @@ $approval_total = count($pengajuan);
         <section class="panel-card p-3 p-lg-4 mb-3">
             <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
                 <div>
-                    <h1 class="h5 fw-bold mb-1">Daftar Pengajuan Menunggu Pengecekan</h1>
-                    <div class="text-muted small">Kaprodi sudah menyetujui. Laboran mengecek ketersediaan fisik sebelum meneruskan ke Kaur.</div>
+                    <h1 class="h5 fw-bold mb-0">Daftar Pengajuan Menunggu Pengecekan</h1>
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <span class="badge rounded-pill text-bg-warning text-dark px-3 py-2"><?= count($pengajuan) ?> menunggu</span>

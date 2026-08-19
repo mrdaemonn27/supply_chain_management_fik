@@ -67,7 +67,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         /* Header Katalog (Slim & Elegan, bukan hero besar) */
         .catalog-header {
             background: linear-gradient(rgba(26, 26, 26, 0.9), rgba(26, 26, 26, 0.95)), url('https://images.unsplash.com/photo-1601506521937-0121a7fc2a6b?auto=format&fit=crop&q=80') center/cover;
-            padding: 60px 0 40px 0;
+            padding: 50px 0;
             color: white;
             border-bottom: 5px solid #ea5b1a;
         }
@@ -344,8 +344,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     <!-- HEADER KATALOG -->
     <div class="catalog-header">
         <div class="container text-center" data-aos="fade-down" data-aos-duration="800">
-            <h2 class="fw-bolder mb-2" style="letter-spacing: 1px;">KATALOG <span class="text-fik-orange">ALAT STUDIO</span></h2>
-            <p class="text-light opacity-75 mb-0">Daftar inventaris aset Fakultas Industri Kreatif yang tersedia untuk dipinjam saat ini.</p>
+            <h2 class="fw-bolder mb-0" style="letter-spacing: 1px;">KATALOG <span class="text-fik-orange">ALAT STUDIO</span></h2>
         </div>
     </div>
 
@@ -398,7 +397,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             <button id="catalogReset" type="button" class="btn catalog-reset">
                 <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
             </button>
-            <div class="catalog-filter-hint"><i class="bi bi-lightning-charge me-1"></i>Hasil pencarian, urutan, total aset, dan paging diperbarui secara otomatis.</div>
         </div>
         <?php endif; ?>
         

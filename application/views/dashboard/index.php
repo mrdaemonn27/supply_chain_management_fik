@@ -123,7 +123,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         /* Header Tampilan Awal (Slimmer) */
         .catalog-header {
             background: linear-gradient(rgba(26, 26, 26, 0.85), rgba(26, 26, 26, 0.9)), url('https://images.unsplash.com/photo-1542744094-24638ea0b3b5?auto=format&fit=crop&q=80') center/cover;
-            padding: 60px 0 40px 0;
+            padding: 50px 0;
             color: white;
             border-bottom: 5px solid #ea5b1a;
         }
@@ -367,8 +367,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
     <div class="catalog-header">
         <div class="container text-center" data-aos="fade-down" data-aos-duration="800">
-            <h2 class="fw-bolder mb-2" style="letter-spacing: 1px;">DAFTAR <span class="text-fik-orange">STUDIO & LABORATORIUM</span></h2>
-            <p class="text-light opacity-75 mb-0">Pilih ruangan laboratorium untuk melihat ketersediaan aset dan mulai peminjaman.</p>
+            <h2 class="fw-bolder mb-0" style="letter-spacing: 1px;">DAFTAR <span class="text-fik-orange">STUDIO & LABORATORIUM</span></h2>
         </div>
     </div>
 
@@ -433,8 +432,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     <section class="sop-section">
         <div class="container">
             <div class="text-center mb-5" data-aos="zoom-in">
-                <h2 class="fw-bold text-white mb-2" style="letter-spacing: 1px;">SOP & TATA TERTIB STUDIO</h2>
-                <p class="text-white opacity-75 mb-0">Mohon patuhi regulasi berikut demi kenyamanan bersama</p>
+                <h2 class="fw-bold text-white mb-0" style="letter-spacing: 1px;">SOP & TATA TERTIB STUDIO</h2>
             </div>
             
             <div class="row g-4 justify-content-center">

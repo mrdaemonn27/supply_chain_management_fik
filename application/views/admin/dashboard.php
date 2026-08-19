@@ -151,7 +151,7 @@ $recent_activity = isset($overview['recent_activity']) && is_array($overview['re
                 <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
                     <div class="dashboard-topbar-brand d-flex align-items-center gap-3">
                         <span class="brand-mark"><i class="bi bi-person-workspace"></i></span>
-                        <div><div class="fw-bold">Panel Laboran</div><div class="small text-white-50">Monitoring operasional aset laboratorium</div></div>
+                        <div class="fw-bold">Panel Laboran</div>
                     </div>
                     <div class="topbar-actions d-flex align-items-center gap-2">
                         <div class="dropdown">
@@ -188,7 +188,6 @@ $recent_activity = isset($overview['recent_activity']) && is_array($overview['re
                     <div>
                         <div class="text-uppercase text-warning fw-bold small mb-2" style="letter-spacing:.12em; color:var(--scm-orange)!important;">Operational overview</div>
                         <h1 id="laboranOverviewTitle">Ringkasan Laboratorium</h1>
-                        <p>Monitor aset, peminjaman, pengembalian, maintenance, dan approval dalam satu tampilan.</p>
                     </div>
                 </div>
 
@@ -204,17 +203,17 @@ $recent_activity = isset($overview['recent_activity']) && is_array($overview['re
                 </div>
 
                 <div class="laboran-chart-grid">
-                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><div><h2>Status Inventory</h2><p>Distribusi kondisi aset terdaftar.</p></div><i class="bi bi-pie-chart text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranInventoryChart" aria-label="Grafik status inventory"></canvas><div class="laboran-chart-fallback">Data inventory belum tersedia.</div></div></article>
-                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><div><h2>Peminjaman per Bulan</h2><p>Jumlah transaksi peminjaman.</p></div><i class="bi bi-graph-up text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranLoanChart" aria-label="Grafik peminjaman per bulan"></canvas><div class="laboran-chart-fallback">Data peminjaman belum tersedia.</div></div></article>
-                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><div><h2>Pengembalian</h2><p>Perbandingan status pengembalian.</p></div><i class="bi bi-arrow-return-left text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranReturnChart" aria-label="Grafik pengembalian"></canvas><div class="laboran-chart-fallback">Data pengembalian belum tersedia.</div></div></article>
-                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><div><h2>Distribusi Barang</h2><p>Jumlah unit berdasarkan ruangan tujuan.</p></div><i class="bi bi-truck text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranDistributionChart" aria-label="Grafik distribusi barang"></canvas><div class="laboran-chart-fallback">Belum ada data distribusi.</div></div></article>
-                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><div><h2>Maintenance per Bulan</h2><p>Catatan maintenance aset.</p></div><i class="bi bi-tools text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranMaintenanceChart" aria-label="Grafik maintenance per bulan"></canvas><div class="laboran-chart-fallback">Belum ada catatan maintenance.</div></div></article>
-                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><div><h2>Status Approval</h2><p>Progress pemeriksaan Laboran dan Kaur.</p></div><i class="bi bi-patch-check text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranApprovalChart" aria-label="Grafik status approval"></canvas><div class="laboran-chart-fallback">Belum ada data approval.</div></div></article>
+                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><h2>Status Inventory</h2><i class="bi bi-pie-chart text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranInventoryChart" aria-label="Grafik status inventory"></canvas><div class="laboran-chart-fallback">Data inventory belum tersedia.</div></div></article>
+                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><h2>Peminjaman per Bulan</h2><i class="bi bi-graph-up text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranLoanChart" aria-label="Grafik peminjaman per bulan"></canvas><div class="laboran-chart-fallback">Data peminjaman belum tersedia.</div></div></article>
+                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><h2>Pengembalian</h2><i class="bi bi-arrow-return-left text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranReturnChart" aria-label="Grafik pengembalian"></canvas><div class="laboran-chart-fallback">Data pengembalian belum tersedia.</div></div></article>
+                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><h2>Distribusi Barang</h2><i class="bi bi-truck text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranDistributionChart" aria-label="Grafik distribusi barang"></canvas><div class="laboran-chart-fallback">Belum ada data distribusi.</div></div></article>
+                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><h2>Maintenance per Bulan</h2><i class="bi bi-tools text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranMaintenanceChart" aria-label="Grafik maintenance per bulan"></canvas><div class="laboran-chart-fallback">Belum ada catatan maintenance.</div></div></article>
+                    <article class="laboran-chart-panel"><div class="laboran-panel-heading"><h2>Status Approval</h2><i class="bi bi-patch-check text-secondary"></i></div><div class="laboran-chart-wrap"><canvas id="laboranApprovalChart" aria-label="Grafik status approval"></canvas><div class="laboran-chart-fallback">Belum ada data approval.</div></div></article>
                 </div>
 
                 <div class="laboran-bottom-grid">
                     <article class="laboran-activity-panel">
-                        <div class="laboran-panel-heading"><div><h2>Recent Activity</h2><p>Aktivitas terbaru operasional Laboratorium.</p></div><i class="bi bi-activity text-secondary"></i></div>
+                        <div class="laboran-panel-heading"><h2>Recent Activity</h2><i class="bi bi-activity text-secondary"></i></div>
                         <div class="laboran-activity-list">
                             <?php if (empty($recent_activity)): ?>
                                 <div class="small text-muted py-4 text-center">Belum ada aktivitas terbaru.</div>
@@ -227,7 +226,7 @@ $recent_activity = isset($overview['recent_activity']) && is_array($overview['re
                         </div>
                     </article>
                     <article class="laboran-quick-panel">
-                        <div class="laboran-panel-heading"><div><h2>Quick Action</h2><p>Akses cepat ke fitur operasional Laboran.</p></div><i class="bi bi-lightning-charge text-secondary"></i></div>
+                        <div class="laboran-panel-heading"><h2>Quick Action</h2><i class="bi bi-lightning-charge text-secondary"></i></div>
                         <div class="laboran-quick-grid">
                             <?php foreach ($quick_actions as $action): ?><a class="laboran-quick-link" href="<?= $action['url'] ?>"><i class="bi <?= html_escape($action['icon']) ?>"></i><span><?= html_escape($action['label']) ?></span></a><?php endforeach; ?>
                         </div>

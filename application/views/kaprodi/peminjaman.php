@@ -55,7 +55,7 @@ if (!function_exists('kaprodi_client_filter_fields')) {
     }
 }
 if (!function_exists('render_kaprodi_client_filter')) {
-    function render_kaprodi_client_filter($scope, $id, $description)
+    function render_kaprodi_client_filter($scope, $id)
     {
         $fields = kaprodi_client_filter_fields($scope);
         $default_field = (string) array_key_first($fields);
@@ -63,8 +63,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
         ?>
         <div id="<?= html_escape($id) ?>" class="kp-multi-filter" data-kp-multi-filter data-max-filters="4">
             <div class="kp-multi-filter-heading">
-                <div><h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3><p><?= html_escape($description) ?></p></div>
-                <span class="kp-multi-filter-note"><i class="bi bi-lightning-charge me-1" aria-hidden="true"></i>Hasil diperbarui saat Anda mengetik</span>
+                <h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3>
             </div>
             <div class="kp-multi-filter-list" data-filter-list>
                 <div class="kp-multi-filter-row" data-filter-row>
@@ -1061,7 +1060,6 @@ if (!function_exists('render_kaprodi_client_filter')) {
                 <span class="brand-mark"><i class="bi bi-building-check"></i></span>
                 <div>
                     <div class="fw-bold">Panel Kaprodi</div>
-                    <div class="small text-muted">Approval peminjaman laboratorium</div>
                 </div>
             </div>
             <div class="topbar-actions d-flex align-items-center gap-2">
@@ -1130,7 +1128,6 @@ if (!function_exists('render_kaprodi_client_filter')) {
         <div class="row align-items-end">
             <div class="col-lg">
                 <h1>Approval Peminjaman</h1>
-                <p>Review dan teruskan pengajuan sesuai alur persetujuan Kaprodi.</p>
             </div>
             <div class="col-lg-auto">
                 <div class="kp-context">
@@ -1141,10 +1138,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
     </div>
 
     <section class="kp-card kp-summary">
-        <div>
-            <h2 class="kp-section-title">Approval Peminjaman oleh Kaprodi</h2>
-            <p class="kp-section-copy">Pengajuan yang disetujui Kaprodi diteruskan ke Laboran sesuai workflow existing.</p>
-        </div>
+        <h2 class="kp-section-title">Approval Peminjaman oleh Kaprodi</h2>
         <span class="kp-count-badge">
             <span class="kp-status-dot"></span>
             <?= count($pengajuan) ?> menunggu ACC
@@ -1152,13 +1146,12 @@ if (!function_exists('render_kaprodi_client_filter')) {
     </section>
 
     <section class="kp-card kp-filter-card mt-3" aria-label="Filter pengajuan peminjaman">
-        <?php render_kaprodi_client_filter('approval', 'kaprodiApprovalFilters', 'Tambahkan hingga 4 kriteria untuk mempersempit pengajuan yang menunggu ACC.'); ?>
+        <?php render_kaprodi_client_filter('approval', 'kaprodiApprovalFilters'); ?>
     </section>
 
     <section class="kp-card kp-table-card mb-3" aria-labelledby="kaprodiApprovalTitle">
         <div class="kp-section-header">
             <h2 id="kaprodiApprovalTitle" class="kp-section-title">Pengajuan Menunggu ACC</h2>
-            <p class="kp-section-copy">Urutan approval: Kaprodi → Laboran → Kaur → finalisasi QR oleh Laboran.</p>
         </div>
         <div class="table-responsive">
             <table class="table kp-table">
@@ -1321,10 +1314,9 @@ if (!function_exists('render_kaprodi_client_filter')) {
     <section class="kp-card" aria-labelledby="kaprodiReturnTitle">
         <div class="kp-section-header">
             <h2 id="kaprodiReturnTitle" class="kp-section-title">Status Pengembalian (Read-only)</h2>
-            <p class="kp-section-copy">Pengembalian hanya dikonfirmasi Laboran; Kaprodi memantau status tanpa tombol approve atau tolak.</p>
         </div>
         <?php if (!empty($pengembalian)): ?>
-            <?php render_kaprodi_client_filter('return', 'kaprodiReturnFilters', 'Tambahkan hingga 4 kriteria untuk mempersempit status pengembalian.'); ?>
+            <?php render_kaprodi_client_filter('return', 'kaprodiReturnFilters'); ?>
         <?php endif; ?>
         <div class="table-responsive">
             <table class="table kp-table kp-return-table">

@@ -152,8 +152,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
     <div class="container py-5">
         <div class="mb-4 text-center" data-aos="fade-down">
-            <h2 class="fw-bold text-dark">FORM PENGAJUAN <span class="text-fik-orange">PEMINJAMAN</span></h2>
-            <p class="text-muted">Lengkapi data di bawah ini dengan valid sesuai SOP Laboratorium.</p>
+            <h2 class="fw-bold text-dark mb-0">FORM PENGAJUAN <span class="text-fik-orange">PEMINJAMAN</span></h2>
         </div>
 
         <?php if($this->session->flashdata('error')): ?>

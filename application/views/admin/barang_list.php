@@ -79,8 +79,7 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
     <div class="container-fluid px-4 pb-5">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h4 class="fw-bold mb-1">Manajemen Master Data Aset</h4>
-                <p class="text-muted small m-0">Tambah, Edit, dan Hapus data barang secara global.</p>
+                <h4 class="fw-bold mb-0">Manajemen Master Data Aset</h4>
             </div>
             <!-- Perhatikan penambahan 'admin/' pada URL di bawah ini -->
             <div class="d-flex flex-wrap gap-2">

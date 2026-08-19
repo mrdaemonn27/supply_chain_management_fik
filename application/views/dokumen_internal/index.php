@@ -45,7 +45,6 @@ function internal_icon($file) {
         <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-2">
             <div>
                 <div class="fw-bold"><i class="bi bi-folder2-open me-2 text-warning"></i>File Manager SOP & Instruksi Kerja</div>
-                <div class="small text-white-50">Dokumen internal hanya untuk user yang sudah login</div>
             </div>
             <div class="topbar-actions d-flex flex-wrap gap-2">
                 <a href="<?= $back_url ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-arrow-left me-1"></i> Kembali</a>

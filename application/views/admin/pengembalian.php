@@ -73,7 +73,6 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <div>
                     <div class="fw-bold"><i class="bi bi-arrow-counterclockwise me-2 text-warning"></i>Data Pengembalian</div>
-                    <div class="small text-white-50">Transaksi aktif yang sedang dipinjam dan siap divalidasi saat kembali</div>
                 </div>
                 <div class="topbar-actions d-flex gap-2">
                     <div class="dropdown">
@@ -109,7 +108,7 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
         <section class="panel-card p-3 p-lg-4 mb-4">
             <form id="adminFilters" method="get" action="<?= base_url('index.php/admin/pengembalian') ?>" data-max-filters="4">
                 <input type="hidden" name="per_page" value="<?= html_escape($current_per_page) ?>">
-                <div class="admin-filter-heading"><div><h2><i class="bi bi-funnel me-2 text-warning"></i>Filter pencarian</h2><p>Tambahkan hingga 4 kriteria untuk mempersempit transaksi aktif.</p></div><span class="admin-filter-note"><i class="bi bi-lightning-charge me-1"></i>Hasil diperbarui saat Anda mengetik</span></div>
+                <div class="admin-filter-heading"><h2><i class="bi bi-funnel me-2 text-warning"></i>Filter pencarian</h2></div>
                 <div id="adminFilterRows" class="admin-filter-list">
                     <?php foreach($filter_rows as $index => $filter_row): ?>
                     <div class="admin-filter-row">

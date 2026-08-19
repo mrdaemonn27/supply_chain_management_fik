@@ -42,7 +42,6 @@ $boleh_kembali = !empty($qr_valid) && in_array(($peminjaman->status ?? ''), ['Se
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
             <div>
                 <div class="fw-bold"><i class="bi bi-arrow-counterclockwise me-2 text-warning"></i>Validasi Pengembalian</div>
-                <div class="small text-white-50">Scan QR transaksi yang sama dari akun peminjam</div>
             </div>
             <a href="<?= base_url('index.php/admin/pengembalian') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3">Data Pengembalian</a>
         </div>

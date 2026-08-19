@@ -104,7 +104,6 @@
                 <div class="card shadow-sm border-0 rounded-4">
                     <div class="card-header bg-dark text-white p-4 rounded-top-4">
                         <h5 class="m-0 fw-bold text-warning"><i class="bi bi-database-add me-2"></i> Form <?= isset($aset) ? 'Edit' : 'Input' ?> Master Data Aset</h5>
-                        <small class="opacity-75">Pastikan data yang diinput sesuai dengan kode inventaris fisik laboratorium.</small>
                     </div>
                     <div class="card-body p-4 p-md-5">
                         <form action="<?= base_url('index.php/admin/barang/simpan') ?>" method="POST" enctype="multipart/form-data">

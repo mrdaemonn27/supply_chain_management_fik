@@ -157,8 +157,7 @@ function render_kaur_multi_filter($module, $rows, $hidden = []) {
             <input type="hidden" name="<?= html_escape($name) ?>" value="<?= html_escape((string) $value) ?>">
         <?php endforeach; ?>
         <div class="kaur-filter-heading">
-            <div><h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3><p>Tambahkan hingga 4 kriteria untuk mempersempit data.</p></div>
-            <span class="kaur-filter-note"><i class="bi bi-lightning-charge me-1" aria-hidden="true"></i>Hasil diperbarui saat Anda mengetik</span>
+            <h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3>
         </div>
         <div class="kaur-filter-list" data-filter-list>
             <?php foreach ($rows as $index => $row): ?>
@@ -676,9 +675,10 @@ function kaur_module_url($module) {
             border-color: #e5e7eb !important;
             background: #ffffff !important;
         }
-        .approval-table-heading { padding: 20px 22px 16px; }
-        .approval-table-heading h2 { color: var(--approval-text); }
-        .approval-table-heading .text-muted { color: var(--approval-muted) !important; }
+        .approval-filter-card { padding: 20px 22px; }
+        .approval-filter-heading { margin-bottom: 14px; }
+        .approval-filter-heading h2 { color: var(--scm-text, #202124); }
+        .approval-filter-card .kaur-filter-heading { margin-bottom: 12px; }
         .approval-table-card .table-responsive { scrollbar-color: #cfd4da transparent; }
         .scm-dashboard .approval-table {
             min-width: 1444px;
@@ -774,7 +774,9 @@ function kaur_module_url($module) {
         }
         html.scm-theme-light .approval-detail-item-badge { color: #374151; background: #ffffff; border-color: #e5e7eb; }
         @media (max-width: 767.98px) {
-            .approval-table-heading { padding: 18px 16px 14px; }
+            .approval-filter-card { padding: 16px; }
+            .approval-filter-heading { margin-bottom: 14px; }
+            .approval-filter-card .kaur-filter-heading { margin-bottom: 10px; }
             .scm-dashboard .approval-table tbody tr { height: 72px; }
         }
         .bast-table-card {
@@ -1213,7 +1215,6 @@ function kaur_module_url($module) {
                     <span class="brand-mark"><i class="bi bi-diagram-3"></i></span>
                     <div>
                         <div class="fw-bold">Panel Kaur Laboratorium</div>
-                        <div class="small text-white-50">Pengajuan, negosiasi, approval, BAST, dan laporan</div>
                     </div>
                 </div>
                 <div class="topbar-actions d-flex align-items-center gap-2">
@@ -1263,8 +1264,7 @@ function kaur_module_url($module) {
         <?php endif; ?>
         <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4<?= $active_module === 'peminjaman' ? ' kaur-loan-page-heading' : '' ?>">
             <div>
-                <h1 class="h3 fw-bold mb-1"><?= html_escape($module['title']) ?></h1>
-                <p class="text-muted mb-0"><?= html_escape($module['desc']) ?></p>
+                <h1 class="h3 fw-bold mb-0"><?= html_escape($module['title']) ?></h1>
             </div>
             <div class="d-flex flex-column flex-md-row align-items-md-center gap-2">
                 <?php if (!$is_overview): ?>
@@ -1315,14 +1315,14 @@ function kaur_module_url($module) {
             <div class="kaur-chart-grid">
                 <section class="kaur-chart-panel">
                     <div class="kaur-chart-header">
-                        <div><h3>Pengajuan per Bulan</h3><p>Jumlah pengajuan yang masuk sepanjang <?= $dashboard_year ?>.</p></div>
+                        <h3>Pengajuan per Bulan</h3>
                         <span class="kaur-chart-note">Jan - Des</span>
                     </div>
                     <div class="kaur-chart-wrap"><canvas id="submissionChart" aria-label="Grafik pengajuan per bulan"></canvas><div class="kaur-chart-fallback">Grafik belum dapat dimuat pada browser ini.</div></div>
                 </section>
                 <section class="kaur-chart-panel">
                     <div class="kaur-chart-header">
-                        <div><h3>Status Pengajuan</h3><p>Distribusi status tahun <?= $dashboard_year ?>.</p></div>
+                        <h3>Status Pengajuan</h3>
                         <span class="kaur-chart-note">Overview</span>
                     </div>
                     <div class="kaur-chart-wrap"><canvas id="statusChart" aria-label="Grafik status pengajuan"></canvas><div class="kaur-chart-fallback">Grafik belum dapat dimuat pada browser ini.</div></div>
@@ -1332,14 +1332,14 @@ function kaur_module_url($module) {
             <div class="kaur-chart-grid">
                 <section class="kaur-chart-panel">
                     <div class="kaur-chart-header">
-                        <div><h3>Penggunaan Anggaran</h3><p>Pagu dan realisasi berdasarkan hasil Deal.</p></div>
+                        <h3>Penggunaan Anggaran</h3>
                         <span class="kaur-chart-note"><?= html_escape((string) $dashboard_year) ?></span>
                     </div>
                     <div class="kaur-chart-wrap"><canvas id="budgetChart" aria-label="Grafik penggunaan anggaran"></canvas><div class="kaur-chart-fallback">Grafik belum dapat dimuat pada browser ini.</div></div>
                 </section>
                 <section class="kaur-chart-panel">
                     <div class="kaur-chart-header">
-                        <div><h3>Perbandingan Negosiasi</h3><p>Harga awal dibandingkan harga setelah negosiasi.</p></div>
+                        <h3>Perbandingan Negosiasi</h3>
                         <span class="kaur-savings">Hemat <?= rp_kaur($dashboard_negotiation['penghematan'] ?? 0) ?></span>
                     </div>
                     <div class="kaur-chart-wrap"><canvas id="negotiationChart" aria-label="Grafik perbandingan harga negosiasi"></canvas><div class="kaur-chart-fallback">Grafik belum dapat dimuat pada browser ini.</div></div>
@@ -1349,7 +1349,7 @@ function kaur_module_url($module) {
             <div class="kaur-bottom-grid">
                 <section class="kaur-activity-panel">
                     <div class="kaur-panel-header">
-                        <div><h3>Recent Activity</h3><p>Aktivitas terbaru yang berkaitan dengan panel Kaur.</p></div>
+                        <h3>Recent Activity</h3>
                         <i class="bi bi-activity text-warning" aria-hidden="true"></i>
                     </div>
                     <div class="kaur-activity-list">
@@ -1371,7 +1371,7 @@ function kaur_module_url($module) {
 
                 <section class="kaur-quick-panel">
                     <div class="kaur-panel-header">
-                        <div><h3>Quick Action</h3><p>Akses cepat tanpa menggantikan menu sidebar.</p></div>
+                        <h3>Quick Action</h3>
                         <i class="bi bi-lightning-charge text-warning" aria-hidden="true"></i>
                     </div>
                     <div class="kaur-quick-grid">
@@ -1389,8 +1389,7 @@ function kaur_module_url($module) {
             <div class="panel-card kaur-loan-summary mb-3">
                 <div class="kaur-loan-heading">
                     <div>
-                        <h2 class="h5 fw-bold mb-1">Approval Peminjaman oleh Kaur</h2>
-                        <div class="text-muted small">Pengajuan tampil setelah ACC Kaprodi dan pengecekan Laboran. Setelah ACC Kaur, Laboran memfinalkan QR.</div>
+                        <h2 class="h5 fw-bold mb-0">Approval Peminjaman oleh Kaur</h2>
                     </div>
                     <div class="kaur-loan-heading__actions">
                         <a href="<?= base_url('index.php/kaur/peminjaman/export_pengajuan_acc') ?>" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Preview Excel ACC</a>
@@ -1559,12 +1558,11 @@ function kaur_module_url($module) {
             <?php endif; ?>
         <?php endforeach; ?>
         <section class="panel-card kaur-loan-return-card mb-4">
-            <div class="kaur-loan-return-heading"><h2 class="h5 fw-bold mb-1">Status Pengembalian (Read-only)</h2><div class="text-muted small">Pengembalian cukup dikonfirmasi Laboran. Kaur hanya memantau status tanpa tombol approve atau tolak.</div></div>
+            <div class="kaur-loan-return-heading"><h2 class="h5 fw-bold mb-0">Status Pengembalian (Read-only)</h2></div>
             <?php if(!empty($pengembalian_readonly)): ?>
             <div class="kaur-return-toolbar">
-                <div class="kaur-return-search"><div class="input-group"><span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span><input id="kaurReturnSearch" type="search" class="form-control" placeholder="Cari peminjam, NIM/NIP, barang, masa pinjam, atau status" autocomplete="off" aria-label="Cari status pengembalian" aria-describedby="kaurReturnSearchNote"></div></div>
+                <div class="kaur-return-search"><div class="input-group"><span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span><input id="kaurReturnSearch" type="search" class="form-control" placeholder="Cari peminjam, NIM/NIP, barang, masa pinjam, atau status" autocomplete="off" aria-label="Cari status pengembalian"></div></div>
                 <div class="kaur-return-toolbar-actions"><button id="kaurReturnReset" type="button" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</button></div>
-                <div id="kaurReturnSearchNote" class="kaur-return-search-note"><i class="bi bi-lightning-charge me-1"></i>Hasil diperbarui saat Anda mengetik. Klik judul kolom untuk mengurutkan.</div>
             </div>
             <?php endif; ?>
             <div class="table-responsive kaur-loan-return-table-wrap"><table class="table table-clean kaur-loan-return-table align-middle"><thead><tr>
@@ -1599,8 +1597,7 @@ function kaur_module_url($module) {
             <div class="panel-card p-3 p-lg-4 mb-3">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
                 <div>
-                    <h2 class="h5 fw-bold mb-1">Pengajuan Kaprodi</h2>
-                    <div class="text-muted small">Data dapat dicari berdasarkan tanggal, jenis, status, dan kata kunci.</div>
+                    <h2 class="h5 fw-bold mb-0">Pengajuan Kaprodi</h2>
                 </div>
                 <a href="<?= base_url('index.php/kaur/pengajuan/export_pengajuan_acc?' . query_kaur($filters, 1)) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3 align-self-start"><i class="bi bi-file-earmark-excel me-1"></i> Export Pengajuan ACC</a>
             </div>
@@ -1664,8 +1661,7 @@ function kaur_module_url($module) {
         <section id="negosiasi" class="section-anchor mb-4">
             <div class="d-flex justify-content-between align-items-end mb-3">
                 <div>
-                    <h2 class="h5 fw-bold mb-1">Negosiasi oleh Kaur</h2>
-                    <div class="text-muted small">Setiap simpan akan menjadi riwayat baru. Kaprodi hanya melihat status sampai hasil Deal.</div>
+                    <h2 class="h5 fw-bold mb-0">Negosiasi oleh Kaur</h2>
                 </div>
             </div>
             <div class="panel-card p-3 p-lg-4 mb-3">
@@ -1705,7 +1701,6 @@ function kaur_module_url($module) {
                                 <div class="negotiation-detail-toolbar">
                                     <div>
                                         <h3>Rincian Negosiasi</h3>
-                                        <p>Harga dan volume awal berasal dari pengajuan Kaprodi. Status negosiasi diatur untuk setiap item.</p>
                                     </div>
                                 </div>
                                 <div class="negotiation-items-scroll">
@@ -1783,16 +1778,15 @@ function kaur_module_url($module) {
 
         <?php if ($active_module === 'approval'): ?>
         <section id="approval" class="section-anchor mb-4">
-            <div class="panel-card p-3 p-lg-4 mb-3">
-            <div class="approval-table-heading mb-3">
-                <h2 class="h5 fw-bold mb-1">Approval Kaur</h2>
-                <div class="text-muted small">Kaur dapat menyetujui, meminta revisi, atau menolak pengajuan sesuai kebutuhan proses bisnis.</div>
-            </div>
-            <?php render_kaur_multi_filter('approval', $filter_rows ?? [], [
-                'per_page' => $per_page ?? '10',
-                'sort_by' => $filters['sort_by'] ?? '',
-                'sort_dir' => $filters['sort_dir'] ?? '',
-            ]); ?>
+            <div class="panel-card approval-filter-card mb-3">
+                <div class="approval-filter-heading">
+                    <h2 class="h5 fw-bold mb-0">Approval Kaur</h2>
+                </div>
+                <?php render_kaur_multi_filter('approval', $filter_rows ?? [], [
+                    'per_page' => $per_page ?? '10',
+                    'sort_by' => $filters['sort_by'] ?? '',
+                    'sort_dir' => $filters['sort_dir'] ?? '',
+                ]); ?>
             </div>
 
             <div class="panel-card kaur-submission-table-card approval-table-card">
@@ -2010,8 +2004,7 @@ function kaur_module_url($module) {
             <div class="bast-table-toolbar">
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-2 mb-3">
                 <div>
-                    <h2 class="h5 fw-bold mb-1">BAST (Berita Acara Serah Terima)</h2>
-                    <div class="text-muted small">Cari, unggah dokumen BAST dari Logistik, atau langsung buat/cetak BAST dari data pengajuan.</div>
+                    <h2 class="h5 fw-bold mb-0">BAST (Berita Acara Serah Terima)</h2>
                 </div>
                 <span class="bast-summary-badge align-self-start"><?= (int) $bast_pending_count ?> menunggu BAST</span>
             </div>
@@ -2149,8 +2142,7 @@ function kaur_module_url($module) {
         <section id="laporan" class="section-anchor mb-4">
             <div class="panel-card kaur-submission-table-card">
             <div class="kaur-report-table-header">
-                <h2 class="h5 fw-bold mb-1">Laporan Hasil Negosiasi</h2>
-                <div class="text-muted small">Hanya data dengan status Deal yang tampil sebagai dokumentasi resmi hasil akhir.</div>
+                <h2 class="h5 fw-bold mb-0">Laporan Hasil Negosiasi</h2>
             </div>
             <div class="kaur-report-toolbar">
                 <?php render_kaur_multi_filter('laporan', $filter_rows ?? [], [

@@ -35,8 +35,7 @@ $render_filter_row = static function ($row) use ($multi_filter_fields) {
 <?php if ($multi_filter_mode === 'server'): ?><form method="get" action="<?= html_escape($multi_filter_action) ?>"><?php endif; ?>
 <section id="<?= html_escape($multi_filter_id) ?>" class="admin-multi-filter mb-3" data-admin-multi-filter data-mode="<?= html_escape($multi_filter_mode) ?>" data-fields='<?= html_escape(json_encode($multi_filter_json, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)) ?>'>
     <div class="admin-multi-filter__header">
-        <div><h2 class="admin-multi-filter__title"><i class="bi bi-funnel"></i> Filter pencarian</h2><p class="admin-multi-filter__description">Tambahkan hingga 4 kriteria untuk mempersempit data.</p></div>
-        <p class="admin-multi-filter__live"><i class="bi bi-lightning-charge"></i> Hasil diperbarui saat Anda mengetik</p>
+        <h2 class="admin-multi-filter__title"><i class="bi bi-funnel"></i> Filter pencarian</h2>
     </div>
     <div class="admin-multi-filter__rows">
         <?php foreach ($multi_filter_rows as $filter_row) $render_filter_row($filter_row); ?>
