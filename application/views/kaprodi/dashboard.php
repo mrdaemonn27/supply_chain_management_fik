@@ -63,7 +63,7 @@ function render_history_filter_kaprodi($rows, $hidden = []) {
     $fields = history_filter_config_kaprodi();
     $rows = is_array($rows) && !empty($rows) ? array_slice(array_values($rows), 0, 4) : [['field' => 'kode', 'value' => '']];
     ?>
-    <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="kaprodi-multi-filter" data-kaprodi-multi-filter data-max-filters="4">
+    <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="kaprodi-multi-filter scm-search-filter" data-kaprodi-multi-filter data-max-filters="4">
         <?php foreach ($hidden as $name => $value): ?>
             <input type="hidden" name="<?= html_escape($name) ?>" value="<?= html_escape((string) $value) ?>">
         <?php endforeach; ?>
@@ -90,7 +90,10 @@ function render_history_filter_kaprodi($rows, $hidden = []) {
                 </div>
             <?php endforeach; ?>
         </div>
-        <button type="submit" class="visually-hidden">Terapkan filter</button>
+        <div class="scm-search-filter__actions mt-3">
+            <button type="submit" class="btn scm-search-filter__apply"><i class="bi bi-search"></i> Terapkan filter</button>
+            <button type="button" class="btn scm-search-filter__reset" data-kaprodi-filter-reset><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+        </div>
     </form>
     <?php
 }
@@ -1011,7 +1014,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                             <option value="10" selected>10</option>
                                             <option value="25">25</option>
                                             <option value="50">50</option>
-                                            <option value="all">Semua</option>
+                                            <option value="100">100</option>
                                         </select>
                                         <span id="needPaginationTotal">Total item: 0</span>
                                     </div>
@@ -1108,7 +1111,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                 <option value="10" <?= (string) $per_page === '10' ? 'selected' : '' ?>>10</option>
                                 <option value="25" <?= (string) $per_page === '25' ? 'selected' : '' ?>>25</option>
                                 <option value="50" <?= (string) $per_page === '50' ? 'selected' : '' ?>>50</option>
-                                <option value="all" <?= (string) $per_page === 'all' ? 'selected' : '' ?>>Semua</option>
+                                <option value="100" <?= (string) $per_page === '100' ? 'selected' : '' ?>>100</option>
                             </select>
                             <span>Total item: <?= (int) $total_rows ?></span>
                         </div>
@@ -1333,6 +1336,18 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     if (!event.target.matches('.kaprodi-filter-value')) return;
                     window.clearTimeout(submitTimer);
                     submitTimer = window.setTimeout(() => form.requestSubmit(), 650);
+                });
+                form.querySelector('[data-kaprodi-filter-reset]')?.addEventListener('click', () => {
+                    const rows = Array.from(list.querySelectorAll('[data-filter-row]'));
+                    rows.slice(1).forEach((row) => row.remove());
+                    const first = rows[0];
+                    if (first) {
+                        const select = first.querySelector('.kaprodi-filter-field');
+                        if (select) select.selectedIndex = 0;
+                        syncInput(first, true);
+                    }
+                    updateButtons();
+                    form.requestSubmit();
                 });
             });
         })();

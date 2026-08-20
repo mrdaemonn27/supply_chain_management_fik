@@ -28,20 +28,14 @@ class Maintenance extends CI_Controller {
         $criteria = $this->read_filter_criteria(['aset', 'ruangan', 'tanggal', 'kondisi', 'deskripsi']);
         $page = max(1, (int) $this->input->get('page', true));
         $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
-        if ($requested_per_page === 'all') {
-            $per_page = 'all';
-            $limit = null;
-            $page = 1;
-        } else {
-            $requested_limit = (int) $requested_per_page;
-            $limit = in_array($requested_limit, [10, 25, 50], true) ? $requested_limit : 10;
-            $per_page = (string) $limit;
-        }
+        $requested_limit = (int) $requested_per_page;
+        $limit = in_array($requested_limit, [10, 25, 50, 100], true) ? $requested_limit : 10;
+        $per_page = (string) $limit;
 
         $total_rows = $this->Maintenance_model->count($criteria);
-        $total_pages = $limit === null ? 1 : max(1, (int) ceil($total_rows / $limit));
+        $total_pages = max(1, (int) ceil($total_rows / $limit));
         $page = min($page, $total_pages);
-        $offset = $limit === null ? 0 : (($page - 1) * $limit);
+        $offset = ($page - 1) * $limit;
 
         $data['title'] = 'Maintenance Barang';
         $data['maintenance'] = $this->Maintenance_model->get_all_maintenance($limit, $offset, $criteria);

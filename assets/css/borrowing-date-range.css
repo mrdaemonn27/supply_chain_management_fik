@@ -208,14 +208,14 @@ body.date-range-ready .borrowing-date-range__native-fallback {
 
 .borrowing-date-range__months.is-dragging,
 .borrowing-date-range__days.is-dragging {
-    cursor: crosshair;
+    cursor: grabbing;
     user-select: none;
     -webkit-user-select: none;
 }
 
 .borrowing-date-range__months.is-dragging .borrowing-date-range__day:not(:disabled),
 .borrowing-date-range__days.is-dragging .borrowing-date-range__day:not(:disabled) {
-    cursor: crosshair;
+    cursor: grabbing;
 }
 
 .borrowing-date-range__weekdays span {
@@ -364,4 +364,100 @@ body.date-range-ready .borrowing-date-range__native-fallback {
     .borrowing-date-range__month + .borrowing-date-range__month {
         display: none;
     }
+}
+
+/* Shared compact range picker used by every date filter. */
+.scm-filter-date-range {
+    position: relative;
+    min-width: 0;
+}
+
+.scm-filter-date-range__trigger {
+    display: grid;
+    width: 100%;
+    min-height: 44px;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    padding: 8px 12px;
+    color: var(--scm-theme-text, #253042);
+    text-align: left;
+    background: var(--scm-theme-surface, #fff);
+    border: 1px solid var(--scm-theme-border, #d1d5db);
+    border-radius: .65rem;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+.scm-filter-date-range__trigger:hover,
+.scm-filter-date-range__trigger[aria-expanded="true"] {
+    border-color: #ea5b1a;
+    box-shadow: 0 0 0 .2rem rgba(234, 91, 26, .12);
+}
+
+.scm-filter-date-range__trigger:focus-visible,
+.scm-filter-date-range__nav:focus-visible,
+.scm-filter-date-range__day:focus-visible,
+.scm-filter-date-range__clear:focus-visible {
+    outline: 3px solid rgba(234, 91, 26, .25);
+    outline-offset: 2px;
+}
+
+.scm-filter-date-range__icon { color: #ea5b1a; }
+.scm-filter-date-range__separator,
+.scm-filter-date-range__chevron { color: var(--scm-theme-muted, #8a94a2); }
+.scm-filter-date-range__value { overflow: hidden; font-size: .76rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.scm-filter-date-range__value.is-empty { color: var(--scm-theme-muted, #9aa4b2); font-weight: 500; }
+
+.scm-filter-date-range__panel {
+    position: absolute;
+    z-index: 1080;
+    top: calc(100% + 8px);
+    right: 0;
+    width: min(720px, calc(100vw - 40px));
+    padding: 18px;
+    color: var(--scm-theme-text, #253042);
+    background: var(--scm-theme-surface, #fff);
+    border: 1px solid var(--scm-theme-border, #e2e7ee);
+    border-radius: 14px;
+    box-shadow: 0 20px 48px rgba(31, 41, 55, .18);
+}
+
+.scm-filter-date-range__panel[hidden] { display: none; }
+.scm-filter-date-range__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.scm-filter-date-range__eyebrow { display: block; color: #ea5b1a; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.scm-filter-date-range__helper { margin: 2px 0 0; color: var(--scm-theme-muted, #6b7280); font-size: .76rem; }
+.scm-filter-date-range__navigation { display: flex; gap: 7px; }
+.scm-filter-date-range__nav { display: inline-grid; width: 34px; height: 34px; padding: 0; color: inherit; place-items: center; background: transparent; border: 1px solid var(--scm-theme-border, #dce2ea); border-radius: 9px; }
+.scm-filter-date-range__nav:hover { color: #ea5b1a; background: rgba(234, 91, 26, .07); border-color: rgba(234, 91, 26, .45); }
+.scm-filter-date-range__months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.scm-filter-date-range__month + .scm-filter-date-range__month { padding-left: 24px; border-left: 1px solid var(--scm-theme-border, #edf0f4); }
+.scm-filter-date-range__month-title { margin-bottom: 11px; font-size: .88rem; font-weight: 700; text-align: center; }
+.scm-filter-date-range__weekdays,
+.scm-filter-date-range__days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.scm-filter-date-range__weekdays span { color: var(--scm-theme-muted, #9aa4b2); font-size: .66rem; font-weight: 700; line-height: 28px; text-align: center; }
+.scm-filter-date-range__days { row-gap: 4px; touch-action: none; }
+.scm-filter-date-range__day,
+.scm-filter-date-range__spacer { width: 100%; min-height: 34px; }
+.scm-filter-date-range__day { padding: 0; color: inherit; font-size: .76rem; font-weight: 500; line-height: 34px; background: transparent; border: 0; border-radius: 8px; cursor: pointer; }
+.scm-filter-date-range__day:hover { color: #c9470f; background: rgba(234, 91, 26, .09); }
+.scm-filter-date-range__day.is-range { color: #fff; font-weight: 700; background: #ea5b1a; border-radius: 0; }
+.scm-filter-date-range__day.is-start,
+.scm-filter-date-range__day.is-end { color: #c9470f; font-weight: 700; background: var(--scm-theme-surface, #fff); border: 2px solid #ea5b1a; border-radius: 999px; line-height: 30px; cursor: grab; }
+.scm-filter-date-range__days.is-dragging,
+.scm-filter-date-range__days.is-dragging .scm-filter-date-range__day { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+.scm-filter-date-range__footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--scm-theme-border, #edf0f4); }
+.scm-filter-date-range__hint { color: var(--scm-theme-muted, #7b8593); font-size: .7rem; }
+.scm-filter-date-range__clear { padding: 5px 10px; color: #c9470f; font-size: .72rem; font-weight: 600; background: transparent; border: 1px solid rgba(234, 91, 26, .35); border-radius: 999px; }
+
+@media (max-width: 767.98px) {
+    .scm-filter-date-range__panel { right: auto; left: 0; width: min(94vw, 430px); padding: 15px; }
+    .scm-filter-date-range__months { grid-template-columns: 1fr; }
+    .scm-filter-date-range__month + .scm-filter-date-range__month { display: none; }
+}
+
+@media (max-width: 420px) {
+    .scm-filter-date-range__trigger { grid-template-columns: auto minmax(0, 1fr) auto; }
+    .scm-filter-date-range__value:last-of-type,
+    .scm-filter-date-range__separator { display: none; }
+    .scm-filter-date-range__panel { position: fixed; top: auto; right: 12px; bottom: 12px; left: 12px; width: auto; max-height: calc(100vh - 24px); overflow-y: auto; }
 }

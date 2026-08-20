@@ -1,4 +1,8 @@
 <?php
+$peminjaman_visible_kaur = is_array($peminjaman_visible_kaur ?? null) ? $peminjaman_visible_kaur : [];
+$kaur_loan_actionable = (int) ($loan_actionable ?? count(array_filter($peminjaman_visible_kaur, static function ($p) { return scm_loan_can_act($p, 'kaur'); })));
+$loan_total_rows = (int) ($loan_total_rows ?? count($peminjaman_visible_kaur));
+$loan_total_pages = max(1, (int) ($loan_total_pages ?? 1));
 function rp_kaur($value) {
     return 'Rp ' . number_format((float) $value, 0, ',', '.');
 }
@@ -35,21 +39,6 @@ function loan_status_tone_kaur($status) {
         'dipinjam',
     ], true)) return 'is-current';
     return 'is-pending';
-}
-function loan_approval_states_kaur($loan) {
-    $status = (string) ($loan->status ?? '');
-    $state = static function ($complete, $current) {
-        return $complete ? 'is-complete' : ($current ? 'is-current' : 'is-pending');
-    };
-    return [
-        'status' => $status,
-        'diajukan' => $status !== '' ? 'is-complete' : 'is-current',
-        'kaprodi' => $state(($loan->status_kaprodi ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaprodi'),
-        'laboran' => $state(($loan->status_laboran ?? '') === 'Disetujui', in_array($status, ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran'], true)),
-        'kaur' => $state(($loan->status_kaur ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaur'),
-        'qr' => $state((int) ($loan->qr_locked ?? 0) === 1 || !empty($loan->qr_finalized_at), $status === 'Disetujui (Menunggu Finalisasi QR)'),
-        'selesai' => $state($status === 'Dikembalikan', in_array($status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dipinjam'], true)),
-    ];
 }
 function table_row_number_kaur($index, $page = 1, $per_page = '10') {
     $page = max(1, (int) $page);
@@ -152,7 +141,7 @@ function render_kaur_multi_filter($module, $rows, $hidden = []) {
     if (empty($fields)) return;
     $rows = is_array($rows) && !empty($rows) ? array_slice(array_values($rows), 0, 4) : [['field' => array_key_first($fields), 'value' => '']];
     ?>
-    <form method="get" action="<?= kaur_module_url($module) ?>" class="kaur-multi-filter" data-kaur-multi-filter data-max-filters="4">
+    <form method="get" action="<?= kaur_module_url($module) ?>" class="kaur-multi-filter scm-search-filter" data-kaur-multi-filter data-max-filters="4">
         <?php foreach ($hidden as $name => $value): ?>
             <input type="hidden" name="<?= html_escape($name) ?>" value="<?= html_escape((string) $value) ?>">
         <?php endforeach; ?>
@@ -180,7 +169,10 @@ function render_kaur_multi_filter($module, $rows, $hidden = []) {
                 </div>
             <?php endforeach; ?>
         </div>
-        <button type="submit" class="visually-hidden">Terapkan filter</button>
+        <div class="scm-search-filter__actions mt-3">
+            <button type="submit" class="btn scm-search-filter__apply"><i class="bi bi-search"></i> Terapkan filter</button>
+            <button type="button" class="btn scm-search-filter__reset" data-kaur-filter-reset><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+        </div>
     </form>
     <?php
 }
@@ -255,6 +247,7 @@ function kaur_module_url($module) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= base_url('assets/css/loan-progress.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-progress.css'); ?>">
     <style>
         body { background: #f5f6f8; color: #202124; font-family: 'Poppins', sans-serif; }
         .topbar { background: #1f1f1f; color: #fff; border-bottom: 4px solid #ea5b1a; }
@@ -424,8 +417,8 @@ function kaur_module_url($module) {
             min-height: 34px;
             padding: .35rem .58rem;
             border-color: var(--submission-border) !important;
-            color: var(--submission-text) !important;
-            background: var(--submission-bg) !important;
+            color: #64748b !important;
+            background: #ffffff !important;
             font-size: .72rem;
             line-height: 1;
             transition: color .16s ease, background-color .16s ease, border-color .16s ease;
@@ -436,7 +429,7 @@ function kaur_module_url($module) {
             background: var(--scm-orange, #ff7900) !important;
             border-color: var(--scm-orange, #ff7900) !important;
         }
-        .scm-dashboard .kaur-submission-table-card .kaur-submission-pagination .page-item.disabled .page-link { color: var(--submission-muted) !important; background: var(--submission-head-bg) !important; opacity: .62; }
+        .scm-dashboard .kaur-submission-table-card .kaur-submission-pagination .page-item.disabled .page-link { color: #a0a9b5 !important; background: #f8fafc !important; opacity: .72; pointer-events: none; }
         .kaur-report-table-header { padding: 22px 22px 16px; }
         .kaur-report-toolbar { padding: 0 22px 18px; border-bottom: 1px solid var(--submission-border); }
         .kaur-report-search { display: grid; grid-template-columns: minmax(280px, 1fr) auto; align-items: end; gap: 10px; }
@@ -1389,33 +1382,35 @@ function kaur_module_url($module) {
             <div class="panel-card kaur-loan-summary mb-3">
                 <div class="kaur-loan-heading">
                     <div>
-                        <h2 class="h5 fw-bold mb-0">Approval Peminjaman oleh Kaur</h2>
+                        <h2 class="h5 fw-bold mb-0">Progress Seluruh Peminjaman</h2>
+                        <p class="small text-muted mb-0 mt-1">Semua tahap terlihat; aksi hanya aktif ketika menunggu persetujuan Kaur.</p>
                     </div>
                     <div class="kaur-loan-heading__actions">
                         <a href="<?= base_url('index.php/kaur/peminjaman/export_pengajuan_acc') ?>" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Preview Excel ACC</a>
-                        <span class="kaur-loan-count"><?= count($peminjaman_pending_kaur ?? []) ?> menunggu ACC</span>
+                        <span class="kaur-loan-count"><?= $kaur_loan_actionable ?> perlu aksi · <?= number_format($loan_total_rows, 0, ',', '.') ?> total</span>
                     </div>
                 </div>
             </div>
             <div class="mb-3"><?php render_kaur_multi_filter('peminjaman', $filter_rows ?? [], [
                 'sort_by' => $filters['sort_by'] ?? '',
                 'sort_dir' => $filters['sort_dir'] ?? '',
+                'per_page' => $per_page ?? '10',
             ]); ?></div>
             <div class="panel-card kaur-loan-table-card">
             <div class="table-responsive kaur-loan-table-wrap">
                 <table class="table table-hover table-clean kaur-loan-table align-middle">
                     <thead><tr>
                         <th>No</th>
-                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'nama_peminjam') ?>" class="text-decoration-none text-dark">Peminjam <?= sort_icon_kaur($filters, 'nama_peminjam') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'nama_peminjam', 1, $per_page) ?>" class="text-decoration-none text-dark">Peminjam <?= sort_icon_kaur($filters, 'nama_peminjam') ?></a></th>
                         <th>Barang</th>
-                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'tanggal_pinjam') ?>" class="text-decoration-none text-dark">Masa Pinjam <?= sort_icon_kaur($filters, 'tanggal_pinjam') ?></a></th>
-                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'status') ?>" class="text-decoration-none text-dark">Alur Approval <?= sort_icon_kaur($filters, 'status') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'tanggal_pinjam', 1, $per_page) ?>" class="text-decoration-none text-dark">Masa Pinjam <?= sort_icon_kaur($filters, 'tanggal_pinjam') ?></a></th>
+                        <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'status', 1, $per_page) ?>" class="text-decoration-none text-dark">Progress Peminjaman <?= sort_icon_kaur($filters, 'status') ?></a></th>
                         <th class="text-end">Aksi</th>
                     </tr></thead>
                     <tbody>
-                    <?php if(empty($peminjaman_pending_kaur)): ?>
-                        <tr><td colspan="6" class="text-center text-muted py-5">Tidak ada peminjaman yang menunggu ACC Kaur.</td></tr>
-                    <?php else: foreach($peminjaman_pending_kaur as $index => $p): ?>
+                    <?php if(empty($peminjaman_visible_kaur)): ?>
+                        <tr><td colspan="6" class="text-center text-muted py-5">Belum ada data peminjaman.</td></tr>
+                    <?php else: foreach($peminjaman_visible_kaur as $index => $p): ?>
                         <?php
                             $barang_names = [];
                             $labs = [];
@@ -1431,27 +1426,44 @@ function kaur_module_url($module) {
                             $loan_filter_status = strtolower((string) ($p->status ?? ''));
                             $loan_filter_tanggal = strtolower(implode(' ', [tanggal_indonesia($p->tanggal_pinjam ?? null), tanggal_indonesia($p->tanggal_kembali_rencana ?? null)]));
                             $loan_filter_keperluan = strtolower((string) ($p->keperluan ?? ''));
+                            $can_kaur_act = scm_loan_can_act($p, 'kaur');
                         ?>
                         <tr data-kaur-loan-row data-search="<?= html_escape($loan_search_text) ?>" data-filter-peminjam="<?= html_escape($loan_filter_peminjam) ?>" data-filter-barang="<?= html_escape($loan_filter_barang) ?>" data-filter-status="<?= html_escape($loan_filter_status) ?>" data-filter-tanggal="<?= html_escape($loan_filter_tanggal) ?>" data-filter-keperluan="<?= html_escape($loan_filter_keperluan) ?>">
-                            <td class="fw-semibold text-muted"><?= $index + 1 ?></td>
+                            <td class="fw-semibold text-muted"><?= table_row_number_kaur($index, $page, $per_page) ?></td>
                             <td><div class="kaur-loan-person"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="kaur-loan-meta"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="kaur-loan-assets"><div class="kaur-loan-assets__summary"><?= (int)($p->total_jenis ?? count($p->detail_barang ?? [])) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="kaur-loan-assets__detail"><?php if (!empty($p->detail_barang)): foreach (($p->detail_barang ?? []) as $d): ?><?= html_escape($d->nama_aset ?? '-') ?> (<?= (int)($d->jumlah_pinjam ?? 0) ?>), <?php endforeach; else: ?>-<?php endif; ?></div></div></td>
                             <td><span class="kaur-loan-dates" tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><span class="kaur-loan-dates__start"><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></span><span class="kaur-loan-dates__end">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></span></span></td>
-                            <?php $kaur_status = trim((string) ($p->status ?? '')); $kaur_status_label = $kaur_status !== '' ? $kaur_status : 'Status belum tersedia'; ?>
-                            <td><div class="kaur-loan-approval-summary"><span class="kaur-loan-approval-status"><?= html_escape($kaur_status_label) ?></span><button type="button" class="kaur-loan-approval-detail" data-bs-toggle="modal" data-bs-target="#kaurApprovalTimelineModal<?= (int)$p->id_peminjaman ?>">Lihat Detail <i class="bi bi-arrow-right" aria-hidden="true"></i></button></div></td>
-                            <td class="text-end"><div class="dropdown"><button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle kaur-loan-manage-btn" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-three-dots me-1"></i>Kelola</button><ul class="dropdown-menu dropdown-menu-end"><li><button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#loanApprovalModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-patch-check me-2"></i>Proses ACC</button></li></ul></div></td>
+                            <td><?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?><button type="button" class="kaur-loan-approval-detail mt-2" data-bs-toggle="modal" data-bs-target="#kaurApprovalTimelineModal<?= (int)$p->id_peminjaman ?>">Lihat Detail <i class="bi bi-arrow-right" aria-hidden="true"></i></button></td>
+                            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary kaur-loan-manage-btn" <?= $can_kaur_act ? 'data-bs-toggle="modal" data-bs-target="#loanApprovalModal'.(int)$p->id_peminjaman.'"' : 'disabled title="Aksi tersedia saat memasuki tahap Kaur"'; ?>><i class="bi bi-patch-check me-1"></i>Proses</button></td>
                         </tr>
                     <?php endforeach; endif; ?>
-                        <?php if(!empty($peminjaman_pending_kaur)): ?><tr id="kaurLoanEmptySearch" class="d-none"><td colspan="6" class="text-center text-muted py-4">Tidak ada hasil yang cocok.</td></tr><?php endif; ?>
+                        <?php if(!empty($peminjaman_visible_kaur)): ?><tr id="kaurLoanEmptySearch" class="d-none"><td colspan="6" class="text-center text-muted py-4">Tidak ada hasil yang cocok.</td></tr><?php endif; ?>
                     </tbody>
                 </table>
             </div>
+            <?php $loan_first = $loan_total_rows > 0 ? (($page - 1) * (int) $per_page) + 1 : 0; $loan_last = min($loan_total_rows, $page * (int) $per_page); ?>
+            <div class="kaur-submission-pagination-footer">
+                <div class="kaur-submission-pagination-summary">
+                    <label for="kaurLoanPageSize">Tampilkan:</label>
+                    <select id="kaurLoanPageSize" class="form-select form-select-sm" aria-label="Jumlah peminjaman per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.href=u.toString();">
+                        <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= (int) $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
+                    </select>
+                    <span>Total item: <?= number_format($loan_total_rows, 0, ',', '.') ?></span>
+                </div>
+                <div class="kaur-submission-pagination-status">Menampilkan <?= $loan_first ?>–<?= $loan_last ?> dari <?= number_format($loan_total_rows, 0, ',', '.') ?> data</div>
+                <nav aria-label="Pagination peminjaman"><ul class="pagination pagination-sm kaur-submission-pagination">
+                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('peminjaman') . '?' . query_kaur($filters, max(1, $page - 1), $per_page) ?>">Previous</a></li>
+                    <?php $loan_start_page = max(1, $page - 2); $loan_end_page = min($loan_total_pages, $loan_start_page + 4); $loan_start_page = max(1, $loan_end_page - 4); for ($i = $loan_start_page; $i <= $loan_end_page; $i++): ?>
+                        <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('peminjaman') . '?' . query_kaur($filters, $i, $per_page) ?>"><?= $i ?></a></li>
+                    <?php endfor; ?>
+                    <li class="page-item <?= $page >= $loan_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('peminjaman') . '?' . query_kaur($filters, min($loan_total_pages, $page + 1), $per_page) ?>">Next</a></li>
+                </ul></nav>
+            </div>
             </div>
         </section>
-        <?php foreach(($peminjaman_pending_kaur ?? []) as $p): ?>
+        <?php foreach($peminjaman_visible_kaur as $p): ?>
             <?php
-                $kaur_approval = loan_approval_states_kaur($p);
-                $kaur_approval_steps = ['diajukan' => 'Diajukan', 'kaprodi' => 'Kaprodi', 'laboran' => 'Laboran', 'kaur' => 'Kaur', 'qr' => 'Final QR', 'selesai' => 'Selesai'];
+                $can_kaur_act = scm_loan_can_act($p, 'kaur');
                 $kaur_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
                 $kaur_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
             ?>
@@ -1461,24 +1473,12 @@ function kaur_module_url($module) {
                         <div class="modal-header">
                             <div>
                                 <div class="small text-uppercase text-muted fw-semibold">Detail proses</div>
-                                <h2 class="modal-title h5 fw-bold mb-0" id="kaurApprovalTimelineTitle<?= (int)$p->id_peminjaman ?>">Alur Approval</h2>
+                                <h2 class="modal-title h5 fw-bold mb-0" id="kaurApprovalTimelineTitle<?= (int)$p->id_peminjaman ?>">Progress Peminjaman</h2>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="kaur-approval-timeline" aria-label="Timeline approval peminjaman">
-                                <?php foreach ($kaur_approval_steps as $step_key => $step_label): ?>
-                                    <?php $step_state = $kaur_approval[$step_key]; ?>
-                                    <div class="kaur-approval-timeline__item <?= html_escape($step_state) ?>">
-                                        <span class="kaur-approval-timeline__marker"><?php if ($step_state === 'is-complete'): ?><i class="bi bi-check2" aria-hidden="true"></i><?php elseif ($step_state === 'is-current'): ?><i class="bi bi-dot" aria-hidden="true"></i><?php else: ?><i class="bi bi-circle" aria-hidden="true"></i><?php endif; ?></span>
-                                        <span class="kaur-approval-timeline__label"><?= html_escape($step_label) ?></span>
-                                    </div>
-                                <?php endforeach; ?>
-                            </div>
-                            <div class="kaur-approval-detail-modal__status">
-                                <div class="small text-muted mb-2">Status transaksi</div>
-                                <span class="kaur-approval-status-badge <?= html_escape(loan_status_tone_kaur($kaur_approval['status'])) ?>"><?= html_escape($kaur_approval['status'] ?: '-') ?></span>
-                            </div>
+                            <?php $loan_progress_item = $p; $loan_progress_compact = false; include APPPATH . 'views/shared/loan_progress.php'; ?>
                             <div class="kaur-approval-detail-modal__evidence">
                                 <div class="small text-muted">Bukti pendukung</div>
                                 <div class="kaur-approval-detail-modal__evidence-actions">
@@ -1511,6 +1511,8 @@ function kaur_module_url($module) {
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                         </div>
                         <div class="modal-body">
+                            <?php if (!$can_kaur_act): ?><div class="alert alert-info small">Data ini ditampilkan untuk pemantauan. Tombol persetujuan hanya aktif saat status menunggu Kaur.</div><?php endif; ?>
+                            <div class="kaur-loan-modal__section"><div class="kaur-loan-modal__section-title">Progress Peminjaman</div><?php $loan_progress_item = $p; $loan_progress_compact = false; include APPPATH . 'views/shared/loan_progress.php'; ?></div>
                             <div class="kaur-loan-modal__section">
                                 <div class="kaur-loan-modal__section-title">Keperluan</div>
                                 <div class="kaur-loan-modal__need"><?= nl2br(html_escape($p->keperluan ?? '-')) ?></div>
@@ -1535,13 +1537,13 @@ function kaur_module_url($module) {
                             </div>
                             <div class="kaur-loan-modal__section">
                                 <label class="kaur-loan-modal__section-title d-block" for="kaurLoanNote<?= (int)$p->id_peminjaman ?>">Catatan ACC Kaur</label>
-                                <textarea id="kaurLoanNote<?= (int)$p->id_peminjaman ?>" name="catatan_kaur" class="form-control" rows="3" placeholder="Catatan persetujuan atau alasan penolakan."></textarea>
+                                <textarea id="kaurLoanNote<?= (int)$p->id_peminjaman ?>" name="catatan_kaur" class="form-control" rows="3" placeholder="Catatan persetujuan atau alasan penolakan." <?= $can_kaur_act ? '' : 'disabled'; ?>></textarea>
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Tutup</button>
-                            <button formaction="<?= base_url('index.php/kaur/peminjaman/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-3" onclick="return confirm('Tolak peminjaman ini?')"><i class="bi bi-x-lg me-1"></i> Tolak</button>
-                            <button formaction="<?= base_url('index.php/kaur/peminjaman/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-3" onclick="return confirm('Setujui peminjaman ini? QR akan menunggu finalisasi Laboran.')"><i class="bi bi-check2-circle me-1"></i> Setujui</button>
+                            <button formaction="<?= base_url('index.php/kaur/peminjaman/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-3" onclick="return confirm('Tolak peminjaman ini?')" <?= $can_kaur_act ? '' : 'disabled'; ?>><i class="bi bi-x-lg me-1"></i> Tolak</button>
+                            <button formaction="<?= base_url('index.php/kaur/peminjaman/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-3" onclick="return confirm('Setujui peminjaman ini? QR akan menunggu finalisasi Laboran.')" <?= $can_kaur_act ? '' : 'disabled'; ?>><i class="bi bi-check2-circle me-1"></i> Setujui</button>
                         </div>
                     </form>
                 </div>
@@ -1561,8 +1563,22 @@ function kaur_module_url($module) {
             <div class="kaur-loan-return-heading"><h2 class="h5 fw-bold mb-0">Status Pengembalian (Read-only)</h2></div>
             <?php if(!empty($pengembalian_readonly)): ?>
             <div class="kaur-return-toolbar">
-                <div class="kaur-return-search"><div class="input-group"><span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span><input id="kaurReturnSearch" type="search" class="form-control" placeholder="Cari peminjam, NIM/NIP, barang, masa pinjam, atau status" autocomplete="off" aria-label="Cari status pengembalian"></div></div>
-                <div class="kaur-return-toolbar-actions"><button id="kaurReturnReset" type="button" class="btn btn-outline-secondary rounded-pill px-3"><i class="bi bi-arrow-counterclockwise me-1"></i>Reset</button></div>
+                <?php
+                    $multi_filter_id = 'kaurReturnMultiFilter';
+                    $multi_filter_mode = 'client';
+                    $multi_filter_fields = [
+                        'all' => ['label' => 'Semua data pengembalian', 'placeholder' => 'Cari peminjam, NIM/NIP, barang, masa pinjam, atau status...'],
+                        'peminjam' => ['label' => 'Peminjam / NIM', 'placeholder' => 'Cari peminjam atau NIM/NIP...'],
+                        'barang' => ['label' => 'Nama barang', 'placeholder' => 'Cari nama barang...'],
+                        'masa' => ['label' => 'Masa pinjam', 'placeholder' => 'Pilih tanggal atau rentang tanggal', 'type' => 'date'],
+                        'status' => ['label' => 'Status pengembalian', 'placeholder' => 'Cari status pengembalian...'],
+                    ];
+                    $multi_filter_rows = [['field' => 'all', 'value' => '']];
+                    $multi_filter_meta_id = 'kaurReturnFilterMeta';
+                    $multi_filter_meta = number_format(count($pengembalian_readonly), 0, ',', '.') . ' data pengembalian';
+                    include APPPATH . 'views/admin/_multi_filter.php';
+                    unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
+                ?>
             </div>
             <?php endif; ?>
             <div class="table-responsive kaur-loan-return-table-wrap"><table class="table table-clean kaur-loan-return-table align-middle"><thead><tr>
@@ -1574,7 +1590,7 @@ function kaur_module_url($module) {
             </tr></thead><tbody id="kaurReturnTableBody">
             <?php if(empty($pengembalian_readonly)): ?><tr><td colspan="5" class="text-center text-muted py-4">Belum ada transaksi pengembalian.</td></tr><?php else: foreach($pengembalian_readonly as $return_index => $p): ?>
                 <?php $return_names=[]; foreach(($p->detail_barang ?? []) as $d){$return_names[]=$d->nama_aset ?? '-';} $return_item_text=implode(', ',$return_names) ?: '-'; $return_period=masa_pinjam_indonesia($p->tanggal_pinjam ?? null,$p->tanggal_kembali_rencana ?? null); $return_search=strtolower(implode(' ',[$p->nama_peminjam ?? '',$p->nim_nip ?? '',$return_item_text,$return_period,$p->status ?? ''])); $return_date_sort=strtotime((string)($p->tanggal_pinjam ?? '')) ?: 0; ?>
-                <tr data-kaur-return-row data-search="<?= html_escape($return_search) ?>" data-sort-peminjam="<?= html_escape(strtolower((string)($p->nama_peminjam ?? ''))) ?>" data-sort-barang="<?= html_escape(strtolower($return_item_text)) ?>" data-sort-masa="<?= (int)$return_date_sort ?>" data-sort-status="<?= html_escape(strtolower((string)($p->status ?? ''))) ?>"><td class="fw-semibold text-muted"><?= (int) $return_index + 1 ?></td><td><div class="kaur-loan-person"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="kaur-loan-meta"><?= html_escape($p->nim_nip ?? '-') ?></div></td><td><?= html_escape($return_item_text) ?></td><td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape($return_period) ?>"><?= $return_period ?></span></td><td><span class="kaur-loan-status-badge <?= html_escape(loan_status_tone_kaur($p->status ?? '')) ?>"><?= html_escape($p->status ?? '-') ?></span></td></tr>
+                <tr data-kaur-return-row data-search="<?= html_escape($return_search) ?>" data-filter-all="<?= html_escape($return_search) ?>" data-filter-peminjam="<?= html_escape(implode(' ', [$p->nama_peminjam ?? '', $p->nim_nip ?? ''])) ?>" data-filter-barang="<?= html_escape($return_item_text) ?>" data-filter-masa="<?= html_escape(implode(' ', [substr((string)($p->tanggal_pinjam ?? ''), 0, 10), substr((string)($p->tanggal_kembali_rencana ?? ''), 0, 10), $return_period])) ?>" data-filter-status="<?= html_escape($p->status ?? '') ?>" data-sort-peminjam="<?= html_escape(strtolower((string)($p->nama_peminjam ?? ''))) ?>" data-sort-barang="<?= html_escape(strtolower($return_item_text)) ?>" data-sort-masa="<?= (int)$return_date_sort ?>" data-sort-status="<?= html_escape(strtolower((string)($p->status ?? ''))) ?>"><td class="fw-semibold text-muted"><?= (int) $return_index + 1 ?></td><td><div class="kaur-loan-person"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="kaur-loan-meta"><?= html_escape($p->nim_nip ?? '-') ?></div></td><td><?= html_escape($return_item_text) ?></td><td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape($return_period) ?>"><?= $return_period ?></span></td><td><span class="kaur-loan-status-badge <?= html_escape(loan_status_tone_kaur($p->status ?? '')) ?>"><?= html_escape($p->status ?? '-') ?></span></td></tr>
             <?php endforeach; endif; ?>
             <?php if(!empty($pengembalian_readonly)): ?><tr id="kaurReturnEmptySearch" hidden><td colspan="5" class="text-center text-muted py-4">Tidak ada status pengembalian yang cocok.</td></tr><?php endif; ?>
             </tbody></table></div>
@@ -1582,7 +1598,7 @@ function kaur_module_url($module) {
             <div class="kaur-return-pagination-footer">
                 <div class="kaur-return-pagination-summary">
                     <label for="kaurReturnPageSize">Tampilkan:</label>
-                    <select id="kaurReturnPageSize" class="form-select form-select-sm" aria-label="Jumlah status pengembalian per halaman"><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option></select>
+                    <select id="kaurReturnPageSize" class="form-select form-select-sm" aria-label="Jumlah status pengembalian per halaman"><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select>
                     <span>Total item: <span id="kaurReturnTotalItems"><?= count($pengembalian_readonly) ?></span></span>
                 </div>
                 <div class="kaur-return-pagination-status" id="kaurReturnPageStatus">Halaman: 1 dari 1</div>
@@ -1638,7 +1654,7 @@ function kaur_module_url($module) {
                         <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
                         <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
                         <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
-                        <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                        <option value="100" <?= (string) ($per_page ?? '10') === '100' ? 'selected' : '' ?>>100</option>
                     </select>
                     <span>Total item: <?= (int) $total_rows ?></span>
                 </div>
@@ -1757,7 +1773,7 @@ function kaur_module_url($module) {
                             <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
                             <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
                             <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
-                            <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                            <option value="100" <?= (string) ($per_page ?? '10') === '100' ? 'selected' : '' ?>>100</option>
                         </select>
                         <span>Total item: <?= (int) $total_rows ?></span>
                     </div>
@@ -1851,7 +1867,7 @@ function kaur_module_url($module) {
                         <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
                         <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
                         <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
-                        <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                        <option value="100" <?= (string) ($per_page ?? '10') === '100' ? 'selected' : '' ?>>100</option>
                     </select>
                     <span>Total item: <?= (int) $total_rows ?></span>
                 </div>
@@ -2076,7 +2092,7 @@ function kaur_module_url($module) {
                         <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
                         <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
                         <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
-                        <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                        <option value="100" <?= (string) ($per_page ?? '10') === '100' ? 'selected' : '' ?>>100</option>
                     </select>
                     <span>Total item: <?= (int) $total_rows_bast ?></span>
                 </div>
@@ -2193,7 +2209,7 @@ function kaur_module_url($module) {
                         <option value="10" <?= (string) ($per_page ?? '10') === '10' ? 'selected' : '' ?>>10</option>
                         <option value="25" <?= (string) ($per_page ?? '10') === '25' ? 'selected' : '' ?>>25</option>
                         <option value="50" <?= (string) ($per_page ?? '10') === '50' ? 'selected' : '' ?>>50</option>
-                        <option value="all" <?= (string) ($per_page ?? '10') === 'all' ? 'selected' : '' ?>>Semua</option>
+                        <option value="100" <?= (string) ($per_page ?? '10') === '100' ? 'selected' : '' ?>>100</option>
                     </select>
                     <span>Total item: <?= (int) ($total_rows_laporan ?? 0) ?></span>
                 </div>
@@ -2290,6 +2306,18 @@ function kaur_module_url($module) {
                     if (!event.target.matches('.kaur-filter-value')) return;
                     window.clearTimeout(submitTimer);
                     submitTimer = window.setTimeout(() => form.requestSubmit(), 650);
+                });
+                form.querySelector('[data-kaur-filter-reset]')?.addEventListener('click', () => {
+                    const rows = Array.from(list.querySelectorAll('[data-filter-row]'));
+                    rows.slice(1).forEach((row) => row.remove());
+                    const first = rows[0];
+                    if (first) {
+                        const select = first.querySelector('.kaur-filter-field');
+                        if (select) select.selectedIndex = 0;
+                        syncInput(first, true);
+                    }
+                    updateButtons();
+                    form.requestSubmit();
                 });
             });
         })();
@@ -2640,12 +2668,12 @@ function kaur_module_url($module) {
             const select = document.getElementById('kaurReturnPageSize');
             const status = document.getElementById('kaurReturnPageStatus');
             const nav = document.getElementById('kaurReturnPageNav');
-            const input = document.getElementById('kaurReturnSearch');
-            const reset = document.getElementById('kaurReturnReset');
+            const filterRoot = document.getElementById('kaurReturnMultiFilter');
+            const filterMeta = document.getElementById('kaurReturnFilterMeta');
             const empty = document.getElementById('kaurReturnEmptySearch');
             const total = document.getElementById('kaurReturnTotalItems');
             const sortButtons = Array.from(document.querySelectorAll('[data-kaur-return-sort]'));
-            if (!rows.length || !tableBody || !select || !status || !nav || !input || !reset) return;
+            if (!rows.length || !tableBody || !select || !status || !nav || !filterRoot) return;
 
             let page = 1;
             let sortKey = '';
@@ -2686,10 +2714,10 @@ function kaur_module_url($module) {
                 nav.appendChild(item);
             };
             const render = () => {
-                const query = normalize(input.value);
+                const criteria = window.AdminMultiFilter?.getCriteria(filterRoot) || [];
                 const orderedRows = rows.slice().sort(compareRows);
                 orderedRows.forEach((row) => tableBody.insertBefore(row, empty || null));
-                const filteredRows = orderedRows.filter((row) => !query || normalize(row.dataset.search).includes(query));
+                const filteredRows = orderedRows.filter((row) => window.AdminMultiFilter?.matches(row, criteria) ?? true);
                 const size = pageSize(filteredRows.length);
                 const totalPages = Math.max(1, Math.ceil(filteredRows.length / size));
                 page = Math.min(page, totalPages);
@@ -2699,6 +2727,7 @@ function kaur_module_url($module) {
                 });
                 if (empty) empty.hidden = filteredRows.length > 0;
                 if (total) total.textContent = String(filteredRows.length);
+                if (filterMeta) filterMeta.textContent = filteredRows.length + (criteria.length ? ' hasil ditemukan' : ' data pengembalian');
                 status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
                 nav.innerHTML = '';
                 addPageButton('Previous', Math.max(1, page - 1), page === 1);
@@ -2720,17 +2749,12 @@ function kaur_module_url($module) {
                 page = 1;
                 render();
             });
-            input.addEventListener('input', () => {
-                page = 1;
-                render();
-            });
-            reset.addEventListener('click', () => {
-                input.value = '';
+            filterRoot.addEventListener('admin-multi-filter-change', () => { page = 1; render(); });
+            filterRoot.querySelector('[data-filter-reset]')?.addEventListener('click', () => {
                 sortKey = '';
                 sortDirection = 'asc';
                 page = 1;
                 render();
-                input.focus();
             });
             sortButtons.forEach((button) => {
                 button.addEventListener('click', () => {

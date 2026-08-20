@@ -283,11 +283,11 @@ class Dashboard_model extends CI_Model {
                 } elseif (in_array($status, ['Sedang Dipinjam', 'Dipinjam'], true)) {
                     $title = 'Barang berhasil dipinjam'; $icon = 'bi-box-arrow-up-right'; $link = 'admin/peminjaman'; $badge = 'Dipinjam';
                 } elseif ($status === 'Menunggu ACC Kaur') {
-                    $title = 'Approval diteruskan ke Kaur'; $icon = 'bi-send-check'; $link = 'admin/approval'; $badge = 'Diteruskan';
+                    $title = 'Approval diteruskan ke Kaur'; $icon = 'bi-send-check'; $link = 'admin/peminjaman'; $badge = 'Diteruskan';
                 } elseif ($status === 'Ditolak') {
-                    $title = 'Pengajuan peminjaman ditolak'; $icon = 'bi-x-circle'; $link = 'admin/approval'; $badge = 'Ditolak';
+                    $title = 'Pengajuan peminjaman ditolak'; $icon = 'bi-x-circle'; $link = 'admin/peminjaman'; $badge = 'Ditolak';
                 } else {
-                    $title = 'Pengajuan peminjaman baru masuk'; $icon = 'bi-bell'; $link = 'admin/approval'; $badge = 'Baru';
+                    $title = 'Pengajuan peminjaman baru masuk'; $icon = 'bi-bell'; $link = 'admin/peminjaman'; $badge = 'Baru';
                 }
                 $activity[] = ['title' => $title, 'description' => trim(($row->nama_lengkap ?? 'Peminjam') . ' - ' . ($row->nama_aset ?? 'Aset')), 'time' => $row->created_at, 'status' => $badge, 'icon' => $icon, 'link' => $link];
             }

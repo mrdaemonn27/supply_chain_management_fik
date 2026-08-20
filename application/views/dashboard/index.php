@@ -148,6 +148,9 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         }
         .lab-grid__item { display:flex; min-width:0; flex:0 0 calc(100% / var(--lab-columns)); padding:12px; }
         .lab-grid__item .service-card { width:100%; }
+        .lab-search { max-width: 980px; margin: 0 auto 1.5rem; }
+        .lab-search-empty { display:none; width:100%; padding:3rem 1rem; text-align:center; }
+        .lab-grid__item[hidden] { display:none !important; }
         .service-card__media {
             position: relative;
             width: 100%;
@@ -379,6 +382,22 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 $lab_columns--;
             }
         ?>
+        <div class="lab-search" data-aos="fade-up">
+            <?php
+                $multi_filter_id = 'labMultiFilter';
+                $multi_filter_mode = 'client';
+                $multi_filter_fields = [
+                    'all' => ['label' => 'Ruangan / laboratorium', 'placeholder' => 'Cari kode ruangan atau nama laboratorium...'],
+                    'kode' => ['label' => 'Kode ruangan', 'placeholder' => 'Cari kode ruangan...'],
+                    'nama' => ['label' => 'Nama ruangan / laboratorium', 'placeholder' => 'Cari nama ruangan atau laboratorium...'],
+                ];
+                $multi_filter_rows = [['field' => 'all', 'value' => '']];
+                $multi_filter_meta_id = 'labSearchMeta';
+                $multi_filter_meta = number_format($lab_count, 0, ',', '.') . ' ruangan/laboratorium tersedia';
+                include APPPATH . 'views/admin/_multi_filter.php';
+                unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
+            ?>
+        </div>
         <div class="lab-grid" style="--lab-columns: <?= (int) $lab_columns ?>" data-lab-count="<?= (int) $lab_count ?>">
             
             <?php if(empty($ruangan_list)): ?>
@@ -388,7 +407,8 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 </div>
             <?php else: ?>
                 <?php $delay = 100; foreach($ruangan_list as $r): ?>
-                <div class="lab-grid__item" data-aos="fade-up" data-aos-delay="<?= $delay; ?>">
+                <?php $lab_search_text = trim(($r['nama_ruangan'] ?? '') . ' ' . ($r['deskripsi'] ?? '')); ?>
+                <div class="lab-grid__item" data-lab-card data-search="<?= html_escape($lab_search_text) ?>" data-filter-all="<?= html_escape($lab_search_text) ?>" data-filter-kode="<?= html_escape($r['nama_ruangan'] ?? '') ?>" data-filter-nama="<?= html_escape($lab_search_text) ?>" data-aos="fade-up" data-aos-delay="<?= $delay; ?>">
                     <div class="card service-card">
                         <div class="service-card__media">
                         <?php if(!empty($r['foto'])): ?>
@@ -401,9 +421,9 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         </div>
                         
                         <div class="card-body p-4 text-center d-flex flex-column">
-                            <h5 class="fw-bold mt-3"><?= $r['nama_ruangan'] ?></h5>
+                            <h5 class="fw-bold mt-3"><?= html_escape($r['nama_ruangan']) ?></h5>
                             <p class="text-muted small">
-                                <?= !empty($r['deskripsi']) ? $r['deskripsi'] : 'Tersedia perlengkapan dan peralatan penunjang praktikum mahasiswa.' ?>
+                                <?= !empty($r['deskripsi']) ? html_escape($r['deskripsi']) : 'Tersedia perlengkapan dan peralatan penunjang praktikum mahasiswa.' ?>
                             </p>
                             
                             <div class="mt-auto">
@@ -426,6 +446,11 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 ?>
             <?php endif; ?>
 
+            <div id="labSearchEmpty" class="lab-search-empty" role="status">
+                <i class="bi bi-search fs-1 text-muted d-block mb-2"></i>
+                <h5 class="text-muted">Ruangan atau laboratorium tidak ditemukan.</h5>
+                <p class="small text-muted mb-0">Coba gunakan kode ruangan atau nama laboratorium yang berbeda.</p>
+            </div>
         </div>
     </section>
 
@@ -616,7 +641,35 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 });
             }
         }
-        document.addEventListener('DOMContentLoaded', bindInternalDocsModal);
+        function bindLabSearch() {
+            const root = document.getElementById('labMultiFilter');
+            const meta = document.getElementById('labSearchMeta');
+            const empty = document.getElementById('labSearchEmpty');
+            const cards = Array.from(document.querySelectorAll('[data-lab-card]'));
+            if (!root) return;
+
+            const render = () => {
+                const criteria = window.AdminMultiFilter?.getCriteria(root) || [];
+                let visible = 0;
+                cards.forEach(card => {
+                    const matches = window.AdminMultiFilter?.matches(card, criteria) ?? true;
+                    card.hidden = !matches;
+                    if (matches) visible += 1;
+                });
+                if (empty) empty.style.display = visible ? 'none' : 'block';
+                if (meta) {
+                    const formatted = new Intl.NumberFormat('id-ID').format(visible);
+                    meta.textContent = criteria.length ? `${formatted} hasil ditemukan` : `${formatted} ruangan/laboratorium tersedia`;
+                }
+            };
+
+            root.addEventListener('admin-multi-filter-change', render);
+            render();
+        }
+        document.addEventListener('DOMContentLoaded', function () {
+            bindInternalDocsModal();
+            bindLabSearch();
+        });
     </script>
 </body>
 </html>

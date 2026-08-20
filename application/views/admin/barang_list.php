@@ -131,6 +131,9 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
                                 <th>Nama Barang</th>
                                 <th>Lokasi / Lab</th>
                                 <th>Total Fisik</th>
+                                <th>Reserved</th>
+                                <th>Dipinjam / Ditahan</th>
+                                <th>Tersedia</th>
                                 <th>Kondisi</th>
                                 <th class="text-center">Aksi Laboran</th>
                             </tr>
@@ -138,7 +141,7 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
                         <tbody>
                             <?php if(empty($barang)): ?>
                             <tr>
-                                <td colspan="8" class="text-center py-4 text-muted">Belum ada data barang di Master Data.</td>
+                                <td colspan="11" class="text-center py-4 text-muted">Belum ada data barang di Master Data.</td>
                             </tr>
                             <?php else: ?>
                                 <?php foreach($barang as $loop_index => $b): ?>
@@ -158,6 +161,9 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
                                     <td class="fw-semibold text-dark"><?= $b->nama_aset ?></td>
                                     <td class="text-muted small"><i class="bi bi-geo-alt-fill text-fik-orange me-1"></i><?= $b->nama_ruangan ?></td>
                                     <td><b class="text-primary"><?= $b->jumlah_total ?></b> Unit</td>
+                                    <td><b class="text-warning"><?= (int) ($b->jumlah_reserved ?? 0) ?></b> Unit</td>
+                                    <td><b class="text-danger"><?= (int) ($b->jumlah_dipinjam ?? 0) ?></b> Unit</td>
+                                    <td><b class="text-success"><?= (int) $b->jumlah_tersedia ?></b> Unit</td>
                                     <td>
                                         <span class="badge <?= ($b->kondisi == 'Baik') ? 'bg-success' : (($b->kondisi == 'Rusak') ? 'bg-warning text-dark' : 'bg-danger') ?>">
                                             <?= $b->kondisi ?>

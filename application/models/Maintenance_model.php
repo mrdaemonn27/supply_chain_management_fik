@@ -152,7 +152,11 @@ class Maintenance_model extends CI_Model
             } elseif ($field === 'ruangan') {
                 $this->db->like('ruangan.nama_ruangan', $value);
             } elseif ($field === 'tanggal') {
-                $this->db->like('maintenance.tanggal_maintenance', $value, 'after');
+                $date_range = scm_parse_date_range($value);
+                if ($date_range) {
+                    $this->db->where('DATE(maintenance.tanggal_maintenance) >=', $date_range['start']);
+                    $this->db->where('DATE(maintenance.tanggal_maintenance) <=', $date_range['end']);
+                }
             } elseif ($field === 'kondisi') {
                 $this->db->like('maintenance.kondisi_setelah', $value);
             } elseif ($field === 'deskripsi') {

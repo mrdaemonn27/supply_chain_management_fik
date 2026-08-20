@@ -198,7 +198,6 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                     <option value="25">25</option>
                     <option value="50">50</option>
                     <option value="100">100</option>
-                    <option value="all">Semua</option>
                 </select>
                 <span id="distributionTotal" class="distribution-pagination-total">Total item: 0</span>
             </div>

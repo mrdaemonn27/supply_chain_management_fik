@@ -25,6 +25,7 @@ class Welcome extends CI_Controller {
 		// Halaman depan tetap harus tampil walau basis data sedang tidak bisa
 		// dihubungi, jadi kegagalan di sini cukup menghasilkan daftar kosong.
 		$ruangan = array();
+		$faq_items = array();
 
 		try
 		{
@@ -46,6 +47,19 @@ class Welcome extends CI_Controller {
 			log_message('error', 'Landing page gagal memuat daftar ruangan: '.$e->getMessage());
 		}
 
-		$this->load->view('landing/index', array('ruangan' => $ruangan));
+		try
+		{
+			$this->load->model('Faq_model');
+			$faq_items = $this->Faq_model->get_active_faqs();
+		}
+		catch (Exception $e)
+		{
+			log_message('error', 'Landing page gagal memuat FAQ Assistant: '.$e->getMessage());
+		}
+
+		$this->load->view('landing/index', array(
+			'ruangan' => $ruangan,
+			'faq_items' => $faq_items,
+		));
 	}
 }

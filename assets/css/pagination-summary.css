@@ -1,0 +1,68 @@
+.scm-pagination-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 54px;
+    padding: 10px 14px;
+    color: var(--scm-theme-muted, #667085);
+    background: var(--scm-theme-surface-soft, #f8f9fa);
+    border: 1px solid var(--scm-theme-border, #e5e7eb);
+    border-bottom: 0;
+    border-radius: 10px 10px 0 0;
+    font-size: .76rem;
+}
+
+.scm-pagination-top__summary {
+    display: flex !important;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px !important;
+    min-width: 0;
+    color: inherit;
+}
+
+.scm-pagination-top__summary label { margin: 0; font-weight: 600; }
+.scm-pagination-top__summary select {
+    width: 78px !important;
+    min-height: 34px !important;
+    padding-top: .25rem !important;
+    padding-bottom: .25rem !important;
+    border-color: var(--scm-theme-border, #d1d5db) !important;
+    font-size: .74rem !important;
+}
+.scm-pagination-top__summary > span:first-of-type::before {
+    content: "|";
+    display: inline-block;
+    margin-right: 8px;
+    color: var(--scm-theme-border-strong, #b8c0cc);
+}
+.scm-pagination-top__summary > span { white-space: nowrap; }
+
+.scm-pagination-bottom {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 14px !important;
+    min-height: 58px !important;
+    margin-top: 0 !important;
+    padding: 10px 14px !important;
+    color: var(--scm-theme-muted, #667085) !important;
+    background: var(--scm-theme-surface-soft, #f8f9fa) !important;
+    border-top: 1px solid var(--scm-theme-border, #e5e7eb) !important;
+    font-size: .76rem !important;
+}
+.scm-pagination-bottom > [class*="pagination-status"],
+.scm-pagination-bottom > [class*="page-status"],
+.scm-pagination-bottom > [class*="page-info"] { justify-self: start; text-align: left !important; }
+.scm-pagination-bottom nav { justify-self: end; }
+
+@media (max-width: 767.98px) {
+    .scm-pagination-top { align-items: flex-start; flex-direction: column; }
+    .scm-pagination-bottom { grid-template-columns: 1fr !important; justify-items: center !important; }
+    .scm-pagination-bottom > [class*="pagination-status"],
+    .scm-pagination-bottom > [class*="page-status"],
+    .scm-pagination-bottom > [class*="page-info"],
+    .scm-pagination-bottom nav { justify-self: center; text-align: center !important; }
+    .scm-pagination-bottom nav { max-width: 100%; overflow-x: auto; padding-bottom: 2px; }
+}

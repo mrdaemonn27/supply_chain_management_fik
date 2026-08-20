@@ -230,7 +230,7 @@
                 <div class="loan-pagination-summary">
                     <label for="ruanganPageSize">Tampilkan:</label>
                     <select id="ruanganPageSize" class="form-select form-select-sm" aria-label="Jumlah data ruangan per halaman">
-                        <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option>
+                        <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
                     </select>
                     <span>Total item: <span id="ruanganTotalItems"><?= count($ruangan_list) ?></span></span>
                 </div>
