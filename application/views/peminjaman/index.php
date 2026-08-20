@@ -67,7 +67,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         /* Header Katalog (Slim & Elegan, bukan hero besar) */
         .catalog-header {
             background: linear-gradient(rgba(26, 26, 26, 0.9), rgba(26, 26, 26, 0.95)), url('https://images.unsplash.com/photo-1601506521937-0121a7fc2a6b?auto=format&fit=crop&q=80') center/cover;
-            padding: 60px 0 40px 0;
+            padding: 50px 0;
             color: white;
             border-bottom: 5px solid #ea5b1a;
         }
@@ -142,20 +142,9 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         }
 
         .catalog-toolbar {
-            display: grid;
-            grid-template-columns: minmax(260px, 1fr) minmax(210px, .36fr) auto;
-            gap: 12px;
-            align-items: end;
             margin-bottom: 24px;
-            padding: 16px;
-            border: 1px solid #e1e5e9;
-            border-radius: 12px;
-            background: #ffffff;
-            box-shadow: 0 6px 18px rgba(29, 38, 48, .045);
         }
-        .catalog-filter-label { display:block; margin-bottom:6px; color:#27313b; font-size:.72rem; font-weight:700; }
-        .catalog-control { min-height:42px; border-color:#cfd6dd; background:#fff; color:#27313b; font-size:.78rem; box-shadow:none !important; }
-        .catalog-control:focus { border-color:#ea5b1a; }
+        .catalog-toolbar .admin-multi-filter { margin-bottom:.75rem !important; }
         .catalog-search-group .input-group-text { width:44px; justify-content:center; border-color:#cfd6dd; background:#fff; color:#5e6873; }
         .catalog-search-group .form-control { border-left:0; }
         .catalog-reset { min-height:42px; padding-inline:17px; border-color:#c5cdd5; border-radius:999px; color:#626d78; background:#fff; font-size:.74rem; font-weight:600; white-space:nowrap; }
@@ -177,8 +166,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
         html.scm-theme-dark .catalog-toolbar,
         html.scm-theme-dark .catalog-pagination-footer { border-color:var(--scm-theme-border); background:var(--scm-theme-surface); }
-        html.scm-theme-dark .catalog-filter-label { color:var(--scm-theme-text); }
-        html.scm-theme-dark .catalog-control,
         html.scm-theme-dark .catalog-search-group .input-group-text,
         html.scm-theme-dark .catalog-reset,
         html.scm-theme-dark .catalog-pagination-summary .form-select,
@@ -251,7 +238,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             pointer-events: none;
         }
         @media (max-width: 575.98px) {
-            .catalog-toolbar { grid-template-columns:1fr; }
             .catalog-filter-hint { grid-column:auto; }
             .catalog-reset { width:100%; }
             .catalog-pagination-footer { grid-template-columns:1fr; justify-items:center; }
@@ -266,7 +252,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             }
         }
         @media (min-width:576px) and (max-width:991.98px) {
-            .catalog-toolbar { grid-template-columns:1fr 240px; }
             .catalog-reset, .catalog-filter-hint { grid-column:1 / -1; }
             .catalog-reset { justify-self:end; }
             .catalog-pagination-footer { grid-template-columns:1fr; justify-items:center; }
@@ -344,8 +329,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     <!-- HEADER KATALOG -->
     <div class="catalog-header">
         <div class="container text-center" data-aos="fade-down" data-aos-duration="800">
-            <h2 class="fw-bolder mb-2" style="letter-spacing: 1px;">KATALOG <span class="text-fik-orange">ALAT STUDIO</span></h2>
-            <p class="text-light opacity-75 mb-0">Daftar inventaris aset Fakultas Industri Kreatif yang tersedia untuk dipinjam saat ini.</p>
+            <h2 class="fw-bolder mb-0" style="letter-spacing: 1px;">KATALOG <span class="text-fik-orange">ALAT STUDIO</span></h2>
         </div>
     </div>
 
@@ -374,31 +358,24 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         </div>
 
         <?php if (!empty($barang)): ?>
-        <div class="catalog-toolbar" aria-label="Pencarian dan pengurutan katalog">
-            <div>
-                <label for="catalogSearch" class="catalog-filter-label">Cari Alat Studio</label>
-                <div class="input-group catalog-search-group">
-                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input id="catalogSearch" type="search" class="form-control catalog-control" placeholder="Nama alat, kode aset, ruangan, kondisi, atau stok" autocomplete="off">
-                </div>
-            </div>
-            <div>
-                <label for="catalogSort" class="catalog-filter-label">Urutkan</label>
-                <select id="catalogSort" class="form-select catalog-control">
-                    <option value="original:asc">Urutan Awal</option>
-                    <option value="name:asc">Nama A–Z</option>
-                    <option value="name:desc">Nama Z–A</option>
-                    <option value="code:asc">Kode A–Z</option>
-                    <option value="code:desc">Kode Z–A</option>
-                    <option value="room:asc">Ruangan A–Z</option>
-                    <option value="stock:desc">Stok Terbanyak</option>
-                    <option value="stock:asc">Stok Tersedikit</option>
-                </select>
-            </div>
-            <button id="catalogReset" type="button" class="btn catalog-reset">
-                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset
-            </button>
-            <div class="catalog-filter-hint"><i class="bi bi-lightning-charge me-1"></i>Hasil pencarian, urutan, total aset, dan paging diperbarui secara otomatis.</div>
+        <div class="catalog-toolbar">
+            <?php
+                $multi_filter_id = 'catalogMultiFilter';
+                $multi_filter_mode = 'client';
+                $multi_filter_fields = [
+                    'all' => ['label' => 'Semua data alat', 'placeholder' => 'Cari nama alat, kode aset, ruangan, kondisi, atau stok...'],
+                    'nama' => ['label' => 'Nama alat', 'placeholder' => 'Cari nama alat...'],
+                    'kode' => ['label' => 'Kode aset', 'placeholder' => 'Cari kode aset...'],
+                    'ruangan' => ['label' => 'Ruangan / laboratorium', 'placeholder' => 'Cari ruangan atau laboratorium...'],
+                    'kondisi' => ['label' => 'Kondisi', 'placeholder' => 'Cari kondisi alat...'],
+                    'stok' => ['label' => 'Stok tersedia', 'placeholder' => 'Cari jumlah stok...'],
+                ];
+                $multi_filter_rows = [['field' => 'all', 'value' => '']];
+                $multi_filter_meta_id = 'catalogFilterMeta';
+                $multi_filter_meta = number_format(count($barang), 0, ',', '.') . ' aset tersedia';
+                include APPPATH . 'views/admin/_multi_filter.php';
+                unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
+            ?>
         </div>
         <?php endif; ?>
         
@@ -423,11 +400,12 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 data-aos="fade-up"
                 data-aos-delay="<?= ($index % 4) * 100 ?>"
                 data-search="<?= html_escape(implode(' ', [$b->nama_aset ?? '', $b->kode_aset ?? '', $catalog_room, $b->kondisi ?? '', $b->jumlah_tersedia ?? 0])) ?>"
-                data-sort-name="<?= html_escape($b->nama_aset ?? '') ?>"
-                data-sort-code="<?= html_escape($b->kode_aset ?? '') ?>"
-                data-sort-room="<?= html_escape($catalog_room) ?>"
-                data-sort-stock="<?= (int) ($b->jumlah_tersedia ?? 0) ?>"
-                data-original-index="<?= (int) $index ?>"
+                data-filter-all="<?= html_escape(implode(' ', [$b->nama_aset ?? '', $b->kode_aset ?? '', $catalog_room, $b->kondisi ?? '', $b->jumlah_tersedia ?? 0])) ?>"
+                data-filter-nama="<?= html_escape($b->nama_aset ?? '') ?>"
+                data-filter-kode="<?= html_escape($b->kode_aset ?? '') ?>"
+                data-filter-ruangan="<?= html_escape($catalog_room) ?>"
+                data-filter-kondisi="<?= html_escape($b->kondisi ?? '') ?>"
+                data-filter-stok="<?= (int) ($b->jumlah_tersedia ?? 0) ?>"
             >
                 <div class="card item-card">
                     <!-- LOGIKA GAMBAR DINAMIS (DIPERBAIKI: Hapus file_exists) -->
@@ -513,11 +491,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             <div class="catalog-pagination-summary">
                 <label for="catalogPageSize">Tampilkan:</label>
                 <select id="catalogPageSize" class="form-select form-select-sm" aria-label="Jumlah aset per halaman">
-                    <option value="8">8</option>
-                    <option value="12" selected>12</option>
-                    <option value="24">24</option>
-                    <option value="48">48</option>
-                    <option value="all">Semua</option>
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
                 </select>
                 <span>Total item: <span id="catalogTotalItems"><?= count($barang) ?></span></span>
             </div>
@@ -629,9 +606,8 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         document.addEventListener('DOMContentLoaded', function () {
             const catalogGrid = document.getElementById('catalogGrid');
             const catalogItems = Array.from(document.querySelectorAll('.catalog-item'));
-            const catalogSearch = document.getElementById('catalogSearch');
-            const catalogSort = document.getElementById('catalogSort');
-            const catalogReset = document.getElementById('catalogReset');
+            const catalogFilterRoot = document.getElementById('catalogMultiFilter');
+            const catalogFilterMeta = document.getElementById('catalogFilterMeta');
             const catalogPageSize = document.getElementById('catalogPageSize');
             const catalogTotalItems = document.getElementById('catalogTotalItems');
             const catalogHeaderTotal = document.getElementById('catalogHeaderTotal');
@@ -639,53 +615,20 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             const catalogPageNav = document.getElementById('catalogPageNav');
             const catalogEmptyResult = document.getElementById('catalogEmptyResult');
 
-            if (catalogGrid && catalogItems.length && catalogSearch && catalogSort && catalogPageSize && catalogPageNav) {
+            if (catalogGrid && catalogItems.length && catalogFilterRoot && catalogPageSize && catalogPageNav) {
                 let catalogPage = 1;
 
-                function normalizeCatalogValue(value) {
-                    return String(value || '').trim().toLocaleLowerCase('id');
-                }
-
                 function filteredCatalogItems() {
-                    const keyword = normalizeCatalogValue(catalogSearch.value);
+                    const criteria = window.AdminMultiFilter?.getCriteria(catalogFilterRoot) || [];
                     return catalogItems.filter(function (item) {
-                        return !keyword || normalizeCatalogValue(item.dataset.search).includes(keyword);
-                    });
-                }
-
-                function sortedCatalogItems(items) {
-                    const sortParts = catalogSort.value.split(':');
-                    const sortKey = sortParts[0] || 'original';
-                    const sortDirection = sortParts[1] || 'asc';
-
-                    return items.slice().sort(function (left, right) {
-                        let comparison;
-
-                        if (sortKey === 'original') {
-                            comparison = Number(left.dataset.originalIndex) - Number(right.dataset.originalIndex);
-                        } else if (sortKey === 'stock') {
-                            comparison = Number(left.dataset.sortStock) - Number(right.dataset.sortStock);
-                        } else {
-                            const datasetKey = 'sort' + sortKey.charAt(0).toUpperCase() + sortKey.slice(1);
-                            comparison = normalizeCatalogValue(left.dataset[datasetKey]).localeCompare(
-                                normalizeCatalogValue(right.dataset[datasetKey]),
-                                'id',
-                                { numeric: true, sensitivity: 'base' }
-                            );
-                        }
-
-                        if (comparison === 0) {
-                            comparison = Number(left.dataset.originalIndex) - Number(right.dataset.originalIndex);
-                        }
-
-                        return sortDirection === 'asc' ? comparison : -comparison;
+                        return window.AdminMultiFilter?.matches(item, criteria) ?? true;
                     });
                 }
 
                 function catalogSizeFor(total) {
                     return catalogPageSize.value === 'all'
                         ? Math.max(total, 1)
-                        : Math.max(Number(catalogPageSize.value) || 12, 1);
+                        : Math.max(Number(catalogPageSize.value) || 10, 1);
                 }
 
                 function addCatalogPageButton(label, target, disabled, active, ariaLabel) {
@@ -723,7 +666,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 }
 
                 function renderCatalog() {
-                    const visibleItems = sortedCatalogItems(filteredCatalogItems());
+                    const visibleItems = filteredCatalogItems();
                     const pageSize = catalogSizeFor(visibleItems.length);
                     const totalPages = Math.max(1, Math.ceil(visibleItems.length / pageSize));
                     catalogPage = Math.max(1, Math.min(catalogPage, totalPages));
@@ -743,16 +686,12 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     if (catalogEmptyResult) catalogEmptyResult.hidden = visibleItems.length !== 0;
                     if (catalogTotalItems) catalogTotalItems.textContent = String(visibleItems.length);
                     if (catalogHeaderTotal) catalogHeaderTotal.textContent = String(visibleItems.length);
+                    if (catalogFilterMeta) catalogFilterMeta.textContent = new Intl.NumberFormat('id-ID').format(visibleItems.length) + (window.AdminMultiFilter.getCriteria(catalogFilterRoot).length ? ' hasil ditemukan' : ' aset tersedia');
                     if (catalogPageStatus) catalogPageStatus.textContent = 'Halaman: ' + catalogPage + ' dari ' + totalPages;
                     renderCatalogPagination(totalPages);
                 }
 
-                catalogSearch.addEventListener('input', function () {
-                    catalogPage = 1;
-                    renderCatalog();
-                });
-
-                catalogSort.addEventListener('change', function () {
+                catalogFilterRoot.addEventListener('admin-multi-filter-change', function () {
                     catalogPage = 1;
                     renderCatalog();
                 });
@@ -762,11 +701,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     renderCatalog();
                 });
 
+                const catalogReset = catalogFilterRoot.querySelector('[data-filter-reset]');
                 if (catalogReset) {
                     catalogReset.addEventListener('click', function () {
-                        catalogSearch.value = '';
-                        catalogSort.value = 'original:asc';
-                        catalogPageSize.value = '12';
+                        catalogPageSize.value = '10';
                         catalogPage = 1;
                         renderCatalog();
                     });

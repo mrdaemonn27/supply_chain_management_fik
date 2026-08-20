@@ -7,6 +7,7 @@ class Dashboard extends CI_Controller {
         parent::__construct();
         $this->load->library('session');
         $this->load->helper(['url', 'form']);
+        $this->load->helper('loan_progress');
         $this->load->model('kaur/Kaur_model');
         $this->load->model('Peminjaman_model');
         $this->guard_kaur();
@@ -109,7 +110,7 @@ class Dashboard extends CI_Controller {
 
                 if ($field === 'tanggal_bast') {
                     $date = !empty($row->tanggal_bast) ? date('Y-m-d', strtotime($row->tanggal_bast)) : '';
-                    if ($date !== $value) {
+                    if (!scm_date_in_range($date, $value)) {
                         return false;
                     }
                     continue;
@@ -201,19 +202,13 @@ class Dashboard extends CI_Controller {
         $page = max(1, (int) $this->input->get('page'));
         $per_page = '8';
         $limit = 8;
-        if (in_array($active_module, ['pengajuan', 'negosiasi', 'approval', 'bast', 'laporan'], true)) {
+        if (in_array($active_module, ['pengajuan', 'negosiasi', 'approval', 'peminjaman', 'bast', 'laporan'], true)) {
             $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
-            if ($requested_per_page === 'all') {
-                $per_page = 'all';
-                $limit = null;
-                $page = 1;
-            } else {
-                $requested_limit = (int) $requested_per_page;
-                $limit = in_array($requested_limit, [10, 25, 50], true) ? $requested_limit : 10;
-                $per_page = (string) $limit;
-            }
+            $requested_limit = (int) $requested_per_page;
+            $limit = in_array($requested_limit, [10, 25, 50, 100], true) ? $requested_limit : 10;
+            $per_page = (string) $limit;
         }
-        $offset = $limit === null ? 0 : (($page - 1) * $limit);
+        $offset = ($page - 1) * $limit;
 
         $titles = [
             'overview' => 'Dashboard Kaur Laboratorium',
@@ -233,18 +228,19 @@ class Dashboard extends CI_Controller {
         $data['page'] = $page;
         $data['limit'] = $limit;
         $data['per_page'] = $per_page;
-        $data['total_rows'] = $this->Kaur_model->count_kaprodi_pengajuan($filters);
+        $is_loan_page = $active_module === 'peminjaman';
+        $data['total_rows'] = $is_loan_page ? 0 : $this->Kaur_model->count_kaprodi_pengajuan($filters);
         $data['total_pages'] = $limit === null ? 1 : max(1, (int) ceil($data['total_rows'] / $limit));
-        $data['pengajuan_kaprodi'] = $this->Kaur_model->get_kaprodi_pengajuan($filters, $limit, $offset);
+        $data['pengajuan_kaprodi'] = $is_loan_page ? [] : $this->Kaur_model->get_kaprodi_pengajuan($filters, $limit, $offset);
         $data['dashboard_year'] = $dashboard_year;
         $data['dashboard_years'] = $dashboard_years;
-        $data['stats'] = $this->Kaur_model->get_dashboard_stats($dashboard_year);
-        $data['anggaran'] = $this->Kaur_model->get_anggaran_summary($dashboard_year);
-        $data['dashboard_monthly_submissions'] = $this->Kaur_model->get_dashboard_monthly_submissions($dashboard_year);
-        $data['dashboard_status_breakdown'] = $this->Kaur_model->get_dashboard_status_breakdown($dashboard_year);
-        $data['dashboard_negotiation'] = $this->Kaur_model->get_dashboard_negotiation_summary($dashboard_year);
-        $data['dashboard_activity'] = $this->Kaur_model->get_dashboard_recent_activity(12);
-        $data['total_rows_laporan'] = $this->Kaur_model->count_laporan_negosiasi_deal($filters);
+        $data['stats'] = $is_loan_page ? [] : $this->Kaur_model->get_dashboard_stats($dashboard_year);
+        $data['anggaran'] = $is_loan_page ? [] : $this->Kaur_model->get_anggaran_summary($dashboard_year);
+        $data['dashboard_monthly_submissions'] = $is_loan_page ? array_fill(0, 12, 0) : $this->Kaur_model->get_dashboard_monthly_submissions($dashboard_year);
+        $data['dashboard_status_breakdown'] = $is_loan_page ? [] : $this->Kaur_model->get_dashboard_status_breakdown($dashboard_year);
+        $data['dashboard_negotiation'] = $is_loan_page ? [] : $this->Kaur_model->get_dashboard_negotiation_summary($dashboard_year);
+        $data['dashboard_activity'] = $is_loan_page ? [] : $this->Kaur_model->get_dashboard_recent_activity(12);
+        $data['total_rows_laporan'] = $is_loan_page ? 0 : $this->Kaur_model->count_laporan_negosiasi_deal($filters);
         $data['total_pages_laporan'] = $limit === null ? 1 : max(1, (int) ceil($data['total_rows_laporan'] / $limit));
         if ($active_module === 'laporan' && $page > $data['total_pages_laporan']) {
             $page = $data['total_pages_laporan'];
@@ -253,10 +249,10 @@ class Dashboard extends CI_Controller {
         }
         $laporan_limit = $active_module === 'laporan' ? $limit : 20;
         $laporan_offset = $active_module === 'laporan' ? $offset : 0;
-        $data['laporan_negosiasi'] = $this->Kaur_model->get_laporan_negosiasi_deal($filters, $laporan_limit, $laporan_offset);
+        $data['laporan_negosiasi'] = $is_loan_page ? [] : $this->Kaur_model->get_laporan_negosiasi_deal($filters, $laporan_limit, $laporan_offset);
         $bast_source_limit = $active_module === 'bast' ? null : 12;
-        $data['bast_ready'] = $this->Kaur_model->get_bast_ready_pengajuan($bast_source_limit);
-        $data['bast_list'] = $this->Kaur_model->get_bast_list($bast_source_limit);
+        $data['bast_ready'] = $is_loan_page ? [] : $this->Kaur_model->get_bast_ready_pengajuan($bast_source_limit);
+        $data['bast_list'] = $is_loan_page ? [] : $this->Kaur_model->get_bast_list($bast_source_limit);
         if ($active_module === 'bast') {
             $data['bast_rows'] = $this->filter_bast_rows(
                 $this->merge_bast_rows($data['bast_ready'], $data['bast_list']),
@@ -269,16 +265,36 @@ class Dashboard extends CI_Controller {
             $loan_filters['pencarian'] = '';
             $loan_filters['multi_filters'] = $multi_filter_rows;
         }
-        $data['peminjaman_pending_kaur'] = $this->Peminjaman_model->get_pending_kaur($loan_filters);
+        $loan_query_filters = [
+            'multi_filters' => $multi_filter_rows,
+            'action_role' => 'kaur',
+            'sort_by' => $filters['sort_by'] ?? '',
+            'sort_dir' => $filters['sort_dir'] ?? '',
+        ];
+        $data['loan_total_rows'] = $active_module === 'peminjaman' ? $this->Peminjaman_model->count_visible_peminjaman($loan_query_filters) : 0;
+        $data['loan_total_pages'] = max(1, (int) ceil($data['loan_total_rows'] / $limit));
+        if ($active_module === 'peminjaman' && $page > $data['loan_total_pages']) {
+            $page = $data['loan_total_pages'];
+            $offset = ($page - 1) * $limit;
+            $data['page'] = $page;
+        }
+        $data['loan_actionable'] = $active_module === 'peminjaman'
+            ? $this->Peminjaman_model->count_actionable_peminjaman('kaur', $loan_query_filters)
+            : 0;
+        $data['peminjaman_visible_kaur'] = $active_module === 'peminjaman'
+            ? $this->Peminjaman_model->get_visible_peminjaman($loan_query_filters, $limit, $offset)
+            : [];
         $return_filters = $loan_filters;
         unset($return_filters['multi_filters']);
-        $data['pengembalian_readonly'] = $this->Peminjaman_model->get_pengembalian_readonly($return_filters);
-        $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null);
+        $data['pengembalian_readonly'] = $active_module === 'peminjaman'
+            ? $this->Peminjaman_model->get_pengembalian_readonly($return_filters, 10, 0)
+            : [];
+        $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null, 20);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('kaur', null);
-        $data['pengajuan'] = $this->Kaur_model->get_all_by_user($id_user);
-        $data['approval_bast'] = $this->Kaur_model->get_approval_bast_queue($id_user);
-        $data['maintenance'] = $this->Kaur_model->get_laporan_maintenance(12);
-        $data['laboratorium'] = $this->Kaur_model->get_laporan_laboratorium();
+        $data['pengajuan'] = $is_loan_page ? [] : $this->Kaur_model->get_all_by_user($id_user);
+        $data['approval_bast'] = $is_loan_page ? [] : $this->Kaur_model->get_approval_bast_queue($id_user);
+        $data['maintenance'] = $is_loan_page ? [] : $this->Kaur_model->get_laporan_maintenance(12);
+        $data['laboratorium'] = $is_loan_page ? [] : $this->Kaur_model->get_laporan_laboratorium();
         $this->load->view('kaur/dashboard', $data);
     }
 }

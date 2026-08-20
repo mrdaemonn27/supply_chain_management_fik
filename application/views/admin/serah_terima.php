@@ -40,7 +40,7 @@ $boleh_serah = !empty($qr_valid) && ($peminjaman->status ?? '') === 'Disetujui (
     <?php include APPPATH . 'views/admin/panel_sidebar.php'; ?>
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
-            <div><div class="fw-bold"><i class="bi bi-box-seam me-2 text-warning"></i>Serah Terima Barang</div><div class="small text-white-50">Validasi detail sebelum barang diserahkan</div></div>
+            <div class="fw-bold"><i class="bi bi-box-seam me-2 text-warning"></i>Serah Terima Barang</div>
             <a href="<?= base_url('index.php/admin/peminjaman/scanner') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3">Scanner</a>
         </div>
     </header>

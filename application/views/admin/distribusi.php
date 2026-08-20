@@ -112,7 +112,6 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
             <div>
                 <div class="fw-bold"><i class="bi bi-truck me-2 text-warning"></i>Distribusi Barang</div>
-                <div class="small text-white-50">Pindahkan lokasi barang antar ruangan</div>
             </div>
             <div class="topbar-actions d-flex gap-2">
                 <a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
@@ -128,7 +127,6 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
     <div class="distribution-page-heading">
         <div>
             <h1>Distribusi Barang</h1>
-            <p>Pindahkan lokasi aset antar ruangan dan pantau riwayat distribusinya.</p>
         </div>
         <button type="button" class="btn btn-fik rounded-pill px-3" data-bs-toggle="offcanvas" data-bs-target="#distributionDrawer" aria-controls="distributionDrawer">
             <i class="bi bi-plus-lg me-1"></i> Catat Distribusi
@@ -152,8 +150,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
     <section class="panel-card overflow-hidden" aria-labelledby="distributionHistoryTitle">
         <div class="d-flex align-items-center justify-content-between gap-2 px-3 px-lg-4 py-3 border-bottom">
             <div>
-                <h2 id="distributionHistoryTitle" class="h6 mb-1 fw-bold">Riwayat Distribusi</h2>
-                <div class="small text-muted">Daftar perpindahan aset yang tercatat.</div>
+                <h2 id="distributionHistoryTitle" class="h6 mb-0 fw-bold">Riwayat Distribusi</h2>
             </div>
         </div>
         <div class="distribution-table-wrap">
@@ -201,7 +198,6 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                     <option value="25">25</option>
                     <option value="50">50</option>
                     <option value="100">100</option>
-                    <option value="all">Semua</option>
                 </select>
                 <span id="distributionTotal" class="distribution-pagination-total">Total item: 0</span>
             </div>
@@ -215,7 +211,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
 
 <div class="offcanvas offcanvas-end distribution-drawer" tabindex="-1" id="distributionDrawer" aria-labelledby="distributionDrawerLabel">
     <div class="offcanvas-header">
-        <div><h2 id="distributionDrawerLabel" class="offcanvas-title mb-1">Catat Distribusi</h2><div class="small text-muted">Pindahkan lokasi aset ke ruangan tujuan.</div></div>
+        <h2 id="distributionDrawerLabel" class="offcanvas-title mb-0">Catat Distribusi</h2>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
     </div>
     <div class="offcanvas-body">

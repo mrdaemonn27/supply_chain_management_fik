@@ -425,8 +425,10 @@ class Kaur_model extends CI_Model {
                     $this->db->like('kaprodi_pengajuan.status', $value);
                     break;
                 case 'tanggal':
-                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-                        $this->db->where('DATE(kaprodi_pengajuan.created_at)', $value);
+                    $date_range = scm_parse_date_range($value);
+                    if ($date_range) {
+                        $this->db->where('DATE(kaprodi_pengajuan.created_at) >=', $date_range['start']);
+                        $this->db->where('DATE(kaprodi_pengajuan.created_at) <=', $date_range['end']);
                     }
                     break;
                 case 'total_harga':

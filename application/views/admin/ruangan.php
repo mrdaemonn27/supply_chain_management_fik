@@ -149,8 +149,7 @@
         <?php if($page == 'index'): ?>
         <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 mt-4">
             <div>
-                <h4 class="fw-bold mb-1">Manajemen Master Data Ruangan</h4>
-                <p class="text-muted small m-0">Tambah, Edit, dan Hapus data ruangan / laboratorium secara global.</p>
+                <h4 class="fw-bold mb-0">Manajemen Master Data Ruangan</h4>
             </div>
             <a href="<?= base_url('admin/ruangan/tambah') ?>" class="btn btn-fik-orange fw-bold px-4 rounded-pill shadow-sm">
                 <i class="bi bi-plus-circle me-1"></i> Tambah Ruangan
@@ -231,7 +230,7 @@
                 <div class="loan-pagination-summary">
                     <label for="ruanganPageSize">Tampilkan:</label>
                     <select id="ruanganPageSize" class="form-select form-select-sm" aria-label="Jumlah data ruangan per halaman">
-                        <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option>
+                        <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
                     </select>
                     <span>Total item: <span id="ruanganTotalItems"><?= count($ruangan_list) ?></span></span>
                 </div>

@@ -147,7 +147,6 @@ $format_date = static function ($value) {
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <div>
                     <div class="fw-bold"><i class="bi bi-shield-lock me-2 text-warning"></i>Blokir Pengguna</div>
-                    <div class="small text-white-50">Kelola pembatasan pengajuan peminjaman dan histori pembukaan blokir</div>
                 </div>
                 <div class="topbar-actions d-flex gap-2">
                     <div class="dropdown">
@@ -182,7 +181,6 @@ $format_date = static function ($value) {
         <div class="blokir-heading">
             <div>
                 <h1>Blokir Pengguna</h1>
-                <p>Kelola pembatasan pengajuan peminjaman dan histori pembukaan blokir.</p>
             </div>
             <button type="button" class="btn btn-fik rounded-pill" data-bs-toggle="offcanvas" data-bs-target="#blockUserDrawer" aria-controls="blockUserDrawer">
                 <i class="bi bi-plus-lg me-1"></i> Blokir Pengguna
@@ -274,7 +272,6 @@ $format_date = static function ($value) {
                             <option value="25">25</option>
                             <option value="50">50</option>
                             <option value="100">100</option>
-                            <option value="all">Semua</option>
                         </select>
                     </label>
                     <span class="ms-2" id="blockTotalItems">Total item: <?= count($blokir) ?></span>
@@ -290,8 +287,7 @@ $format_date = static function ($value) {
     <div class="offcanvas offcanvas-end blokir-drawer" tabindex="-1" id="blockUserDrawer" aria-labelledby="blockUserDrawerLabel">
         <div class="offcanvas-header">
             <div>
-                <h2 class="offcanvas-title h5 fw-bold mb-1" id="blockUserDrawerLabel">Blokir Pengguna</h2>
-                <div class="small text-muted">Tambahkan pembatasan pengajuan peminjaman.</div>
+                <h2 class="offcanvas-title h5 fw-bold mb-0" id="blockUserDrawerLabel">Blokir Pengguna</h2>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
         </div>

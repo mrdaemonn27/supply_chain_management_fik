@@ -1,46 +1,13 @@
 <?php
-$status_class = function ($status) {
-    return 'status-' . preg_replace('/[^A-Za-z0-9]+/', '-', trim($status ?: 'Menunggu Verifikasi Laboran'));
-};
-$approval_progress = static function ($p) {
-    $status = (string) ($p->status ?? '');
-    $state = static function ($complete, $current) {
-        return $complete ? 'is-complete' : ($current ? 'is-current' : 'is-pending');
-    };
-    $steps = [
-        ['label' => 'Diajukan', 'state' => $status !== '' ? 'is-complete' : 'is-current'],
-        ['label' => 'Kaprodi', 'state' => $state(($p->status_kaprodi ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaprodi')],
-        ['label' => 'Laboran', 'state' => $state(($p->status_laboran ?? '') === 'Disetujui', in_array($status, ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu Persetujuan'], true))],
-        ['label' => 'Kaur', 'state' => $state(($p->status_kaur ?? '') === 'Disetujui', $status === 'Menunggu ACC Kaur')],
-        ['label' => 'Final QR', 'state' => $state((int) ($p->qr_locked ?? 0) === 1 || !empty($p->qr_finalized_at), $status === 'Disetujui (Menunggu Finalisasi QR)')],
-        ['label' => 'Selesai', 'state' => $state($status === 'Dikembalikan', in_array($status, ['Disetujui (Menunggu Pengambilan)', 'Sedang Dipinjam', 'Dipinjam'], true))],
-    ];
-    $current_index = null;
-    foreach ($steps as $index => $step) {
-        if ($step['state'] === 'is-current') {
-            $current_index = $index;
-            break;
-        }
-    }
-    if ($current_index === null) {
-        foreach ($steps as $index => $step) {
-            if ($step['state'] === 'is-pending') {
-                $current_index = $index;
-                break;
-            }
-        }
-    }
-    return [
-        'steps' => $steps,
-        'current_label' => $current_index !== null ? $steps[$current_index]['label'] : 'Selesai',
-        'current_index' => $current_index !== null ? $current_index : count($steps) - 1,
-        'status' => $status,
-    ];
-};
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $pengajuan = isset($pengajuan) && is_array($pengajuan) ? $pengajuan : [];
-$approval_total = count($pengajuan);
+$approval_total = (int) ($approval_total ?? count($pengajuan));
+$approval_actionable = (int) ($approval_actionable ?? count(array_filter($pengajuan, static function ($p) { return scm_loan_can_act($p, 'laboran'); })));
+$approval_page_actionable = count(array_filter($pengajuan, static function ($p) { return scm_loan_can_act($p, 'laboran'); }));
+$page = max(1, (int) ($page ?? 1));
+$per_page = (int) ($per_page ?? 10);
+$total_pages = max(1, (int) ($total_pages ?? 1));
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -51,6 +18,8 @@ $approval_total = count($pengajuan);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= base_url('assets/css/loan-progress.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-progress.css'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/approval-bulk-select.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/approval-bulk-select.css'); ?>">
     <style>
         body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
@@ -149,7 +118,6 @@ $approval_total = count($pengajuan);
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <div>
                     <div class="fw-bold"><i class="bi bi-patch-check me-2 text-warning"></i>Pengecekan Laboran</div>
-                    <div class="small text-white-50">Tahap setelah ACC Kaprodi: cek stok fisik lalu teruskan ke Kaur</div>
                 </div>
                 <div class="topbar-actions d-flex gap-2">
                     <div class="dropdown">
@@ -185,11 +153,12 @@ $approval_total = count($pengajuan);
         <section class="panel-card p-3 p-lg-4 mb-3">
             <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
                 <div>
-                    <h1 class="h5 fw-bold mb-1">Daftar Pengajuan Menunggu Pengecekan</h1>
-                    <div class="text-muted small">Kaprodi sudah menyetujui. Laboran mengecek ketersediaan fisik sebelum meneruskan ke Kaur.</div>
+                    <h1 class="h5 fw-bold mb-0">Progress Seluruh Peminjaman</h1>
+                    <p class="small text-muted mb-0 mt-1">Semua pengajuan terlihat; aksi Laboran hanya aktif pada tahap verifikasi.</p>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge rounded-pill text-bg-warning text-dark px-3 py-2"><?= count($pengajuan) ?> menunggu</span>
+                    <span class="badge rounded-pill text-bg-warning text-dark px-3 py-2"><?= $approval_actionable ?> perlu aksi</span>
+                    <span class="badge rounded-pill text-bg-light border px-3 py-2"><?= $approval_total ?> total</span>
                     <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" type="button" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
                 </div>
             </div>
@@ -197,7 +166,7 @@ $approval_total = count($pengajuan);
 
         <?php
         $multi_filter_id = 'approvalMultiFilter';
-        $multi_filter_mode = 'client';
+        $multi_filter_mode = 'server';
         $multi_filter_fields = [
             'peminjam' => ['label' => 'Peminjam / NIM', 'placeholder' => 'Cari nama peminjam atau NIM/NIP'],
             'barang' => ['label' => 'Nama barang / kode', 'placeholder' => 'Cari barang yang diajukan'],
@@ -206,23 +175,34 @@ $approval_total = count($pengajuan);
             'keperluan' => ['label' => 'Keperluan', 'placeholder' => 'Cari keperluan peminjaman'],
             'status' => ['label' => 'Status', 'placeholder' => 'Cari status approval'],
         ];
+        $multi_filter_rows = $multi_filter_rows ?? [['field' => 'peminjam', 'value' => '']];
+        $multi_filter_action = base_url('index.php/admin/approval');
+        $multi_filter_hidden = ['per_page' => $per_page, 'page' => 1];
         include APPPATH . 'views/admin/_multi_filter.php';
         ?>
 
-        <section class="panel-card overflow-hidden">
+        <section class="panel-card overflow-hidden" data-bulk-approval>
             <?php if(empty($pengajuan)): ?>
                 <div class="empty-state p-5">
                     <div>
                         <i class="bi bi-check-circle display-5 d-block mb-3 text-success"></i>
-                        <h2 class="h5 fw-bold mb-1">Tidak ada pengajuan menunggu</h2>
-                        <p class="mb-0">Semua pengajuan peminjaman sudah diproses.</p>
+                        <h2 class="h5 fw-bold mb-1">Belum ada data peminjaman</h2>
+                        <p class="mb-0">Pengajuan baru akan tampil di sini sejak tahap Kaprodi.</p>
                     </div>
                 </div>
             <?php else: ?>
+                <form id="laboranBulkForm" method="post" action="<?= base_url('index.php/admin/approval/bulk') ?>" class="approval-bulk-toolbar m-3" data-bulk-form data-bulk-toolbar hidden>
+                    <input type="hidden" name="bulk_note" value="">
+                    <span class="approval-bulk-toolbar__count" data-bulk-count>0 data terpilih</span>
+                    <button type="submit" name="action" value="approve" class="btn btn-sm btn-success rounded-pill px-3" data-bulk-approve-action><i class="bi bi-check2-circle me-1"></i>Setujui Terpilih</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#laboranBulkRejectModal"><i class="bi bi-x-circle me-1"></i>Tolak Terpilih</button>
+                    <button type="submit" name="action" value="reject" data-bulk-reject-action hidden></button>
+                </form>
                 <div class="table-wrap">
                     <table class="table table-hover approval-table mb-0">
                         <thead>
                             <tr>
+                                <th class="approval-bulk-cell"><label class="approval-bulk-select-all" title="Pilih semua data yang dapat diproses pada halaman ini"><input type="checkbox" class="form-check-input approval-bulk-check" data-bulk-select-all <?= $approval_page_actionable > 0 ? '' : 'disabled' ?>> <span>Select All</span></label></th>
                                 <th class="ps-3">No</th>
                                 <th>Peminjam</th>
                                 <th>Barang Diajukan</th>
@@ -237,9 +217,11 @@ $approval_total = count($pengajuan);
                             <?php foreach($pengajuan as $index => $p):
                                 $approval_items = []; $approval_quantities = [];
                                 foreach (($p->detail_barang ?? []) as $filter_item) { $approval_items[] = ($filter_item->nama_aset ?? '') . ' ' . ($filter_item->kode_aset ?? ''); $approval_quantities[] = (string) ($filter_item->jumlah_pinjam ?? 0); }
+                                $can_laboran_act = scm_loan_can_act($p, 'laboran');
                             ?>
                                 <tr class="approval-data-row" data-filter-peminjam="<?= html_escape(($p->nama_peminjam ?? '') . ' ' . ($p->nim_nip ?? '')) ?>" data-filter-barang="<?= html_escape(implode(' ', $approval_items)) ?>" data-filter-jumlah="<?= html_escape(implode(' ', $approval_quantities)) ?>" data-filter-masa="<?= html_escape(($p->tanggal_pinjam ?? '') . ' ' . ($p->tanggal_kembali_rencana ?? '')) ?>" data-filter-keperluan="<?= html_escape($p->keperluan ?? '') ?>" data-filter-status="<?= html_escape(($p->status ?? '') . ' ' . ($p->status_laboran ?? '')) ?>">
-                                    <td class="ps-3 fw-semibold text-muted"><?= $index + 1 ?></td>
+                                    <td class="approval-bulk-cell"><input type="checkbox" class="form-check-input approval-bulk-check" name="loan_ids[]" value="<?= (int) $p->id_peminjaman ?>" form="laboranBulkForm" data-bulk-row aria-label="Pilih pengajuan <?= (int) $p->id_peminjaman ?>" <?= $can_laboran_act ? '' : 'disabled title="Belum berada pada tahap Laboran"' ?>></td>
+                                    <td class="ps-3 fw-semibold text-muted"><?= (($page - 1) * $per_page) + $index + 1 ?></td>
                                     <td>
                                         <div class="fw-bold"><?= html_escape($p->nama_peminjam ?? '-') ?></div>
                                         <div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div>
@@ -270,45 +252,48 @@ $approval_total = count($pengajuan);
                                     <td>
                                         <div class="small" style="max-width: 260px; white-space: normal;"><?= nl2br(html_escape($p->keperluan ?? '-')) ?></div>
                                     </td>
-                                    <?php $progress = $approval_progress($p); ?>
                                     <td>
-                                        <div class="approval-progress" aria-label="Progress approval">
-                                            <div class="approval-progress__heading">
-                                                <span class="approval-progress__current"><?= html_escape($progress['current_label']) ?></span>
-                                                <span class="approval-progress__count">Tahap <?= (int) $progress['current_index'] + 1 ?> dari 6</span>
-                                            </div>
-                                            <div class="approval-progress__track" aria-hidden="true">
-                                                <?php foreach ($progress['steps'] as $step): ?>
-                                                    <span class="approval-progress__unit <?= html_escape($step['state']) ?>" title="<?= html_escape($step['label']) ?>"><span class="approval-progress__dot"></span></span>
-                                                <?php endforeach; ?>
-                                            </div>
-                                            <span class="approval-progress__status <?= $status_class($progress['status']) ?>"><?= html_escape($progress['status'] ?: '-') ?></span>
-                                        </div>
+                                        <?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?>
                                     </td>
                                     <td class="text-end pe-3 action-cell">
-                                        <div class="d-flex flex-wrap justify-content-end align-items-center gap-2"><?php if(!empty($p->foto_bukti)): ?><button type="button" class="btn btn-sm btn-outline-secondary approval-evidence-btn" data-bs-toggle="modal" data-bs-target="#evidenceModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button><?php endif; ?><button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" data-bs-toggle="modal" data-bs-target="#processModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-sliders me-1"></i> Proses</button></div>
+                                        <div class="d-flex flex-wrap justify-content-end align-items-center gap-2"><?php if(!empty($p->foto_bukti)): ?><button type="button" class="btn btn-sm btn-outline-secondary approval-evidence-btn" data-bs-toggle="modal" data-bs-target="#evidenceModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button><?php endif; ?><button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" <?= $can_laboran_act ? 'data-bs-toggle="modal" data-bs-target="#processModal'.(int)$p->id_peminjaman.'"' : 'disabled title="Aksi tersedia saat memasuki tahap Laboran"'; ?>><i class="bi bi-sliders me-1"></i> Proses</button></div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
+                <div class="modal fade" id="laboranBulkRejectModal" tabindex="-1" aria-labelledby="laboranBulkRejectTitle" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+                        <div class="modal-header"><h2 class="modal-title h5 fw-bold" id="laboranBulkRejectTitle">Tolak Pengajuan Terpilih</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+                        <div class="modal-body"><label for="laboranBulkRejectReason" class="form-label fw-semibold">Alasan penolakan</label><textarea id="laboranBulkRejectReason" class="form-control" rows="4" placeholder="Tuliskan alasan yang akan diterapkan pada seluruh pengajuan terpilih." data-bulk-reject-reason></textarea><div class="form-text">Reservasi stok pada pengajuan yang berhasil ditolak akan dilepas.</div></div>
+                        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button type="button" class="btn btn-danger rounded-pill px-4" data-bulk-reject-submit>Tolak Terpilih</button></div>
+                    </div></div>
+                </div>
                 <div class="loan-pagination-footer" id="approvalPaginationFooter" data-total="<?= $approval_total ?>">
                     <div class="loan-pagination-summary">
                         <label for="approvalPageSize">Tampilkan:</label>
-                        <select id="approvalPageSize" class="form-select form-select-sm" aria-label="Jumlah data approval per halaman">
-                            <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option>
+                        <select id="approvalPageSize" class="form-select form-select-sm" aria-label="Jumlah data approval per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.href=u.toString();">
+                            <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                         </select>
                         <span id="approvalTotalItems">Total item: <?= $approval_total ?></span>
                     </div>
-                    <div class="loan-pagination-status" id="approvalPageStatus">Halaman: 1 dari 1</div>
-                    <nav aria-label="Pagination approval"><ul class="pagination pagination-sm loan-pagination" id="approvalPageNav"></ul></nav>
+                    <?php $first_item = $approval_total > 0 ? (($page - 1) * $per_page) + 1 : 0; $last_item = min($approval_total, $page * $per_page); ?>
+                    <div class="loan-pagination-status" id="approvalPageStatus">Menampilkan <?= $first_item ?>–<?= $last_item ?> dari <?= number_format($approval_total, 0, ',', '.') ?> data</div>
+                    <nav aria-label="Pagination approval"><ul class="pagination pagination-sm loan-pagination" id="approvalPageNav">
+                        <?php $approval_query = $_GET; $approval_query['per_page'] = $per_page; ?>
+                        <?php $approval_query['page'] = max(1, $page - 1); ?><li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($approval_query) ?>">Previous</a></li>
+                        <?php $start_page = max(1, $page - 2); $end_page = min($total_pages, $start_page + 4); $start_page = max(1, $end_page - 4); for ($i = $start_page; $i <= $end_page; $i++): $approval_query['page'] = $i; ?>
+                            <li class="page-item <?= $i === $page ? 'active' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($approval_query) ?>"><?= $i ?></a></li>
+                        <?php endfor; $approval_query['page'] = min($total_pages, $page + 1); ?>
+                        <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($approval_query) ?>">Next</a></li>
+                    </ul></nav>
                 </div>
             <?php endif; ?>
         </section>
     </main>
 
-    <?php foreach($pengajuan as $p): ?>
+    <?php foreach($pengajuan as $p): $can_laboran_act = scm_loan_can_act($p, 'laboran'); ?>
         <div class="modal fade" id="processModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <form class="modal-content" method="post" action="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>">
@@ -317,17 +302,18 @@ $approval_total = count($pengajuan);
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                     </div>
                     <div class="modal-body">
+                        <?php if (!$can_laboran_act): ?><div class="alert alert-info small">Pengajuan ini tetap terlihat untuk pemantauan. Aksi Laboran akan aktif setelah disetujui Kaprodi.</div><?php endif; ?>
                         <div class="mb-3">
                             <div class="small text-muted">Peminjam</div>
                             <div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?> - <?= html_escape($p->nim_nip ?? '-') ?></div>
                         </div>
                         <label class="form-label small fw-semibold">Catatan Laboran</label>
-                        <textarea name="catatan_laboran" class="form-control" rows="3" placeholder="Catatan pengecekan stok atau alasan penolakan."></textarea>
+                        <textarea name="catatan_laboran" class="form-control" rows="3" placeholder="Catatan pengecekan stok atau alasan penolakan." <?= $can_laboran_act ? '' : 'disabled'; ?>></textarea>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button>
-                        <button formaction="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-4" onclick="return confirm('Tolak pengajuan ini?')"><i class="bi bi-x-lg me-1"></i> Tolak</button>
-                        <button formaction="<?= base_url('index.php/admin/approval/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-4" onclick="return confirm('Teruskan pengajuan ini ke Kaur?')"><i class="bi bi-send-check me-1"></i> Teruskan ke Kaur</button>
+                        <button formaction="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-4" onclick="return confirm('Tolak pengajuan ini?')" <?= $can_laboran_act ? '' : 'disabled'; ?>><i class="bi bi-x-lg me-1"></i> Tolak</button>
+                        <button formaction="<?= base_url('index.php/admin/approval/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-4" onclick="return confirm('Teruskan pengajuan ini ke Kaur?')" <?= $can_laboran_act ? '' : 'disabled'; ?>><i class="bi bi-send-check me-1"></i> Teruskan ke Kaur</button>
                     </div>
                 </form>
             </div>
@@ -336,45 +322,9 @@ $approval_total = count($pengajuan);
     <?php endforeach; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= base_url('assets/js/approval-bulk-select.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/approval-bulk-select.js'); ?>"></script>
     <script>
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-        (function () {
-            const rows = Array.from(document.querySelectorAll('.approval-data-row'));
-            const select = document.getElementById('approvalPageSize');
-            const filterRoot = document.getElementById('approvalMultiFilter');
-            const status = document.getElementById('approvalPageStatus');
-            const nav = document.getElementById('approvalPageNav');
-            const totalItems = document.getElementById('approvalTotalItems');
-            if (!rows.length || !select || !status || !nav) return;
-            let page = 1;
-            const pageSize = () => select.value === 'all' ? Math.max(rows.length, 1) : Number(select.value) || 10;
-            const button = (label, target, disabled, active) => {
-                const li = document.createElement('li');
-                li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
-                const a = document.createElement('a');
-                a.className = 'page-link'; a.href = '#'; a.textContent = label;
-                a.setAttribute('aria-label', label);
-                if (!disabled) a.addEventListener('click', function (event) { event.preventDefault(); page = target; render(); });
-                li.appendChild(a); nav.appendChild(li);
-            };
-            function render() {
-                const filtered = rows.filter(row => !filterRoot || AdminMultiFilter.matches(row, AdminMultiFilter.getCriteria(filterRoot)));
-                const size = select.value === 'all' ? Math.max(filtered.length, 1) : Number(select.value) || 10;
-                const totalPages = Math.max(1, Math.ceil(filtered.length / size));
-                page = Math.min(page, totalPages);
-                const visible = new Set(filtered.slice((page - 1) * size, page * size));
-                rows.forEach(row => { row.hidden = !visible.has(row); });
-                status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
-                if (totalItems) totalItems.textContent = 'Total item: ' + filtered.length;
-                nav.innerHTML = '';
-                button('Previous', Math.max(1, page - 1), page === 1, false);
-                for (let index = 1; index <= totalPages; index += 1) button(String(index), index, false, index === page);
-                button('Next', Math.min(totalPages, page + 1), page === totalPages, false);
-            }
-            select.addEventListener('change', function () { page = 1; render(); });
-            filterRoot?.addEventListener('admin-multi-filter-change', function () { page = 1; render(); });
-            render();
-        }());
     </script>
 </body>
 </html>

@@ -31,6 +31,42 @@ if (!function_exists('masa_pinjam_indonesia')) {
     }
 }
 
+if (!function_exists('scm_parse_date_range')) {
+    /**
+     * Membaca nilai filter tanggal tunggal atau rentang YYYY-MM-DD..YYYY-MM-DD.
+     * Hasil selalu diurutkan dari tanggal paling awal ke paling akhir.
+     */
+    function scm_parse_date_range($value) {
+        $value = trim((string) $value);
+        if (!preg_match('/^(\d{4}-\d{2}-\d{2})(?:\.\.(\d{4}-\d{2}-\d{2}))?$/', $value, $matches)) {
+            return null;
+        }
+
+        $start = $matches[1];
+        $end = !empty($matches[2]) ? $matches[2] : $start;
+        foreach ([$start, $end] as $date) {
+            $parsed = DateTime::createFromFormat('!Y-m-d', $date);
+            if (!$parsed || $parsed->format('Y-m-d') !== $date) {
+                return null;
+            }
+        }
+
+        return $start <= $end
+            ? ['start' => $start, 'end' => $end]
+            : ['start' => $end, 'end' => $start];
+    }
+}
+
+if (!function_exists('scm_date_in_range')) {
+    function scm_date_in_range($date, $range_value) {
+        $range = scm_parse_date_range($range_value);
+        $date = substr(trim((string) $date), 0, 10);
+        return $range && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)
+            ? ($date >= $range['start'] && $date <= $range['end'])
+            : false;
+    }
+}
+
 if (!function_exists('scm_upload_url')) {
     /**
      * Membentuk URL upload baik ketika database menyimpan nama file saja

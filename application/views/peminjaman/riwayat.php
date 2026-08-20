@@ -15,6 +15,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <link rel="stylesheet" href="<?= base_url('assets/css/loan-progress.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-progress.css'); ?>">
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
@@ -43,7 +44,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         
         .table-custom th:nth-child(4), .table-custom td:nth-child(4) { width: 320px; min-width: 320px; }
         .badge-status { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; width:300px; min-width:300px; max-width:300px; height:42px; min-height:42px; padding:7px 14px; border-radius:999px; font-weight:600; font-size:.76rem; line-height:1.2; white-space:normal; text-align:center; }
-        .history-search { max-width:720px; margin:0 auto 1.25rem; }
+        .history-search { max-width:980px; margin:0 auto 1.25rem; }
         .history-date { display:inline-flex; align-items:center; gap:.45rem; padding:.4rem .55rem; border-radius:8px; cursor:help; transition:background-color .18s ease; }
         .history-date:hover { background:#fff3eb; }
         .history-empty-filter { display:none; }
@@ -67,6 +68,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         .history-pagination .page-item.active .page-link { background:#ea5b1a; border-color:#ea5b1a; color:#fff; }
         .history-pagination .page-item:not(.active):not(.disabled) .page-link:hover { background:#fff3eb; border-color:#ea5b1a; color:#c44810; }
         .history-pagination .page-item.disabled .page-link { color:#adb5bd; background:#f3f4f6; }
+        .history-list-summary { margin-bottom:0; }
         @media (max-width: 575.98px) {
             .history-pagination { flex-direction:column; justify-content:center; }
             .history-pagination__info { text-align:center; }
@@ -121,8 +123,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     <!-- CONTENT -->
     <div class="container py-5">
         <div class="mb-4 text-center" data-aos="fade-down">
-            <h2 class="fw-bold text-dark">RIWAYAT <span class="text-fik-orange">PEMINJAMAN</span></h2>
-            <p class="text-muted">Pantau status pengajuan dan akses QR Code bukti persetujuan Anda.</p>
+            <h2 class="fw-bold text-dark mb-0">RIWAYAT <span class="text-fik-orange">PEMINJAMAN</span></h2>
         </div>
 
         <!-- Notifikasi Sukses -->
@@ -134,15 +135,36 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         <?php endif; ?>
 
         <div class="history-search" data-aos="fade-up">
-            <label for="historySearch" class="form-label small fw-semibold text-muted">Cari riwayat peminjaman</label>
-            <div class="input-group shadow-sm">
-                <span class="input-group-text bg-white"><i class="bi bi-search text-fik-orange"></i></span>
-                <input id="historySearch" type="search" class="form-control" placeholder="Nama barang, status, atau tanggal" autocomplete="off">
-            </div>
-            <div id="historySearchCount" class="small text-muted mt-2" aria-live="polite"></div>
+            <?php
+                $multi_filter_id = 'historyMultiFilter';
+                $multi_filter_mode = 'client';
+                $multi_filter_fields = [
+                    'all' => ['label' => 'Semua riwayat', 'placeholder' => 'Cari nama barang, status, kode aset, atau tanggal...'],
+                    'barang' => ['label' => 'Nama barang', 'placeholder' => 'Cari nama barang...'],
+                    'kode' => ['label' => 'Kode aset', 'placeholder' => 'Cari kode aset...'],
+                    'status' => ['label' => 'Status', 'placeholder' => 'Cari status peminjaman...'],
+                    'tanggal' => ['label' => 'Tanggal', 'placeholder' => 'Pilih tanggal atau rentang tanggal', 'type' => 'date'],
+                ];
+                $multi_filter_rows = [['field' => 'all', 'value' => '']];
+                $multi_filter_meta_id = 'historySearchCount';
+                $multi_filter_meta = number_format(count($riwayat ?? []), 0, ',', '.') . ' total riwayat';
+                include APPPATH . 'views/admin/_multi_filter.php';
+                unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
+            ?>
         </div>
 
         <!-- Tabel Riwayat -->
+        <?php if(!empty($riwayat)): ?>
+        <div class="scm-pagination-top history-list-summary" aria-label="Pengaturan jumlah riwayat">
+            <div class="scm-pagination-top__summary">
+                <label for="historyPageSize">Tampilkan:</label>
+                <select id="historyPageSize" class="form-select form-select-sm" aria-label="Jumlah riwayat per halaman">
+                    <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+                </select>
+                <span>Total item: <span id="historyTotalItems"><?= number_format(count($riwayat), 0, ',', '.') ?></span></span>
+            </div>
+        </div>
+        <?php endif; ?>
         <div class="table-responsive" data-aos="fade-up">
             <table class="table table-custom mb-0">
                 <thead>
@@ -165,8 +187,8 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         </tr>
                     <?php else: ?>
                         <?php foreach($riwayat as $r): ?>
-                        <?php $search_label = strtolower(implode(' ', [$r->nama_aset ?? '', $r->status ?? '', tanggal_indonesia($r->created_at ?? null), tanggal_indonesia($r->tanggal_pinjam ?? null), tanggal_indonesia($r->tanggal_kembali_rencana ?? null)])); ?>
-                        <tr data-history-row data-search="<?= html_escape($search_label) ?>">
+                        <?php $history_dates = implode(' ', [substr((string)($r->created_at ?? ''), 0, 10), substr((string)($r->tanggal_pinjam ?? ''), 0, 10), substr((string)($r->tanggal_kembali_rencana ?? ''), 0, 10), tanggal_indonesia($r->created_at ?? null), tanggal_indonesia($r->tanggal_pinjam ?? null), tanggal_indonesia($r->tanggal_kembali_rencana ?? null)]); $search_label = strtolower(implode(' ', [$r->nama_aset ?? '', $r->kode_aset ?? '', $r->status ?? '', $history_dates])); ?>
+                        <tr data-history-row data-search="<?= html_escape($search_label) ?>" data-filter-all="<?= html_escape($search_label) ?>" data-filter-barang="<?= html_escape($r->nama_aset ?? '') ?>" data-filter-kode="<?= html_escape($r->kode_aset ?? '') ?>" data-filter-status="<?= html_escape($r->status ?? '') ?>" data-filter-tanggal="<?= html_escape($history_dates) ?>">
                             <td>
                                 <div class="fw-semibold text-dark"><?= tanggal_indonesia($r->created_at) ?></div>
                                 <div class="text-muted small"><?= date('H:i', strtotime($r->created_at)) ?> WIB</div>
@@ -182,24 +204,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                 </span>
                             </td>
                             <td>
-                                <?php 
-                                    // Logika Pewarnaan Badge Status
-                                    if(strpos($r->status, 'Menunggu') !== false || strpos($r->status, 'Pending') !== false) {
-                                        echo '<span class="badge bg-warning text-dark badge-status"><i class="bi bi-hourglass-split me-1"></i> '.$r->status.'</span>';
-                                    } elseif($r->status == 'Disetujui (Menunggu Finalisasi QR)') {
-                                        echo '<span class="badge bg-info text-dark badge-status"><i class="bi bi-hourglass-split me-1"></i> Menunggu Finalisasi QR</span>';
-                                    } elseif($r->status == 'Disetujui (Menunggu Pengambilan)') {
-                                        echo '<span class="badge bg-success badge-status"><i class="bi bi-qr-code-scan me-1"></i> QR Aktif</span>';
-                                    } elseif($r->status == 'Sedang Dipinjam' || $r->status == 'Dipinjam') {
-                                        echo '<span class="badge bg-primary badge-status"><i class="bi bi-play-circle-fill me-1"></i> Sedang Dipinjam</span>';
-                                    } elseif($r->status == 'Dikembalikan') {
-                                        echo '<span class="badge bg-success badge-status"><i class="bi bi-check2-circle me-1"></i> Dikembalikan</span>';
-                                    } elseif($r->status == 'Ditolak') {
-                                        echo '<span class="badge bg-danger badge-status"><i class="bi bi-x-circle-fill me-1"></i> Ditolak</span>';
-                                    } else {
-                                        echo '<span class="badge bg-secondary badge-status">'.$r->status.'</span>';
-                                    }
-                                ?>
+                                <?php $loan_progress_item = $r; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?>
                             </td>
                             <td class="text-center">
                                 <?php
@@ -283,8 +288,8 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     <script>
         AOS.init({ once: true, offset: 20 });
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-        const historySearch = document.getElementById('historySearch');
-        if (historySearch) {
+        const historyFilterRoot = document.getElementById('historyMultiFilter');
+        if (historyFilterRoot) {
             const rows = Array.from(document.querySelectorAll('[data-history-row]'));
             const emptyRow = document.querySelector('.history-empty-filter');
             const counter = document.getElementById('historySearchCount');
@@ -292,7 +297,8 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             const paginationNav = document.getElementById('historyPaginationNav');
             const pagination = document.getElementById('historyPagination');
             const pageInfo = document.getElementById('historyPageInfo');
-            const pageSize = 5;
+            const pageSizeSelect = document.getElementById('historyPageSize');
+            const totalItems = document.getElementById('historyTotalItems');
             let currentPage = 1;
 
             const paginationPages = totalPages => {
@@ -355,8 +361,9 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             };
 
             const renderHistory = (resetPage = false) => {
-                const query = historySearch.value.trim().toLocaleLowerCase('id');
-                const filteredRows = rows.filter(row => !query || (row.dataset.search || '').includes(query));
+                const criteria = window.AdminMultiFilter?.getCriteria(historyFilterRoot) || [];
+                const filteredRows = rows.filter(row => window.AdminMultiFilter?.matches(row, criteria) ?? true);
+                const pageSize = Number(pageSizeSelect?.value || 10);
                 const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
                 if (resetPage) currentPage = 1;
                 currentPage = Math.min(currentPage, totalPages);
@@ -366,19 +373,24 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 filteredRows.slice(firstIndex, firstIndex + pageSize).forEach(row => row.classList.remove('d-none'));
 
                 if (emptyRow) emptyRow.style.display = filteredRows.length ? 'none' : 'table-row';
-                if (counter) counter.textContent = query ? `${filteredRows.length} riwayat ditemukan` : `${rows.length} total riwayat`;
+                if (counter) counter.textContent = criteria.length ? `${filteredRows.length} riwayat ditemukan` : `${rows.length} total riwayat`;
+                if (totalItems) totalItems.textContent = new Intl.NumberFormat('id-ID').format(filteredRows.length);
 
                 if (paginationWrap) paginationWrap.classList.toggle('d-none', filteredRows.length === 0);
                 if (paginationNav) paginationNav.classList.toggle('d-none', totalPages <= 1);
                 if (pageInfo) {
                     const firstShown = filteredRows.length ? firstIndex + 1 : 0;
                     const lastShown = Math.min(firstIndex + pageSize, filteredRows.length);
-                    pageInfo.textContent = `Menampilkan ${firstShown}–${lastShown} dari ${filteredRows.length} riwayat`;
+                    const format = value => new Intl.NumberFormat('id-ID').format(value);
+                    pageInfo.textContent = filteredRows.length
+                        ? `Menampilkan ${format(firstShown)}–${format(lastShown)} dari ${format(filteredRows.length)} data`
+                        : 'Menampilkan 0 dari 0 data';
                 }
                 if (pagination && filteredRows.length) renderPagination(totalPages);
             };
 
-            historySearch.addEventListener('input', () => renderHistory(true));
+            historyFilterRoot.addEventListener('admin-multi-filter-change', () => renderHistory(true));
+            pageSizeSelect?.addEventListener('change', () => renderHistory(true));
             if (pagination) {
                 pagination.addEventListener('click', event => {
                     const button = event.target.closest('button[data-page]');

@@ -90,7 +90,6 @@ $formatDocumentDate = static function ($value) {
         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
             <div>
                 <div class="fw-bold"><i class="bi bi-file-earmark-arrow-up me-2 text-warning"></i>Dokumen Laboran</div>
-                <div class="small text-white-50">Upload dan arsipkan dokumen peminjaman</div>
             </div>
             <div class="topbar-actions d-flex gap-2">
                 <a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
@@ -106,7 +105,6 @@ $formatDocumentDate = static function ($value) {
     <div class="document-page-heading">
         <div>
             <h1>Dokumen Laboran</h1>
-            <p>Upload dan arsipkan dokumen peminjaman.</p>
         </div>
         <button type="button" class="btn btn-fik rounded-pill px-3" data-bs-toggle="offcanvas" data-bs-target="#documentUploadDrawer" aria-controls="documentUploadDrawer">
             <i class="bi bi-plus-lg me-1"></i> Upload Dokumen
@@ -196,7 +194,6 @@ $formatDocumentDate = static function ($value) {
     <div class="offcanvas-header">
         <div>
             <h2 class="offcanvas-title" id="documentUploadDrawerLabel">Upload Dokumen</h2>
-            <div class="small text-muted mt-1">Simpan dokumen peminjaman ke arsip laboran.</div>
         </div>
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
     </div>

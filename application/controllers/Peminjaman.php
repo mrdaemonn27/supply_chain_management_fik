@@ -23,6 +23,7 @@ class Peminjaman extends CI_Controller {
         }
         
         // 2. Load Model yang menangani query ke tabel aset & peminjaman
+        $this->load->helper('loan_progress');
         $this->load->model('Peminjaman_model');
         // DITAMBAHKAN: Load Aset_model untuk mengambil fungsi get_aset_by_ruangan
         $this->load->model('Aset_model'); 
@@ -119,7 +120,7 @@ class Peminjaman extends CI_Controller {
         }
 
         $id_aset = $this->input->post('id_aset');
-        $jumlah_pinjam = $this->input->post('jumlah_pinjam');
+        $jumlah_pinjam = (int) $this->input->post('jumlah_pinjam');
         $tanggal_pinjam = $this->input->post('tanggal_pinjam');
         $tanggal_kembali = $this->input->post('tanggal_kembali_rencana');
         
@@ -130,7 +131,7 @@ class Peminjaman extends CI_Controller {
         }
 
         // 1. Validasi Keamanan: Stok tidak boleh kurang
-        if ($jumlah_pinjam > $aset->jumlah_tersedia) {
+        if ($jumlah_pinjam < 1 || $jumlah_pinjam > (int) $aset->jumlah_tersedia) {
             $this->session->set_flashdata('error', 'Gagal: Jumlah pinjam melebihi stok yang tersedia!');
             redirect('peminjaman/ajukan/'.$id_aset);
         }
@@ -187,8 +188,15 @@ class Peminjaman extends CI_Controller {
                 'created_at' => date('Y-m-d H:i:s')
             ];
 
-            // Kirim array data ke Peminjaman_model
-            $this->Peminjaman_model->insert_peminjaman($data_peminjaman);
+            // INSERT dan reservasi stok wajib berhasil dalam satu transaksi.
+            $id_peminjaman = $this->Peminjaman_model->create_with_stock_reservation($data_peminjaman);
+            if (!$id_peminjaman) {
+                if (!empty($upload_data['full_path']) && is_file($upload_data['full_path'])) {
+                    @unlink($upload_data['full_path']);
+                }
+                $this->session->set_flashdata('error', 'Stok baru saja dialokasikan oleh pengajuan lain atau sudah tidak mencukupi. Silakan periksa stok terbaru.');
+                redirect('peminjaman/ajukan/'.$id_aset);
+            }
             $this->Peminjaman_model->create_notifikasi(
                 'kaprodi',
                 null,
@@ -197,7 +205,7 @@ class Peminjaman extends CI_Controller {
                 site_url('kaprodi/peminjaman')
             );
             
-            $this->session->set_flashdata('success', 'Berhasil! Pengajuan terkirim dan menunggu persetujuan Kaprodi.');
+            $this->session->set_flashdata('success', 'Berhasil! Pengajuan terkirim, stok sudah direservasi, dan menunggu persetujuan Kaprodi.');
             
             // UBAH redirect INI agar setelah submit form langsung masuk ke halaman riwayat
             redirect('peminjaman/riwayat'); 

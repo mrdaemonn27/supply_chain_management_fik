@@ -63,13 +63,12 @@ function render_history_filter_kaprodi($rows, $hidden = []) {
     $fields = history_filter_config_kaprodi();
     $rows = is_array($rows) && !empty($rows) ? array_slice(array_values($rows), 0, 4) : [['field' => 'kode', 'value' => '']];
     ?>
-    <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="kaprodi-multi-filter" data-kaprodi-multi-filter data-max-filters="4">
+    <form method="get" action="<?= base_url('index.php/kaprodi/dashboard') ?>" class="kaprodi-multi-filter scm-search-filter" data-kaprodi-multi-filter data-max-filters="4">
         <?php foreach ($hidden as $name => $value): ?>
             <input type="hidden" name="<?= html_escape($name) ?>" value="<?= html_escape((string) $value) ?>">
         <?php endforeach; ?>
         <div class="kaprodi-filter-heading">
-            <div><h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3><p>Tambahkan hingga 4 kriteria untuk mempersempit riwayat pengajuan.</p></div>
-            <span class="kaprodi-filter-note"><i class="bi bi-lightning-charge me-1" aria-hidden="true"></i>Hasil diperbarui saat Anda mengetik</span>
+            <h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3>
         </div>
         <div class="kaprodi-filter-list" data-filter-list>
             <?php foreach ($rows as $index => $row): ?>
@@ -91,7 +90,10 @@ function render_history_filter_kaprodi($rows, $hidden = []) {
                 </div>
             <?php endforeach; ?>
         </div>
-        <button type="submit" class="visually-hidden">Terapkan filter</button>
+        <div class="scm-search-filter__actions mt-3">
+            <button type="submit" class="btn scm-search-filter__apply"><i class="bi bi-search"></i> Terapkan filter</button>
+            <button type="button" class="btn scm-search-filter__reset" data-kaprodi-filter-reset><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+        </div>
     </form>
     <?php
 }
@@ -732,7 +734,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     <span class="brand-mark"><i class="bi bi-building-check"></i></span>
                     <div>
                         <div class="fw-bold">Panel Kaprodi</div>
-                        <div class="small text-white-50">Pengajuan kebutuhan prodi ke laboratorium</div>
                     </div>
                 </div>
                 <div class="topbar-actions d-flex align-items-center gap-2">
@@ -784,7 +785,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 <div class="kaprodi-overview-head">
                     <div>
                         <h1 id="kaprodiOverviewTitle">Dashboard Kaprodi</h1>
-                        <p>Ringkasan aktivitas pengajuan kebutuhan program studi.</p>
                     </div>
                 </div>
 
@@ -813,26 +813,26 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
                 <div class="kaprodi-chart-grid">
                     <article class="kaprodi-chart-panel">
-                        <div class="kaprodi-panel-heading"><div><h2>Pengajuan per Bulan</h2><p>Jumlah pengajuan pada tahun <?= $dashboard_year ?>.</p></div><i class="bi bi-bar-chart-line text-secondary"></i></div>
+                        <div class="kaprodi-panel-heading"><h2>Pengajuan per Bulan</h2><i class="bi bi-bar-chart-line text-secondary"></i></div>
                         <div class="kaprodi-chart-wrap"><canvas id="kaprodiMonthlySubmissionChart" aria-label="Grafik pengajuan per bulan"></canvas></div>
                     </article>
                     <article class="kaprodi-chart-panel">
-                        <div class="kaprodi-panel-heading"><div><h2>Status Pengajuan</h2><p>Distribusi status pada tahun <?= $dashboard_year ?>.</p></div><i class="bi bi-pie-chart text-secondary"></i></div>
+                        <div class="kaprodi-panel-heading"><h2>Status Pengajuan</h2><i class="bi bi-pie-chart text-secondary"></i></div>
                         <div class="kaprodi-chart-wrap"><canvas id="kaprodiStatusChart" aria-label="Grafik status pengajuan"></canvas></div>
                     </article>
                     <article class="kaprodi-chart-panel">
-                        <div class="kaprodi-panel-heading"><div><h2>Nilai Pengajuan</h2><p>Total estimasi sebelum negosiasi per bulan.</p></div><i class="bi bi-graph-up-arrow text-secondary"></i></div>
+                        <div class="kaprodi-panel-heading"><h2>Nilai Pengajuan</h2><i class="bi bi-graph-up-arrow text-secondary"></i></div>
                         <div class="kaprodi-chart-wrap"><canvas id="kaprodiValueChart" aria-label="Grafik nilai pengajuan"></canvas></div>
                     </article>
                     <article class="kaprodi-chart-panel">
-                        <div class="kaprodi-panel-heading"><div><h2>Jenis Pengajuan</h2><p>Barang, jasa, dan gabungan pada tahun <?= $dashboard_year ?>.</p></div><i class="bi bi-ui-checks-grid text-secondary"></i></div>
+                        <div class="kaprodi-panel-heading"><h2>Jenis Pengajuan</h2><i class="bi bi-ui-checks-grid text-secondary"></i></div>
                         <div class="kaprodi-chart-wrap"><canvas id="kaprodiTypeChart" aria-label="Grafik jenis pengajuan"></canvas></div>
                     </article>
                 </div>
 
                 <div class="kaprodi-bottom-grid">
                     <article class="kaprodi-activity-panel">
-                        <div class="kaprodi-panel-heading"><div><h2>Recent Activity</h2><p>Aktivitas terbaru pengajuan Kaprodi.</p></div><i class="bi bi-activity text-secondary"></i></div>
+                        <div class="kaprodi-panel-heading"><h2>Recent Activity</h2><i class="bi bi-activity text-secondary"></i></div>
                         <div class="kaprodi-activity-list">
                             <?php if (empty($dashboard_activity)): ?>
                                 <div class="small text-secondary py-4 text-center">Belum ada aktivitas pengajuan.</div>
@@ -845,7 +845,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         </div>
                     </article>
                     <article class="kaprodi-quick-panel">
-                        <div class="kaprodi-panel-heading"><div><h2>Quick Action</h2><p>Akses cepat ke fitur utama Kaprodi.</p></div><i class="bi bi-lightning-charge text-secondary"></i></div>
+                        <div class="kaprodi-panel-heading"><h2>Quick Action</h2><i class="bi bi-lightning-charge text-secondary"></i></div>
                         <div class="kaprodi-quick-grid">
                             <a class="kaprodi-quick-link" href="<?= base_url('index.php/kaprodi/dashboard?tab=ajukan') ?>"><i class="bi bi-plus-square"></i><span>Ajukan Kebutuhan</span></a>
                             <a class="kaprodi-quick-link" href="<?= base_url('index.php/kaprodi/dashboard?tab=riwayat') ?>"><i class="bi bi-clock-history"></i><span>Riwayat Pengajuan</span></a>
@@ -859,8 +859,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         <?php else: ?>
         <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
             <div>
-                <h1 class="h3 fw-bold mb-1">Pengajuan Barang dan Jasa</h1>
-                <p class="text-muted mb-0">Kaprodi mengajukan kebutuhan. Vendor, harga, negosiasi, dan BAST diproses oleh Kaur Laboratorium.</p>
+                <h1 class="h3 fw-bold mb-0">Pengajuan Barang dan Jasa</h1>
             </div>
             <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?= date('d F Y') ?></div>
         </div>
@@ -878,7 +877,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                             <span class="request-card-icon"><i class="bi bi-file-earmark-text"></i></span>
                             <div>
                                 <h2 id="requestInfoTitle">Informasi Pengajuan</h2>
-                                <p>Lengkapi identitas dan alasan kebutuhan sebelum menambahkan daftar item.</p>
                             </div>
                         </div>
                         <div class="row g-3">
@@ -909,7 +907,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         <header class="request-items-header">
                             <div>
                                 <h2 id="requestItemsTitle">Daftar Kebutuhan</h2>
-                                <p>Harga satuan adalah estimasi awal. Vendor dan negosiasi tetap diproses oleh Kaur Laboratorium.</p>
                             </div>
                             <div class="request-row-controls">
                                 <div class="input-group input-group-sm bulk-row-control">
@@ -1017,7 +1014,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                             <option value="10" selected>10</option>
                                             <option value="25">25</option>
                                             <option value="50">50</option>
-                                            <option value="all">Semua</option>
+                                            <option value="100">100</option>
                                         </select>
                                         <span id="needPaginationTotal">Total item: 0</span>
                                     </div>
@@ -1039,8 +1036,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             <section class="tab-pane fade <?= $active_tab === 'riwayat' ? 'show active' : '' ?>" id="tab-riwayat">
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
                     <div>
-                        <h2 class="h5 fw-bold mb-1">Riwayat Pengajuan</h2>
-                        <div class="small text-muted">Export mengikuti filter tanggal, jenis, status, dan kata kunci.</div>
+                        <h2 class="h5 fw-bold mb-0">Riwayat Pengajuan</h2>
                     </div>
                     <a href="<?= base_url('index.php/kaprodi/pengajuan/export_pengajuan?' . query_kaprodi($filters, 1, 'riwayat', $active_category, $per_page)) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3 align-self-start"><i class="bi bi-file-earmark-excel me-1"></i> Preview Excel</a>
                 </div>
@@ -1115,7 +1111,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                 <option value="10" <?= (string) $per_page === '10' ? 'selected' : '' ?>>10</option>
                                 <option value="25" <?= (string) $per_page === '25' ? 'selected' : '' ?>>25</option>
                                 <option value="50" <?= (string) $per_page === '50' ? 'selected' : '' ?>>50</option>
-                                <option value="all" <?= (string) $per_page === 'all' ? 'selected' : '' ?>>Semua</option>
+                                <option value="100" <?= (string) $per_page === '100' ? 'selected' : '' ?>>100</option>
                             </select>
                             <span>Total item: <?= (int) $total_rows ?></span>
                         </div>
@@ -1340,6 +1336,18 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     if (!event.target.matches('.kaprodi-filter-value')) return;
                     window.clearTimeout(submitTimer);
                     submitTimer = window.setTimeout(() => form.requestSubmit(), 650);
+                });
+                form.querySelector('[data-kaprodi-filter-reset]')?.addEventListener('click', () => {
+                    const rows = Array.from(list.querySelectorAll('[data-filter-row]'));
+                    rows.slice(1).forEach((row) => row.remove());
+                    const first = rows[0];
+                    if (first) {
+                        const select = first.querySelector('.kaprodi-filter-field');
+                        if (select) select.selectedIndex = 0;
+                        syncInput(first, true);
+                    }
+                    updateButtons();
+                    form.requestSubmit();
                 });
             });
         })();
