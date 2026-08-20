@@ -1261,7 +1261,7 @@ function kaur_module_url($module) {
         <?php if($this->session->flashdata('error')): ?>
             <div class="alert alert-danger rounded-3"><?= html_escape($this->session->flashdata('error')) ?></div>
         <?php endif; ?>
-        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4<?= $active_module === 'peminjaman' ? ' kaur-loan-page-heading' : '' ?>">
+        <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4 kaur-page-header<?= $active_module === 'peminjaman' ? ' kaur-loan-page-heading' : '' ?>">
             <div>
                 <h1 class="h3 fw-bold mb-1"><?= html_escape($module['title']) ?></h1>
                 <p class="text-muted mb-0"><?= html_escape($module['desc']) ?></p>
