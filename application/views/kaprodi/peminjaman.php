@@ -1704,8 +1704,17 @@ document.addEventListener('DOMContentLoaded', function () {
             return Math.max(Number(pageSizeSelect.value) || 10, 1);
         }
 
-        function createPageButton(label, page, disabled, active, ariaLabel) {
+        function createPageButton(label, page, disabled, active, ariaLabel, ellipsis) {
             var item = document.createElement('li');
+            if (ellipsis) {
+                item.className = 'page-item disabled';
+                item.setAttribute('aria-hidden', 'true');
+                var separator = document.createElement('span');
+                separator.className = 'kp-page-button page-link';
+                separator.textContent = '...';
+                item.appendChild(separator);
+                return item;
+            }
             var button = document.createElement('button');
             button.type = 'button';
             button.className = 'kp-page-button' + (active ? ' is-active' : '');
@@ -1733,13 +1742,20 @@ document.addEventListener('DOMContentLoaded', function () {
             paginationElement.innerHTML = '';
             paginationElement.appendChild(createPageButton('Previous', currentPage - 1, currentPage <= 1, false, 'Halaman sebelumnya'));
 
-            var startPage = Math.max(1, currentPage - 2);
-            var endPage = Math.min(totalPages, startPage + 4);
-            startPage = Math.max(1, endPage - 4);
-
-            for (var page = startPage; page <= endPage; page++) {
-                paginationElement.appendChild(createPageButton(String(page), page, false, page === currentPage, 'Halaman ' + page));
-            }
+            var pageTokens = totalPages <= 7
+                ? Array.from({ length: totalPages }, function (_, index) { return index + 1; })
+                : currentPage <= 3
+                    ? [1, 2, 3, 4, 5, 'ellipsis', totalPages]
+                    : currentPage >= totalPages - 2
+                        ? [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+                        : [1, 'ellipsis', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis', totalPages];
+            pageTokens.forEach(function (token) {
+                if (typeof token === 'string') {
+                    paginationElement.appendChild(createPageButton('...', currentPage, true, false, 'Pemisah halaman', true));
+                } else {
+                    paginationElement.appendChild(createPageButton(String(token), token, false, token === currentPage, 'Halaman ' + token));
+                }
+            });
 
             paginationElement.appendChild(createPageButton('Next', currentPage + 1, currentPage >= totalPages, false, 'Halaman berikutnya'));
         }

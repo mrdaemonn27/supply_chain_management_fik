@@ -5,6 +5,14 @@ $pagination = isset($pagination) && is_array($pagination)
 $page = (int) ($pagination['page'] ?? 1);
 $total_pages = (int) ($pagination['total_pages'] ?? 1);
 $current_per_page = (string) ($pagination['per_page'] ?? '10');
+$compact_pagination_pages = static function ($current, $last) {
+    $current = max(1, min((int) $current, max(1, (int) $last)));
+    $last = max(1, (int) $last);
+    if ($last <= 7) return range(1, $last);
+    if ($current <= 3) return array_merge(range(1, 5), ['ellipsis-after', $last]);
+    if ($current >= $last - 2) return array_merge([$last - 4, $last - 3, $last - 2, $last - 1, $last]);
+    return array_merge([1, 'ellipsis-before'], range($current - 2, $current + 2), ['ellipsis-after', $last]);
+};
 $maintenance_condition_class = static function ($condition) {
     $normalized = strtolower(trim((string) $condition));
     $normalized = preg_replace('/[^a-z0-9]+/i', '-', $normalized);
@@ -193,6 +201,7 @@ $maintenance_condition_class = static function ($condition) {
                 </div>
                 <div class="topbar-actions d-flex gap-2">
                     <a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                    <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
                 </div>
             </div>
         </div>
@@ -314,9 +323,13 @@ $maintenance_condition_class = static function ($condition) {
                     <ul class="pagination pagination-sm maintenance-pagination">
                         <?php $maintenance_filter_query = ['filter_field' => array_column($filter_criteria ?? [], 'field'), 'filter_value' => array_column($filter_criteria ?? [], 'value')]; $prev_query = http_build_query(array_merge($maintenance_filter_query, ['page' => max(1, $page - 1), 'per_page' => $current_per_page])); ?>
                         <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/maintenance?' . $prev_query) ?>">Previous</a></li>
-                        <?php for ($i = 1; $i <= $total_pages; $i++): $page_query = http_build_query(array_merge($maintenance_filter_query, ['page' => $i, 'per_page' => $current_per_page])); ?>
-                            <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/maintenance?' . $page_query) ?>"><?= $i ?></a></li>
-                        <?php endfor; ?>
+                        <?php foreach ($compact_pagination_pages($page, $total_pages) as $i): ?>
+                            <?php if (is_string($i)): ?>
+                                <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                            <?php else: $page_query = http_build_query(array_merge($maintenance_filter_query, ['page' => $i, 'per_page' => $current_per_page])); ?>
+                                <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/maintenance?' . $page_query) ?>"><?= $i ?></a></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                         <?php $next_query = http_build_query(array_merge($maintenance_filter_query, ['page' => min($total_pages, $page + 1), 'per_page' => $current_per_page])); ?>
                         <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/maintenance?' . $next_query) ?>">Next</a></li>
                     </ul>

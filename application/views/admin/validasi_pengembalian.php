@@ -43,7 +43,10 @@ $boleh_kembali = !empty($qr_valid) && in_array(($peminjaman->status ?? ''), ['Se
             <div>
                 <div class="fw-bold"><i class="bi bi-arrow-counterclockwise me-2 text-warning"></i>Validasi Pengembalian</div>
             </div>
-            <a href="<?= base_url('index.php/admin/pengembalian') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3">Data Pengembalian</a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="<?= base_url('index.php/admin/pengembalian') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3">Data Pengembalian</a>
+                <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
+            </div>
         </div>
     </header>
 

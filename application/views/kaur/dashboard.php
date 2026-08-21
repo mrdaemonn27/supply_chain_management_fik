@@ -59,6 +59,14 @@ function table_row_number_kaur($index, $page = 1, $per_page = '10') {
     $page_size = max(1, (int) $per_page ?: 10);
     return (($page - 1) * $page_size) + (int) $index + 1;
 }
+function compact_pagination_kaur($current, $last) {
+    $current = max(1, min((int) $current, max(1, (int) $last)));
+    $last = max(1, (int) $last);
+    if ($last <= 7) return range(1, $last);
+    if ($current <= 3) return array_merge(range(1, 5), ['ellipsis-after', $last]);
+    if ($current >= $last - 2) return array_merge([$last - 4, $last - 3, $last - 2, $last - 1, $last]);
+    return array_merge([1, 'ellipsis-before'], range($current - 2, $current + 2), ['ellipsis-after', $last]);
+}
 function query_kaur($filters, $page, $per_page = null) {
     $params = [];
     foreach ((array) $filters as $key => $value) {
@@ -1412,7 +1420,7 @@ function kaur_module_url($module) {
                         <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'status') ?>" class="text-decoration-none text-dark">Alur Approval <?= sort_icon_kaur($filters, 'status') ?></a></th>
                         <th class="text-end">Aksi</th>
                     </tr></thead>
-                    <tbody>
+                    <tbody id="kaurApprovalTableBody">
                     <?php if(empty($peminjaman_pending_kaur)): ?>
                         <tr><td colspan="6" class="text-center text-muted py-5">Tidak ada peminjaman yang menunggu ACC Kaur.</td></tr>
                     <?php else: foreach($peminjaman_pending_kaur as $index => $p): ?>
@@ -1446,6 +1454,17 @@ function kaur_module_url($module) {
                     </tbody>
                 </table>
             </div>
+            <?php if(!empty($peminjaman_pending_kaur)): ?>
+            <div class="kaur-return-pagination-footer">
+                <div class="kaur-return-pagination-summary">
+                    <label for="kaurLoanPageSize">Tampilkan:</label>
+                    <select id="kaurLoanPageSize" class="form-select form-select-sm" aria-label="Jumlah peminjaman ACC per halaman"><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option></select>
+                    <span>Total item: <span id="kaurLoanTotalItems"><?= count($peminjaman_pending_kaur) ?></span></span>
+                </div>
+                <div class="kaur-return-pagination-status" id="kaurLoanPageStatus">Halaman: 1 dari 1</div>
+                <nav aria-label="Pagination approval peminjaman"><ul class="pagination pagination-sm kaur-return-pagination" id="kaurLoanPageNav"></ul></nav>
+            </div>
+            <?php endif; ?>
             </div>
         </section>
         <?php foreach(($peminjaman_pending_kaur ?? []) as $p): ?>
@@ -1646,9 +1665,52 @@ function kaur_module_url($module) {
                 <nav>
                     <ul class="pagination pagination-sm kaur-submission-pagination">
                         <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, max(1, $page - 1), $per_page ?? '10') ?>">Previous</a></li>
-                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                            <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
-                        <?php endfor; ?>
+                        <?php
+                            $pagination_page = max(1, (int) $page);
+                            $pagination_last = max(1, (int) $total_pages);
+                            $pagination_items = [];
+
+                            if ($pagination_last <= 7) {
+                                $pagination_items = range(1, $pagination_last);
+                            } else {
+                                // Keep the boundary windows generous while keeping the middle compact.
+                                if ($pagination_page <= 3) {
+                                    $window_start = 1;
+                                    $window_end = 5;
+                                } elseif ($pagination_page >= $pagination_last - 2) {
+                                    $window_start = $pagination_last - 4;
+                                    $window_end = $pagination_last;
+                                } else {
+                                    $window_start = $pagination_page - 2;
+                                    $window_end = $pagination_page + 2;
+                                }
+
+                                if ($window_start > 1) {
+                                    $pagination_items[] = 1;
+                                    if ($window_start > 2) {
+                                        $pagination_items[] = 'ellipsis-before';
+                                    }
+                                }
+
+                                for ($pagination_number = $window_start; $pagination_number <= $window_end; $pagination_number++) {
+                                    $pagination_items[] = $pagination_number;
+                                }
+
+                                if ($window_end < $pagination_last) {
+                                    if ($window_end < $pagination_last - 1) {
+                                        $pagination_items[] = 'ellipsis-after';
+                                    }
+                                    $pagination_items[] = $pagination_last;
+                                }
+                            }
+                        ?>
+                        <?php foreach ($pagination_items as $pagination_item): ?>
+                            <?php if (is_string($pagination_item)): ?>
+                                <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                            <?php else: ?>
+                                <li class="page-item <?= (int) $pagination_item === $pagination_page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, (int) $pagination_item, $per_page ?? '10') ?>"><?= (int) $pagination_item ?></a></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                         <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('pengajuan') . '?' . query_kaur($filters, min($total_pages, $page + 1), $per_page ?? '10') ?>">Next</a></li>
                     </ul>
                 </nav>
@@ -1765,9 +1827,13 @@ function kaur_module_url($module) {
                     <nav>
                         <ul class="pagination pagination-sm kaur-submission-pagination">
                             <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, max(1, $page - 1), $per_page ?? '10') ?>">Previous</a></li>
-                            <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
-                            <?php endfor; ?>
+                            <?php foreach (compact_pagination_kaur($page, $total_pages) as $i): ?>
+                                <?php if (is_string($i)): ?>
+                                    <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                                <?php else: ?>
+                                    <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
                             <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('negosiasi') . '?' . query_kaur($filters, min($total_pages, $page + 1), $per_page ?? '10') ?>">Next</a></li>
                         </ul>
                     </nav>
@@ -1859,9 +1925,13 @@ function kaur_module_url($module) {
                 <nav>
                     <ul class="pagination pagination-sm kaur-submission-pagination">
                         <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, max(1, $page - 1), $per_page ?? '10') ?>">Previous</a></li>
-                        <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                            <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
-                        <?php endfor; ?>
+                        <?php foreach (compact_pagination_kaur($page, $total_pages) as $i): ?>
+                            <?php if (is_string($i)): ?>
+                                <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                            <?php else: ?>
+                                <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                         <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('approval') . '?' . query_kaur($filters, min($total_pages, $page + 1), $per_page ?? '10') ?>">Next</a></li>
                     </ul>
                 </nav>
@@ -2084,9 +2154,13 @@ function kaur_module_url($module) {
                 <nav>
                     <ul class="pagination pagination-sm kaur-submission-pagination">
                         <li class="page-item <?= ($page ?? 1) <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, max(1, ($page ?? 1) - 1), $per_page ?? '10') ?>">Previous</a></li>
-                        <?php for ($i = 1; $i <= $total_pages_bast; $i++): ?>
-                            <li class="page-item <?= $i === (int) ($page ?? 1) ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
-                        <?php endfor; ?>
+                        <?php foreach (compact_pagination_kaur($page ?? 1, $total_pages_bast) as $i): ?>
+                            <?php if (is_string($i)): ?>
+                                <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                            <?php else: ?>
+                                <li class="page-item <?= $i === (int) ($page ?? 1) ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                         <li class="page-item <?= ($page ?? 1) >= $total_pages_bast ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('bast') . '?' . query_kaur($filters, min($total_pages_bast, ($page ?? 1) + 1), $per_page ?? '10') ?>">Next</a></li>
                     </ul>
                 </nav>
@@ -2201,9 +2275,13 @@ function kaur_module_url($module) {
                 <nav aria-label="Pagination laporan hasil negosiasi">
                     <ul class="pagination pagination-sm kaur-submission-pagination">
                         <li class="page-item <?= ($page ?? 1) <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('laporan') . '?' . query_kaur($filters, max(1, ($page ?? 1) - 1), $per_page ?? '10') ?>">Previous</a></li>
-                        <?php for ($i = 1; $i <= ($total_pages_laporan ?? 1); $i++): ?>
-                            <li class="page-item <?= $i === (int) ($page ?? 1) ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('laporan') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
-                        <?php endfor; ?>
+                        <?php foreach (compact_pagination_kaur($page ?? 1, $total_pages_laporan ?? 1) as $i): ?>
+                            <?php if (is_string($i)): ?>
+                                <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                            <?php else: ?>
+                                <li class="page-item <?= $i === (int) ($page ?? 1) ? 'active' : '' ?>"><a class="page-link" href="<?= kaur_module_url('laporan') . '?' . query_kaur($filters, $i, $per_page ?? '10') ?>"><?= $i ?></a></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                         <li class="page-item <?= ($page ?? 1) >= ($total_pages_laporan ?? 1) ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('laporan') . '?' . query_kaur($filters, min(($total_pages_laporan ?? 1), ($page ?? 1) + 1), $per_page ?? '10') ?>">Next</a></li>
                     </ul>
                 </nav>
@@ -2635,6 +2713,82 @@ function kaur_module_url($module) {
             applyLiveFilter();
         })();
         (() => {
+            const rows = Array.from(document.querySelectorAll('#kaurApprovalTableBody [data-kaur-loan-row]'));
+            const tableBody = document.getElementById('kaurApprovalTableBody');
+            const select = document.getElementById('kaurLoanPageSize');
+            const status = document.getElementById('kaurLoanPageStatus');
+            const nav = document.getElementById('kaurLoanPageNav');
+            const empty = document.getElementById('kaurLoanEmptySearch');
+            const total = document.getElementById('kaurLoanTotalItems');
+            if (!rows.length || !tableBody || !select || !status || !nav) return;
+
+            let page = 1;
+            const pageSize = (rowCount) => select.value === 'all' ? Math.max(rowCount, 1) : Number(select.value) || 10;
+            const addPageButton = (label, target, disabled = false, active = false, ellipsis = false) => {
+                const item = document.createElement('li');
+                item.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+                if (ellipsis) {
+                    item.setAttribute('aria-hidden', 'true');
+                    const separator = document.createElement('span');
+                    separator.className = 'page-link';
+                    separator.textContent = '...';
+                    item.appendChild(separator);
+                } else {
+                    const link = document.createElement('a');
+                    link.className = 'page-link';
+                    link.href = '#approval-peminjaman';
+                    link.textContent = label;
+                    link.setAttribute('aria-label', label);
+                    if (disabled) {
+                        link.tabIndex = -1;
+                        link.setAttribute('aria-disabled', 'true');
+                    } else if (!active) {
+                        link.addEventListener('click', (event) => {
+                            event.preventDefault();
+                            page = target;
+                            render();
+                        });
+                    }
+                    if (active) link.setAttribute('aria-current', 'page');
+                    item.appendChild(link);
+                }
+                nav.appendChild(item);
+            };
+            const render = () => {
+                const size = pageSize(rows.length);
+                const totalPages = Math.max(1, Math.ceil(rows.length / size));
+                page = Math.min(Math.max(page, 1), totalPages);
+                rows.forEach((row, index) => {
+                    row.hidden = index < (page - 1) * size || index >= page * size;
+                });
+                if (empty) empty.hidden = true;
+                if (total) total.textContent = String(rows.length);
+                status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
+                nav.replaceChildren();
+                addPageButton('Previous', Math.max(1, page - 1), page === 1);
+                const pageTokens = totalPages <= 7
+                    ? Array.from({ length: totalPages }, (_, index) => index + 1)
+                    : page <= 3
+                        ? [1, 2, 3, 4, 5, 'ellipsis-after', totalPages]
+                        : page >= totalPages - 2
+                            ? [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+                            : [1, 'ellipsis-before', page - 2, page - 1, page, page + 1, page + 2, 'ellipsis-after', totalPages];
+                pageTokens.forEach((token) => {
+                    if (typeof token === 'string') {
+                        addPageButton('...', page, true, false, true);
+                    } else {
+                        addPageButton(String(token), token, false, token === page);
+                    }
+                });
+                addPageButton('Next', Math.min(totalPages, page + 1), page === totalPages);
+            };
+            select.addEventListener('change', () => {
+                page = 1;
+                render();
+            });
+            render();
+        })();
+        (() => {
             const rows = Array.from(document.querySelectorAll('#kaurReturnTableBody [data-kaur-return-row]'));
             const tableBody = document.getElementById('kaurReturnTableBody');
             const select = document.getElementById('kaurReturnPageSize');
@@ -2702,9 +2856,27 @@ function kaur_module_url($module) {
                 status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
                 nav.innerHTML = '';
                 addPageButton('Previous', Math.max(1, page - 1), page === 1);
-                for (let index = 1; index <= totalPages; index += 1) {
-                    addPageButton(String(index), index, false, index === page);
-                }
+                const pageTokens = totalPages <= 7
+                    ? Array.from({ length: totalPages }, (_, index) => index + 1)
+                    : page <= 3
+                        ? [1, 2, 3, 4, 5, 'ellipsis-after', totalPages]
+                        : page >= totalPages - 2
+                            ? [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+                            : [1, 'ellipsis-before', page - 2, page - 1, page, page + 1, page + 2, 'ellipsis-after', totalPages];
+                pageTokens.forEach((token) => {
+                    if (typeof token === 'string') {
+                        const item = document.createElement('li');
+                        item.className = 'page-item disabled';
+                        item.setAttribute('aria-hidden', 'true');
+                        const separator = document.createElement('span');
+                        separator.className = 'page-link';
+                        separator.textContent = '...';
+                        item.appendChild(separator);
+                        nav.appendChild(item);
+                    } else {
+                        addPageButton(String(token), token, false, token === page);
+                    }
+                });
                 addPageButton('Next', Math.min(totalPages, page + 1), page === totalPages);
                 sortButtons.forEach((button) => {
                     const active = button.dataset.kaurReturnSort === sortKey;

@@ -41,7 +41,10 @@ $boleh_serah = !empty($qr_valid) && ($peminjaman->status ?? '') === 'Disetujui (
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
             <div class="fw-bold"><i class="bi bi-box-seam me-2 text-warning"></i>Serah Terima Barang</div>
-            <a href="<?= base_url('index.php/admin/peminjaman/scanner') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3">Scanner</a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="<?= base_url('index.php/admin/peminjaman/scanner') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3">Scanner</a>
+                <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
+            </div>
         </div>
     </header>
 

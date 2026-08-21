@@ -22,6 +22,8 @@ if ($logged_in) {
 
 $login_url  = base_url('index.php/auth');
 $signup_url = base_url('index.php/auth/signup');
+$faq_endpoint = base_url('index.php/welcome/faq_search');
+$faqs = (isset($faqs) && is_array($faqs)) ? $faqs : array();
 
 // Satu-satunya aset tiga dimensi: kamera yang bodi dan lensanya terpisah,
 // sehingga keduanya bisa dianimasikan sendiri-sendiri.
@@ -351,7 +353,83 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
 
         /* ============ TAMBAHAN ============ */
         .cur { position: fixed; z-index: 500; top: 0; left: 0; width: 36px; height: 36px; margin: -18px 0 0 -18px; border: 1px solid var(--line-2); border-radius: 50%; pointer-events: none; opacity: 0; will-change: transform; }
-        .top { position: fixed; right: var(--gutter); bottom: 28px; z-index: 300; opacity: 0; box-shadow: var(--sh-md); }
+        .top { position: fixed; right: var(--gutter); bottom: calc(28px + 68px + 14px); z-index: 300; width: 68px; height: 68px; padding: 0; border: 1px solid #dfe3e8; border-radius: 50%; color: #2d333a; background: #fff; opacity: 0; box-shadow: 0 12px 30px rgba(17,17,17,.18); }
+        .top:hover { border-color: #cfd5dc; color: var(--acc); background: #fff; box-shadow: 0 16px 34px rgba(17,17,17,.22); transform: translateY(-2px) scale(1.03); }
+
+        /* ============ CHAT FAQ ============
+           Widget mengambil pertanyaan dan jawaban dari accordion FAQ di atas,
+           sehingga tidak membuat sumber konten kedua yang mudah tidak sinkron. */
+        .scm-faq-chat { position: fixed; right: var(--gutter); bottom: 28px; z-index: 340; font-family: var(--font); }
+        .scm-faq-chat__toggle { position: relative; display: grid; place-items: center; width: 68px; height: 68px; min-height: 68px; padding: 0; border: 0; border-radius: 50%; color: #ff6b00; background: transparent; box-shadow: none; cursor: pointer; transition: transform .25s var(--ease); }
+        .scm-faq-chat__toggle:hover { transform: translateY(-2px) scale(1.03); background: transparent; box-shadow: none; }
+        .scm-faq-chat__toggle:focus-visible { outline-color: var(--acc); }
+        .scm-faq-chat__launcher-art { display: block; width: 100%; height: 100%; overflow: visible; transform-origin: center; animation: scmFaqRobotFloat 3.8s ease-in-out infinite; }
+        .scm-faq-chat__launcher-robot-shell { fill: #252c35; stroke: #e7e9ec; stroke-linejoin: round; stroke-width: 1.5; filter: drop-shadow(0 1px 1px rgba(0,0,0,.28)); }
+        .scm-faq-chat__launcher-robot-eye { fill: #ff6b00; transform-box: fill-box; transform-origin: center; animation: scmFaqRobotBlink 5.8s ease-in-out infinite; }
+        .scm-faq-chat__launcher-robot-mouth { fill: none; stroke: #e7e9ec; stroke-linecap: round; stroke-width: 1.35; }
+        .scm-faq-chat__launcher-robot-antenna { stroke: #ff6b00; stroke-linecap: round; stroke-width: 1.45; transform-box: fill-box; transform-origin: center bottom; animation: scmFaqRobotAntennaIdle 3.2s ease-in-out infinite; }
+        .scm-faq-chat__launcher-online { fill: #35d4b5; stroke: #17191c; stroke-width: 1.4; transform-box: fill-box; transform-origin: center; }
+        .scm-faq-chat__launcher-online { animation: scmFaqLauncherOnline 2.2s ease-in-out infinite; }
+        .scm-faq-chat__panel { position: absolute; right: 0; bottom: calc(100% + 16px); display: flex; flex-direction: column; width: min(370px, calc(100vw - 28px)); max-height: min(600px, calc(100vh - var(--nav-h) - 124px)); max-height: min(600px, calc(100svh - var(--nav-h) - 124px)); overflow: hidden; border: 1px solid rgba(17,17,17,.1); border-radius: 20px; background: rgba(255,255,255,.98); box-shadow: 0 22px 60px rgba(17,17,17,.2); opacity: 0; visibility: hidden; pointer-events: none; filter: blur(3px); transform: translateY(10px) scale(.94); transform-origin: bottom right; will-change: opacity, filter, transform; transition: opacity .25s ease, visibility 0s linear .28s, filter .26s ease, transform .28s cubic-bezier(.4,0,.2,1); }
+        .scm-faq-chat.is-open .scm-faq-chat__panel { opacity: 1; visibility: visible; pointer-events: auto; filter: blur(0); transform: translateY(0) scale(1); animation: scmFaqPanelOpen .34s cubic-bezier(.22,1,.36,1) both; transition-delay: 0s; }
+        .scm-faq-chat.is-closing .scm-faq-chat__panel { pointer-events: none; animation: scmFaqPanelClose .26s cubic-bezier(.4,0,.2,1) both; }
+        .scm-faq-chat.is-open .scm-faq-chat__toggle { animation: scmFaqLauncherReact .36s cubic-bezier(.22,1,.36,1); }
+        .scm-faq-chat.is-open .scm-faq-chat__launcher-robot-antenna { animation: scmFaqRobotAntennaOpen .38s ease-out, scmFaqRobotAntennaIdle 3.2s ease-in-out .38s infinite; }
+        .scm-faq-chat__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; color: #fff; background: #17191c; }
+        .scm-faq-chat__head strong { display: block; font-size: .88rem; letter-spacing: .01em; }
+        .scm-faq-chat__head small { display: block; margin-top: 3px; color: #b9c0c8; font-size: .68rem; font-weight: 500; }
+        .scm-faq-chat__close { display: inline-grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; color: #fff; background: transparent; cursor: pointer; }
+        .scm-faq-chat__close:hover { background: rgba(255,255,255,.12); }
+        .scm-faq-chat__body { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; padding: 14px; }
+        .scm-faq-chat__messages { display: flex; flex: 1 1 auto; flex-direction: column; gap: 10px; min-height: 110px; max-height: 260px; overflow-y: auto; padding: 2px 2px 12px; }
+        .scm-faq-chat__message { max-width: 90%; padding: 10px 12px; border-radius: 14px; font-size: .76rem; line-height: 1.5; }
+        .scm-faq-chat__message--bot { align-self: flex-start; color: #3f4852; background: #f3f5f7; border-bottom-left-radius: 5px; }
+        .scm-faq-chat__message--user { align-self: flex-end; color: #fff; background: var(--acc); border-bottom-right-radius: 5px; }
+        .scm-faq-chat__quick-label { margin: 0 0 8px; color: #7a838d; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+        .scm-faq-chat__questions { display: grid; gap: 7px; max-height: 190px; overflow-y: auto; }
+        .scm-faq-chat__question { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 10px 11px; border: 1px solid #e4e8ec; border-radius: 11px; color: #27313b; background: #fff; text-align: left; cursor: pointer; font-size: .74rem; font-weight: 600; line-height: 1.35; transition: border-color .2s ease, color .2s ease, background .2s ease; }
+        .scm-faq-chat__question:hover { border-color: rgba(249,115,22,.55); color: var(--acc-dk); background: #fff8f3; }
+        .scm-faq-chat__question i { flex: 0 0 auto; color: var(--acc); }
+        .scm-faq-chat__composer { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #edf0f2; }
+        .scm-faq-chat__input { min-width: 0; flex: 1 1 auto; min-height: 40px; max-height: 96px; padding: 10px 12px; resize: none; overflow-y: auto; border: 1px solid #dfe4e8; border-radius: 11px; color: #27313b; background: #fff; font: inherit; font-size: .75rem; line-height: 1.35; outline: none; transition: border-color .2s ease, box-shadow .2s ease; }
+        .scm-faq-chat__input::placeholder { color: #9aa3ad; }
+        .scm-faq-chat__input:focus { border-color: rgba(249,115,22,.7); box-shadow: 0 0 0 3px rgba(249,115,22,.1); }
+        .scm-faq-chat__input:disabled { cursor: wait; opacity: .7; }
+        .scm-faq-chat__send { display: inline-grid; place-items: center; flex: 0 0 auto; width: 40px; height: 40px; border: 0; border-radius: 11px; color: #fff; background: var(--acc); cursor: pointer; transition: transform .2s ease, background .2s ease; }
+        .scm-faq-chat__send:hover { background: var(--acc-dk); transform: translateY(-1px); }
+        .scm-faq-chat__send:disabled { cursor: wait; opacity: .55; transform: none; }
+        .scm-faq-chat__message--bot.is-typing { min-width: 54px; padding: 12px 14px; }
+        .scm-faq-chat__typing { display: inline-flex; align-items: center; gap: 5px; }
+        .scm-faq-chat__typing i { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: scmFaqTyping 1s infinite ease-in-out; }
+        .scm-faq-chat__typing i:nth-child(2) { animation-delay: .14s; }
+        .scm-faq-chat__typing i:nth-child(3) { animation-delay: .28s; }
+        .scm-faq-chat__message--answer { animation: scmFaqAnswerIn .22s ease both; }
+        .scm-faq-chat__head, .scm-faq-chat__messages, .scm-faq-chat__quick-label, .scm-faq-chat__questions, .scm-faq-chat__composer { opacity: 0; transform: translateY(5px); transition: opacity .24s ease, transform .3s cubic-bezier(.22,1,.36,1); }
+        .scm-faq-chat.is-open .scm-faq-chat__head { opacity: 1; transform: translateY(0); transition-delay: .06s; }
+        .scm-faq-chat.is-open .scm-faq-chat__messages { opacity: 1; transform: translateY(0); transition-delay: .11s; }
+        .scm-faq-chat.is-open .scm-faq-chat__quick-label, .scm-faq-chat.is-open .scm-faq-chat__questions { opacity: 1; transform: translateY(0); transition-delay: .16s; }
+        .scm-faq-chat.is-open .scm-faq-chat__composer { opacity: 1; transform: translateY(0); transition-delay: .22s; }
+        .scm-faq-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+        @keyframes scmFaqTyping { 0%, 60%, 100% { opacity: .35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+        @keyframes scmFaqAnswerIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scmFaqPanelOpen { from { opacity: 0; filter: blur(4px); transform: translateY(12px) scale(.92); } to { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); } }
+        @keyframes scmFaqPanelClose { from { opacity: 1; filter: blur(0); transform: translateY(0) scale(1); } to { opacity: 0; filter: blur(3px); transform: translateY(10px) scale(.94); } }
+        @keyframes scmFaqLauncherReact { 0%, 100% { transform: scale(1); } 55% { transform: scale(1.06); } }
+        @keyframes scmFaqRobotAntennaOpen { 0%, 100% { transform: rotate(-2deg); } 45% { transform: rotate(8deg); } }
+        @keyframes scmFaqRobotFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+        @keyframes scmFaqRobotBlink { 0%, 45%, 48%, 100% { transform: scaleY(1); } 46.5% { transform: scaleY(.12); } }
+        @keyframes scmFaqRobotAntennaIdle { 0%, 100% { transform: rotate(-2deg); } 50% { transform: rotate(4deg); } }
+        @keyframes scmFaqLauncherOnline { 0%, 100% { opacity: .78; transform: scale(1); } 50% { opacity: 1; transform: scale(1.18); } }
+        @media (max-width: 767.98px) {
+            .top { bottom: calc(28px + 62px + 14px); width: 62px; height: 62px; }
+            .scm-faq-chat { right: var(--gutter); bottom: 28px; }
+            .scm-faq-chat__panel { bottom: calc(100% + 16px); max-height: min(600px, calc(100vh - var(--nav-h) - 118px)); max-height: min(600px, calc(100svh - var(--nav-h) - 118px)); }
+            .scm-faq-chat__toggle { width: 62px; height: 62px; min-height: 62px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .scm-faq-chat__panel, .scm-faq-chat__toggle, .scm-faq-chat__send, .scm-faq-chat__head, .scm-faq-chat__messages, .scm-faq-chat__quick-label, .scm-faq-chat__questions, .scm-faq-chat__composer { transition: none; }
+            .scm-faq-chat.is-open .scm-faq-chat__panel, .scm-faq-chat.is-closing .scm-faq-chat__panel, .scm-faq-chat.is-open .scm-faq-chat__toggle, .scm-faq-chat__typing i, .scm-faq-chat__message--answer, .scm-faq-chat__launcher-art, .scm-faq-chat__launcher-robot-eye, .scm-faq-chat__launcher-robot-antenna, .scm-faq-chat__launcher-online { animation: none; }
+        }
 
         .nojs { position: fixed; right: 18px; bottom: 18px; z-index: 10000; max-width: 340px; padding: 14px 18px; border-radius: 14px; background: var(--ink); color: #fff; font-size: .875rem; }
         .nojs a { color: var(--acc); }
@@ -623,7 +701,7 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
         </div>
 
         <div class="solid">
-            <!-- 10 FAQ — teks kiri, daftar kanan -->
+            <!-- 10 FAQ — sumber pertanyaan dan jawaban berasal dari tabel FAQ aktif -->
             <section class="sec">
                 <div class="sec__in split">
                     <div class="split__copy">
@@ -632,22 +710,21 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                         <p class="sub" data-fade>Belum terjawab? Hubungi laboran melalui dashboard.</p>
                     </div>
                     <div class="acc split__media" data-fade>
-                        <div class="acc__item is-open">
-                            <button class="acc__hd" type="button">Siapa saja yang bisa mengajukan? <i class="bi bi-plus-lg" aria-hidden="true"></i></button>
-                            <div class="acc__bd"><p>Mahasiswa dan dosen Fakultas Industri Kreatif yang terdaftar dengan NIM atau NIP aktif.</p></div>
-                        </div>
-                        <div class="acc__item">
-                            <button class="acc__hd" type="button">Berapa lama proses persetujuan? <i class="bi bi-plus-lg" aria-hidden="true"></i></button>
-                            <div class="acc__bd"><p>Bergantung pada kesiapan peninjau, namun karena berjalan berurutan dan otomatis, umumnya selesai jauh lebih cepat daripada alur kertas.</p></div>
-                        </div>
-                        <div class="acc__item">
-                            <button class="acc__hd" type="button">Bagaimana kalau alat rusak atau terlambat kembali? <i class="bi bi-plus-lg" aria-hidden="true"></i></button>
-                            <div class="acc__bd"><p>Kondisi alat dicatat saat serah terima dan pengembalian. Keterlambatan terpantau melalui status peminjaman.</p></div>
-                        </div>
-                        <div class="acc__item">
-                            <button class="acc__hd" type="button">Apakah datanya bisa diekspor? <i class="bi bi-plus-lg" aria-hidden="true"></i></button>
-                            <div class="acc__bd"><p>Bisa. Rekap peminjaman dan inventaris dapat diunduh untuk kebutuhan pelaporan fakultas.</p></div>
-                        </div>
+                        <?php if (!empty($faqs)): ?>
+                            <?php foreach ($faqs as $index => $faq): ?>
+                                <div class="acc__item<?= $index === 0 ? ' is-open' : ''; ?>">
+                                    <button class="acc__hd" type="button">
+                                        <?= html_escape((string) $faq->question); ?>
+                                        <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                                    </button>
+                                    <div class="acc__bd"><p><?= html_escape((string) $faq->answer); ?></p></div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <div class="acc__item is-open">
+                                <div class="acc__bd" style="height:auto"><p>FAQ belum tersedia saat ini.</p></div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </section>
@@ -692,6 +769,43 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
 
     <button class="ico top" id="top" type="button" aria-label="Kembali ke atas"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
     <div class="cur" id="cur" aria-hidden="true"></div>
+
+    <aside class="scm-faq-chat" id="scmFaqChat" data-endpoint="<?= html_escape($faq_endpoint); ?>">
+        <div class="scm-faq-chat__panel" id="scmFaqPanel" role="dialog" aria-modal="false" aria-labelledby="scmFaqTitle" aria-hidden="true">
+            <div class="scm-faq-chat__head">
+                <div>
+                    <strong id="scmFaqTitle">Tanya SCM FIK</strong>
+                    <small>Jawaban dari FAQ resmi sistem</small>
+                </div>
+                <button class="scm-faq-chat__close" id="scmFaqClose" type="button" aria-label="Tutup chat FAQ"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+            </div>
+            <div class="scm-faq-chat__body">
+                <div class="scm-faq-chat__messages" id="scmFaqMessages" aria-live="polite">
+                    <div class="scm-faq-chat__message scm-faq-chat__message--bot">Halo, saya bisa membantu menjawab pertanyaan seputar pengajuan, persetujuan, peminjaman, dan pengembalian aset.</div>
+                </div>
+                <p class="scm-faq-chat__quick-label" id="scmFaqQuickLabel">Pertanyaan populer</p>
+                <div class="scm-faq-chat__questions" id="scmFaqQuestions"></div>
+                <form class="scm-faq-chat__composer" id="scmFaqComposer" autocomplete="off">
+                    <label class="scm-faq-sr" for="scmFaqInput">Pertanyaan tentang SCM FIK</label>
+                    <textarea class="scm-faq-chat__input" id="scmFaqInput" rows="1" maxlength="500" placeholder="Tulis pertanyaan tentang SCM FIK..."></textarea>
+                    <button class="scm-faq-chat__send" id="scmFaqSend" type="submit" aria-label="Kirim pertanyaan"><i class="bi bi-send-fill" aria-hidden="true"></i></button>
+                </form>
+            </div>
+        </div>
+        <button class="scm-faq-chat__toggle" id="scmFaqToggle" type="button" aria-label="Tanya SCM FIK" aria-expanded="false" aria-controls="scmFaqPanel">
+            <svg class="scm-faq-chat__launcher-art" viewBox="7 8 43 39" aria-hidden="true" focusable="false">
+                <g aria-hidden="true">
+                    <path class="scm-faq-chat__launcher-robot-antenna" d="M28 18V13"></path>
+                    <circle cx="28" cy="11.5" r="1.8" fill="#ff6b00"></circle>
+                    <rect class="scm-faq-chat__launcher-robot-shell" x="8" y="18" width="40" height="27" rx="8"></rect>
+                    <circle class="scm-faq-chat__launcher-robot-eye" cx="21" cy="30" r="2.2"></circle>
+                    <circle class="scm-faq-chat__launcher-robot-eye" cx="35" cy="30" r="2.2"></circle>
+                    <path class="scm-faq-chat__launcher-robot-mouth" d="M21.5 37h13"></path>
+                    <circle class="scm-faq-chat__launcher-online" cx="46" cy="20" r="3.2"></circle>
+                </g>
+            </svg>
+        </button>
+    </aside>
 
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
@@ -1420,6 +1534,207 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                 });
             }
 
+            function faqChat() {
+                const root = $("scmFaqChat");
+                const toggle = $("scmFaqToggle");
+                const close = $("scmFaqClose");
+                const panel = $("scmFaqPanel");
+                const messages = $("scmFaqMessages");
+                const questions = $("scmFaqQuestions");
+                const quickLabel = $("scmFaqQuickLabel");
+                const composer = $("scmFaqComposer");
+                const input = $("scmFaqInput");
+                const send = $("scmFaqSend");
+                if (!root || !toggle || !close || !panel || !messages || !questions || !quickLabel || !composer || !input || !send) return;
+                if (root.dataset.initialized === "1") return;
+                root.dataset.initialized = "1";
+
+                const endpoint = root.dataset.endpoint || "";
+                let busy = false;
+                const conversation = [];
+
+                const scrollMessages = () => {
+                    messages.scrollTop = messages.scrollHeight;
+                };
+
+                const resizeInput = () => {
+                    input.style.height = "auto";
+                    input.style.height = Math.min(input.scrollHeight, 96) + "px";
+                };
+
+                const addMessage = (text, type) => {
+                    const message = doc.createElement("div");
+                    message.className = "scm-faq-chat__message scm-faq-chat__message--" + type;
+                    message.textContent = text;
+                    messages.appendChild(message);
+                    scrollMessages();
+                    return message;
+                };
+
+                const replaceTyping = (typing, text) => {
+                    const answer = doc.createElement("div");
+                    answer.className = "scm-faq-chat__message scm-faq-chat__message--bot scm-faq-chat__message--answer";
+                    answer.textContent = text;
+                    typing.replaceWith(answer);
+                    scrollMessages();
+                    return answer;
+                };
+
+                const makeSuggestion = (item) => {
+                    const question = typeof item === "string" ? item : item && item.question;
+                    if (!question) return null;
+                    const button = doc.createElement("button");
+                    button.type = "button";
+                    button.className = "scm-faq-chat__question";
+                    const label = doc.createElement("span");
+                    label.textContent = question;
+                    const icon = doc.createElement("i");
+                    icon.className = "bi bi-arrow-up-right";
+                    icon.setAttribute("aria-hidden", "true");
+                    button.append(label, icon);
+                    button.addEventListener("click", () => {
+                        input.value = question;
+                        resizeInput();
+                        composer.requestSubmit();
+                    });
+                    return button;
+                };
+
+                const setSuggestions = (items) => {
+                    questions.replaceChildren();
+                    const list = Array.isArray(items) ? items.slice(0, 3) : [];
+                    list.forEach((item) => {
+                        const button = makeSuggestion(item);
+                        if (button) questions.appendChild(button);
+                    });
+                    const visible = questions.children.length > 0;
+                    quickLabel.hidden = !visible;
+                    questions.hidden = !visible;
+                };
+
+                // Saran awal hanya mengambil pertanyaan yang sudah dirender dari FAQ aktif.
+                const initialSuggestions = Array.from(doc.querySelectorAll(".acc__item .acc__hd"))
+                    .slice(0, 3)
+                    .map((node) => node.textContent.replace(/\s+/g, " ").trim())
+                    .filter(Boolean);
+                setSuggestions(initialSuggestions);
+
+                const createTyping = () => {
+                    const typing = doc.createElement("div");
+                    typing.className = "scm-faq-chat__message scm-faq-chat__message--bot is-typing";
+                    const dots = doc.createElement("span");
+                    dots.className = "scm-faq-chat__typing";
+                    for (let i = 0; i < 3; i++) dots.appendChild(doc.createElement("i"));
+                    typing.appendChild(dots);
+                    return typing;
+                };
+
+                const THINKING_MIN_MS = 3400;
+                const keepThinkingVisible = async (startedAt) => {
+                    const remaining = THINKING_MIN_MS - (performance.now() - startedAt);
+                    if (remaining > 0) await new Promise((resolve) => window.setTimeout(resolve, remaining));
+                };
+
+                const submit = async (event) => {
+                    event.preventDefault();
+                    if (busy) return;
+                    const value = input.value.trim().slice(0, 500);
+                    if (!value || !endpoint) return;
+
+                    busy = true;
+                    input.value = "";
+                    resizeInput();
+                    input.disabled = true;
+                    send.disabled = true;
+                    setSuggestions([]);
+                    const previousMessages = conversation.slice(-6);
+                    conversation.push({ role: "user", content: value });
+                    addMessage(value, "user");
+                    const typing = createTyping();
+                    messages.appendChild(typing);
+                    scrollMessages();
+
+                    const startedAt = performance.now();
+                    try {
+                        const response = await fetch(endpoint, {
+                            method: "POST",
+                            credentials: "same-origin",
+                            headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "Accept": "application/json" },
+                            body: new URLSearchParams({
+                                question: value,
+                                context: JSON.stringify(previousMessages)
+                            }).toString()
+                        });
+                        await keepThinkingVisible(startedAt);
+                        const payload = await response.json();
+                        if (payload.ok && payload.faq && payload.faq.answer) {
+                            replaceTyping(typing, payload.faq.answer);
+                            conversation.push({ role: "assistant", content: payload.faq.answer });
+                            setSuggestions(payload.suggestions || []);
+                        } else {
+                            const message = payload.message || "FAQ belum dapat memproses pertanyaan saat ini.";
+                            replaceTyping(typing, message);
+                            conversation.push({ role: "assistant", content: message });
+                            setSuggestions(payload.suggestions || []);
+                        }
+                    } catch (error) {
+                        await keepThinkingVisible(startedAt);
+                        const message = "FAQ sedang tidak dapat diakses. Silakan coba lagi beberapa saat.";
+                        replaceTyping(typing, message);
+                        conversation.push({ role: "assistant", content: message });
+                    } finally {
+                        busy = false;
+                        input.disabled = false;
+                        send.disabled = false;
+                        input.focus();
+                    }
+                };
+
+                composer.addEventListener("submit", submit);
+                input.addEventListener("input", resizeInput);
+                input.addEventListener("keydown", (event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        if (!busy) composer.requestSubmit();
+                    }
+                });
+
+                let closeTimer = 0;
+                let focusTimer = 0;
+                const setOpen = (open) => {
+                    window.clearTimeout(closeTimer);
+                    window.clearTimeout(focusTimer);
+
+                    if (open) {
+                        root.classList.remove("is-closing");
+                        root.classList.add("is-open");
+                        toggle.setAttribute("aria-expanded", "true");
+                        panel.setAttribute("aria-hidden", "false");
+                        focusTimer = window.setTimeout(() => input.focus(), reduce.matches ? 0 : 220);
+                        return;
+                    }
+
+                    if (!root.classList.contains("is-open") || root.classList.contains("is-closing")) return;
+                    root.classList.add("is-closing");
+                    toggle.setAttribute("aria-expanded", "false");
+                    closeTimer = window.setTimeout(() => {
+                        root.classList.remove("is-open", "is-closing");
+                        panel.setAttribute("aria-hidden", "true");
+                    }, reduce.matches ? 0 : 280);
+                };
+                toggle.addEventListener("click", () => {
+                    const visuallyOpen = root.classList.contains("is-open") && !root.classList.contains("is-closing");
+                    setOpen(!visuallyOpen);
+                });
+                close.addEventListener("click", () => setOpen(false));
+                doc.addEventListener("click", (event) => {
+                    if (root.classList.contains("is-open") && !root.contains(event.target)) setOpen(false);
+                });
+                doc.addEventListener("keydown", (event) => {
+                    if (event.key === "Escape") setOpen(false);
+                });
+            }
+
             function chrome() {
                 let q = false;
                 addEventListener("scroll", () => {
@@ -1487,6 +1802,7 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
             function init() {
                 if (ready) return;
                 ready = true;
+                faqChat();
                 chrome();
 
                 if (reduce.matches || !window.gsap || !window.ScrollTrigger) { fallback(); return; }
@@ -1510,6 +1826,9 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
             }
 
             startLoader();
+            // FAQ chat tidak bergantung pada preloader/GSAP agar tombol langsung
+            // aktif setelah markup landing tersedia.
+            faqChat();
         })();
     </script>
     <script src="<?= base_url('assets/js/hero-video.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/hero-video.js'); ?>"></script>

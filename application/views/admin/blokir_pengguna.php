@@ -168,7 +168,7 @@ $format_date = static function ($value) {
                     </div>
                     <a href="<?= base_url('index.php/admin/pengembalian') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-arrow-counterclockwise me-1"></i> Pengembalian</a>
                     <a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
-                    <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
+                    <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
                 </div>
             </div>
         </div>
@@ -360,11 +360,25 @@ $format_date = static function ($value) {
                 }
                 return Math.max(1, parseInt(pageSizeSelect.value, 10) || 10);
             }
+            function compactPageTokens(pageCount, currentPage) {
+                if (pageCount <= 7) return Array.from({ length: pageCount }, function (_, index) { return index + 1; });
+                if (currentPage <= 3) return [1, 2, 3, 4, 5, 'ellipsis', pageCount];
+                if (currentPage >= pageCount - 2) return [pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
+                return [1, 'ellipsis', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis', pageCount];
+            }
 
-            function makePageItem(label, page, disabled, active) {
+            function makePageItem(label, page, disabled, active, ellipsis) {
                 var li = document.createElement('li');
-                var link = document.createElement('button');
                 li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+                if (ellipsis) {
+                    li.setAttribute('aria-hidden', 'true');
+                    var separator = document.createElement('span');
+                    separator.className = 'page-link';
+                    separator.textContent = '...';
+                    li.appendChild(separator);
+                    return li;
+                }
+                var link = document.createElement('button');
                 link.type = 'button';
                 link.className = 'page-link';
                 link.textContent = label;
@@ -403,9 +417,11 @@ $format_date = static function ($value) {
 
                 pagination.replaceChildren();
                 pagination.appendChild(makePageItem('Previous', currentPage - 1, currentPage === 1, false));
-                for (var page = 1; page <= pageCount; page += 1) {
-                    pagination.appendChild(makePageItem(page, page, false, page === currentPage));
-                }
+                compactPageTokens(pageCount, currentPage).forEach(function (token) {
+                    pagination.appendChild(typeof token === 'string'
+                        ? makePageItem('...', currentPage, true, false, true)
+                        : makePageItem(token, token, false, token === currentPage));
+                });
                 pagination.appendChild(makePageItem('Next', currentPage + 1, currentPage === pageCount, false));
             }
 

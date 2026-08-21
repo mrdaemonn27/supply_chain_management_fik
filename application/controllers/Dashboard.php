@@ -11,11 +11,10 @@ class Dashboard extends CI_Controller {
     public function __construct() {
         parent::__construct();
         
-        // PROTEKSI DIHAPUS / DIKOMENTARI AGAR GUEST BISA MASUK
-        // if(!$this->session->userdata('logged_in')) {
-        //     $this->session->set_flashdata('error', 'Akses ditolak! Silakan login terlebih dahulu.');
-        //     redirect('auth');
-        // }
+        if (!$this->session->userdata('logged_in')) {
+            $this->session->set_flashdata('error', 'Akses ditolak! Silakan login terlebih dahulu.');
+            redirect('auth');
+        }
 
         // Memuat Model Ruangan agar bisa mengambil data
         $this->load->model('admin/Ruangan_model');

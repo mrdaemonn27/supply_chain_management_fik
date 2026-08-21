@@ -174,7 +174,7 @@ $recent_activity = isset($overview['recent_activity']) && is_array($overview['re
                         <button type="button" class="btn btn-outline-light btn-sm rounded-circle theme-toggle" data-theme-toggle aria-label="Aktifkan mode terang" title="Aktifkan mode terang"><i class="bi bi-sun" aria-hidden="true"></i></button>
                         <a href="<?= base_url('index.php/admin/peminjaman/export_pengajuan_acc') ?>" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Preview ACC</a>
                         <a href="<?= base_url('index.php/dashboard') ?>" class="btn btn-outline-light btn-sm rounded-pill px-3"><i class="bi bi-globe me-1"></i> Web User</a>
-                        <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-fik btn-sm rounded-pill px-3"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
+                        <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-fik btn-sm rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
                     </div>
                 </div>
             </div>

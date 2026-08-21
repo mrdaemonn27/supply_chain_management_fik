@@ -49,6 +49,14 @@ function table_row_number_kaprodi($index, $page = 1, $per_page = '10') {
     $page_size = max(1, (int) $per_page ?: 10);
     return (($page - 1) * $page_size) + (int) $index + 1;
 }
+function compact_pagination_kaprodi($current, $last) {
+    $current = max(1, min((int) $current, max(1, (int) $last)));
+    $last = max(1, (int) $last);
+    if ($last <= 7) return range(1, $last);
+    if ($current <= 3) return array_merge(range(1, 5), ['ellipsis-after', $last]);
+    if ($current >= $last - 2) return array_merge([$last - 4, $last - 3, $last - 2, $last - 1, $last]);
+    return array_merge([1, 'ellipsis-before'], range($current - 2, $current + 2), ['ellipsis-after', $last]);
+}
 function history_filter_config_kaprodi() {
     return [
         'kode' => ['label' => 'Kode pengajuan', 'placeholder' => 'Cari kode pengajuan'],
@@ -1116,9 +1124,13 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         <nav>
                             <ul class="pagination pagination-sm history-table-pagination">
                                 <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, max(1, $page - 1), 'riwayat', $active_category, $per_page)) ?>">Previous</a></li>
-                                <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                                    <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, $i, 'riwayat', $active_category, $per_page)) ?>"><?= $i ?></a></li>
-                                <?php endfor; ?>
+                                <?php foreach (compact_pagination_kaprodi($page, $total_pages) as $i): ?>
+                                    <?php if (is_string($i)): ?>
+                                        <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                                    <?php else: ?>
+                                        <li class="page-item <?= $i === (int) $page ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, $i, 'riwayat', $active_category, $per_page)) ?>"><?= $i ?></a></li>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
                                 <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/kaprodi/dashboard?' . query_kaprodi($filters, min($total_pages, $page + 1), 'riwayat', $active_category, $per_page)) ?>">Next</a></li>
                             </ul>
                         </nav>
@@ -1381,27 +1393,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         }
 
         function paginationTokens(totalPages, currentPage) {
-            if (totalPages <= 7) {
-                return Array.from({ length: totalPages }, (_, index) => index + 1);
-            }
-            const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
-            if (currentPage <= 3) {
-                pages.add(2);
-                pages.add(3);
-                pages.add(4);
-            }
-            if (currentPage >= totalPages - 2) {
-                pages.add(totalPages - 1);
-                pages.add(totalPages - 2);
-                pages.add(totalPages - 3);
-            }
-            const sorted = Array.from(pages).filter((page) => page >= 1 && page <= totalPages).sort((a, b) => a - b);
-            const tokens = [];
-            sorted.forEach((page, index) => {
-                if (index > 0 && page - sorted[index - 1] > 1) tokens.push('ellipsis');
-                tokens.push(page);
-            });
-            return tokens;
+            if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+            if (currentPage <= 3) return [1, 2, 3, 4, 5, 'ellipsis', totalPages];
+            if (currentPage >= totalPages - 2) return [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+            return [1, 'ellipsis', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis', totalPages];
         }
 
         function appendPaginationItem(label, page, options = {}) {

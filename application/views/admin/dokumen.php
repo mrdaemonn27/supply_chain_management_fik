@@ -65,6 +65,12 @@ $formatDocumentDate = static function ($value) {
         .document-drawer textarea.form-control { min-height: auto; }
         .document-upload-note { display: flex; align-items: flex-start; gap: .5rem; margin-top: .45rem; color: #6b7280; font-size: .7rem; line-height: 1.5; }
         .document-pagination { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 58px; padding: .75rem 1rem; border-top: 1px solid #e5e7eb; color: #6b7280; background: #f8f9fa; font-size: .72rem; }
+        .document-pagination .pagination { margin: 0; }
+        .document-pagination .page-link { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; min-height: 34px; padding: .35rem .58rem; color: #374151; background: #fff; border-color: #dfe3e8; font-size: .72rem; line-height: 1; }
+        .document-pagination .page-item.active .page-link { color: #fff; background: #ea5b1a; border-color: #ea5b1a; }
+        .document-pagination .page-item.disabled .page-link { color: #adb5bd; background: #f8f9fa; }
+        .document-pagination .page-link:hover { color: #c24a13; background: #fff8f3; border-color: #f0b99e; }
+        .document-pagination .page-item.active .page-link:hover { color: #fff; background: #c94d14; border-color: #c94d14; }
         .document-preview-frame { width: 100%; height: min(78vh, 760px); border: 0; background: #f7f8fa; }
         #documentPreviewDocumentWrap { position: relative; overflow: auto; }
         .document-preview-pdf-pages { display: flex; flex-direction: column; align-items: center; gap: 1rem; min-height: 100%; padding: 1rem; }
@@ -93,6 +99,7 @@ $formatDocumentDate = static function ($value) {
             </div>
             <div class="topbar-actions d-flex gap-2">
                 <a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
             </div>
         </div>
     </div>
@@ -186,6 +193,20 @@ $formatDocumentDate = static function ($value) {
                 <?php endif; ?>
                 </tbody>
             </table>
+        </div>
+        <div class="document-pagination" id="documentPaginationFooter">
+            <div class="d-flex align-items-center gap-2">
+                <span>Tampilkan:</span>
+                <select id="documentPageSize" class="form-select form-select-sm" aria-label="Jumlah dokumen per halaman">
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="all">Semua</option>
+                </select>
+                <span id="documentTotalItems">Total item: 0</span>
+            </div>
+            <div id="documentPageInfo">Halaman: 1 dari 1</div>
+            <nav aria-label="Pagination dokumen"><ul id="documentPaginationNav" class="pagination pagination-sm"></ul></nav>
         </div>
     </div>
 </main>
@@ -360,23 +381,76 @@ document.addEventListener('DOMContentLoaded', function () {
     const filterRoot = document.getElementById('documentMultiFilter');
     const rows = Array.from(document.querySelectorAll('.document-data-row'));
     const filteredEmpty = document.getElementById('documentFilteredEmpty');
+    const footer = document.getElementById('documentPaginationFooter');
+    const pageSizeSelect = document.getElementById('documentPageSize');
+    const totalItems = document.getElementById('documentTotalItems');
+    const pageInfo = document.getElementById('documentPageInfo');
+    const pagination = document.getElementById('documentPaginationNav');
+    let currentPage = 1;
 
-    if (!filterRoot || !rows.length) return;
+    if (!filterRoot || !footer || !pageSizeSelect || !pageInfo || !pagination) return;
+
+    const compactPageTokens = function (pageCount, page) {
+        if (pageCount <= 7) return Array.from({ length: pageCount }, function (_, index) { return index + 1; });
+        if (page <= 3) return [1, 2, 3, 4, 5, 'ellipsis', pageCount];
+        if (page >= pageCount - 2) return [pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
+        return [1, 'ellipsis', page - 2, page - 1, page, page + 1, page + 2, 'ellipsis', pageCount];
+    };
+
+    const pageItem = function (label, target, disabled, active, ellipsis) {
+        const item = document.createElement('li');
+        item.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+        if (ellipsis) {
+            item.setAttribute('aria-hidden', 'true');
+            const separator = document.createElement('span');
+            separator.className = 'page-link';
+            separator.textContent = '...';
+            item.appendChild(separator);
+            return item;
+        }
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'page-link';
+        button.textContent = label;
+        button.disabled = disabled;
+        if (active) button.setAttribute('aria-current', 'page');
+        if (!disabled && !active) button.addEventListener('click', function () {
+            currentPage = target;
+            applyFilters();
+        });
+        item.appendChild(button);
+        return item;
+    };
 
     const applyFilters = function () {
         const criteria = AdminMultiFilter.getCriteria(filterRoot);
-        let visibleRows = 0;
-
-        rows.forEach(function (row) {
-            const visible = AdminMultiFilter.matches(row, criteria);
-            row.hidden = !visible;
-            if (visible) visibleRows += 1;
+        const filteredRows = rows.filter(function (row) {
+            return AdminMultiFilter.matches(row, criteria);
         });
+        const pageSize = pageSizeSelect.value === 'all' ? Math.max(filteredRows.length, 1) : Math.max(Number(pageSizeSelect.value) || 10, 1);
+        const pageCount = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+        currentPage = Math.min(Math.max(currentPage, 1), pageCount);
+        const start = (currentPage - 1) * pageSize;
+        const visibleRows = new Set(filteredRows.slice(start, start + pageSize));
 
-        if (filteredEmpty) filteredEmpty.hidden = visibleRows !== 0;
+        rows.forEach(function (row) { row.hidden = !visibleRows.has(row); });
+        if (filteredEmpty) filteredEmpty.hidden = filteredRows.length !== 0;
+        footer.hidden = rows.length === 0;
+        if (totalItems) totalItems.textContent = 'Total item: ' + filteredRows.length;
+        pageInfo.textContent = 'Halaman: ' + currentPage + ' dari ' + pageCount;
+        pagination.replaceChildren();
+        pagination.appendChild(pageItem('Previous', currentPage - 1, currentPage === 1, false, false));
+        compactPageTokens(pageCount, currentPage).forEach(function (token) {
+            pagination.appendChild(typeof token === 'string'
+                ? pageItem('...', currentPage, true, false, true)
+                : pageItem(String(token), token, false, token === currentPage, false));
+        });
+        pagination.appendChild(pageItem('Next', currentPage + 1, currentPage === pageCount, false, false));
     };
 
-    filterRoot.addEventListener('admin-multi-filter-change', applyFilters);
+    filterRoot.addEventListener('admin-multi-filter-change', function () { currentPage = 1; applyFilters(); });
+    pageSizeSelect.addEventListener('change', function () { currentPage = 1; applyFilters(); });
+    applyFilters();
 })();
 </script>
 </body>

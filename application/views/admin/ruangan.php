@@ -123,8 +123,8 @@
                 <a href="<?= base_url('admin/dashboard') ?>" class="btn btn-sm btn-outline-light me-2">
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
-                <a href="<?= base_url('auth/logout') ?>" class="btn btn-sm btn-danger">
-                    <i class="bi bi-power"></i> Logout
+                <a href="<?= base_url('auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout
                 </a>
             </div>
         </div>
@@ -475,6 +475,12 @@
             let sortDirection = 'asc';
             const normalize = value => String(value || '').trim().toLocaleLowerCase('id');
             const pageSize = length => select.value === 'all' ? Math.max(length, 1) : Number(select.value) || 10;
+            const compactPageTokens = (totalPages, currentPage) => {
+                if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+                if (currentPage <= 3) return [1, 2, 3, 4, 5, 'ellipsis', totalPages];
+                if (currentPage >= totalPages - 2) return [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                return [1, 'ellipsis', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis', totalPages];
+            };
             const button = (label, target, disabled, active) => {
                 const li = document.createElement('li');
                 li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
@@ -537,7 +543,20 @@
                 status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
                 nav.innerHTML = '';
                 button('Previous', Math.max(1, page - 1), page === 1, false);
-                for (let index = 1; index <= totalPages; index += 1) button(String(index), index, false, index === page);
+                compactPageTokens(totalPages, page).forEach((token) => {
+                    if (typeof token === 'string') {
+                        const item = document.createElement('li');
+                        item.className = 'page-item disabled';
+                        item.setAttribute('aria-hidden', 'true');
+                        const separator = document.createElement('span');
+                        separator.className = 'page-link';
+                        separator.textContent = '...';
+                        item.appendChild(separator);
+                        nav.appendChild(item);
+                    } else {
+                        button(String(token), token, false, token === page);
+                    }
+                });
                 button('Next', Math.min(totalPages, page + 1), page === totalPages, false);
                 updateSortButtons();
             }

@@ -115,6 +115,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
             </div>
             <div class="topbar-actions d-flex gap-2">
                 <a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
+                <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
             </div>
         </div>
     </div>
@@ -243,10 +244,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const getPageSize = function () {
         return pageSizeSelect.value === 'all' ? Math.max(rows.length, 1) : Math.max(parseInt(pageSizeSelect.value, 10) || 10, 1);
     };
+    const compactPageTokens = function (pageCount, currentPage) {
+        if (pageCount <= 7) return Array.from({ length: pageCount }, function (_, index) { return index + 1; });
+        if (currentPage <= 3) return [1, 2, 3, 4, 5, 'ellipsis', pageCount];
+        if (currentPage >= pageCount - 2) return [pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
+        return [1, 'ellipsis', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis', pageCount];
+    };
 
-    const createPageItem = function (label, page, disabled, active, ariaLabel) {
+    const createPageItem = function (label, page, disabled, active, ariaLabel, ellipsis) {
         const item = document.createElement('li');
         item.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+        if (ellipsis) {
+            item.setAttribute('aria-hidden', 'true');
+            const separator = document.createElement('span');
+            separator.className = 'page-link';
+            separator.textContent = '...';
+            item.appendChild(separator);
+            return item;
+        }
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'page-link';
@@ -266,9 +281,11 @@ document.addEventListener('DOMContentLoaded', function () {
         pagination.replaceChildren();
         pagination.appendChild(createPageItem('Previous', currentPage - 1, currentPage <= 1, false, 'Halaman sebelumnya'));
 
-        for (let page = 1; page <= pageCount; page += 1) {
-            pagination.appendChild(createPageItem(String(page), page, false, page === currentPage, 'Halaman ' + page));
-        }
+        compactPageTokens(pageCount, currentPage).forEach(function (token) {
+            pagination.appendChild(typeof token === 'string'
+                ? createPageItem('...', currentPage, true, false, 'Pemisah halaman', true)
+                : createPageItem(String(token), token, false, token === currentPage, 'Halaman ' + token));
+        });
 
         pagination.appendChild(createPageItem('Next', currentPage + 1, currentPage >= pageCount, false, 'Halaman berikutnya'));
         pageInfo.textContent = 'Halaman: ' + currentPage + ' dari ' + pageCount;

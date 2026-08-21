@@ -296,15 +296,9 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
             const paginationPages = totalPages => {
                 if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
-
-                const pages = [1];
-                const firstNearbyPage = Math.max(2, currentPage - 1);
-                const lastNearbyPage = Math.min(totalPages - 1, currentPage + 1);
-                if (firstNearbyPage > 2) pages.push('ellipsis-start');
-                for (let page = firstNearbyPage; page <= lastNearbyPage; page++) pages.push(page);
-                if (lastNearbyPage < totalPages - 1) pages.push('ellipsis-end');
-                pages.push(totalPages);
-                return pages;
+                if (currentPage <= 3) return [1, 2, 3, 4, 5, 'ellipsis-end', totalPages];
+                if (currentPage >= totalPages - 2) return [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                return [1, 'ellipsis-start', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis-end', totalPages];
             };
 
             const pageButton = (label, page, options = {}) => {

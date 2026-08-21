@@ -3,6 +3,14 @@ $master_filters = isset($filters) && is_array($filters) ? $filters : ['criteria'
 $master_pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'per_page' => 10, 'total' => count($barang ?? []), 'total_pages' => 1];
 $master_page = (int) ($master_pagination['page'] ?? 1);
 $master_total_pages = (int) ($master_pagination['total_pages'] ?? 1);
+$master_compact_pages = static function ($current, $last) {
+    $current = max(1, min((int) $current, max(1, (int) $last)));
+    $last = max(1, (int) $last);
+    if ($last <= 7) return range(1, $last);
+    if ($current <= 3) return array_merge(range(1, 5), ['ellipsis-after', $last]);
+    if ($current >= $last - 2) return array_merge([$last - 4, $last - 3, $last - 2, $last - 1, $last]);
+    return array_merge([1, 'ellipsis-before'], range($current - 2, $current + 2), ['ellipsis-after', $last]);
+};
 $master_base_query = ['filter_field' => array_column($master_filters['criteria'] ?? [], 'field'), 'filter_value' => array_column($master_filters['criteria'] ?? [], 'value'), 'per_page' => $master_pagination['per_page'] ?? 10];
 ?>
 <!DOCTYPE html>
@@ -71,7 +79,7 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
             <a class="navbar-brand fw-bold" href="#"><i class="bi bi-server me-2 text-fik-orange"></i> LABORAN MASTER DATA</a>
             <div class="ms-auto d-flex align-items-center">
                 <a href="<?= base_url('admin/dashboard') ?>" class="btn btn-sm btn-outline-light me-2"><i class="bi bi-speedometer2"></i> Dashboard</a>
-                <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-danger"><i class="bi bi-power"></i> Logout</a>
+                <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> Logout</a>
             </div>
         </div>
     </nav>
@@ -192,9 +200,13 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
                     <ul class="pagination pagination-sm master-pagination">
                         <?php $master_prev = http_build_query(array_merge($master_base_query, ['page' => max(1, $master_page - 1)])); ?>
                         <li class="page-item <?= $master_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_prev) ?>">Previous</a></li>
-                        <?php for ($page_index = 1; $page_index <= $master_total_pages; $page_index++): $master_query = http_build_query(array_merge($master_base_query, ['page' => $page_index])); ?>
-                            <li class="page-item <?= $master_page === $page_index ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_query) ?>"><?= $page_index ?></a></li>
-                        <?php endfor; ?>
+                        <?php foreach ($master_compact_pages($master_page, $master_total_pages) as $page_index): ?>
+                            <?php if (is_string($page_index)): ?>
+                                <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                            <?php else: $master_query = http_build_query(array_merge($master_base_query, ['page' => $page_index])); ?>
+                                <li class="page-item <?= $master_page === $page_index ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_query) ?>"><?= $page_index ?></a></li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
                         <?php $master_next = http_build_query(array_merge($master_base_query, ['page' => min($master_total_pages, $master_page + 1)])); ?>
                         <li class="page-item <?= $master_page >= $master_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/barang?' . $master_next) ?>">Next</a></li>
                     </ul>

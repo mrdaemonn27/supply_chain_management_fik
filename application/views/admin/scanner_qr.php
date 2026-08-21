@@ -20,7 +20,10 @@
     <header class="topbar sticky-top">
         <div class="container-fluid px-3 px-lg-4 py-3 d-flex justify-content-between align-items-center gap-2">
             <div class="fw-bold"><i class="bi bi-qr-code-scan me-2 text-warning"></i><?= html_escape($scanner_label ?? 'Scanner QR Transaksi') ?></div>
-            <a href="<?= html_escape($back_url ?? base_url('index.php/admin/peminjaman')) ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><?= html_escape($back_label ?? 'Data Peminjaman') ?></a>
+            <div class="d-flex align-items-center gap-2">
+                <a href="<?= html_escape($back_url ?? base_url('index.php/admin/peminjaman')) ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><?= html_escape($back_label ?? 'Data Peminjaman') ?></a>
+                <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
+            </div>
         </div>
     </header>
 

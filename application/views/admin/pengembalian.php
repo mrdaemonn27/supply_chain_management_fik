@@ -5,6 +5,14 @@ $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'total_pages' => 1, 'total' => count($peminjaman ?? []), 'per_page' => 10];
 $current_per_page = (string) ($pagination['per_page'] ?? '10');
+$compact_pagination_pages = static function ($current, $last) {
+    $current = max(1, min((int) $current, max(1, (int) $last)));
+    $last = max(1, (int) $last);
+    if ($last <= 7) return range(1, $last);
+    if ($current <= 3) return array_merge(range(1, 5), ['ellipsis-after', $last]);
+    if ($current >= $last - 2) return array_merge([$last - 4, $last - 3, $last - 2, $last - 1, $last]);
+    return array_merge([1, 'ellipsis-before'], range($current - 2, $current + 2), ['ellipsis-after', $last]);
+};
 $filter_rows = isset($filter_rows) && is_array($filter_rows) ? array_values($filter_rows) : [];
 if (empty($filter_rows)) $filter_rows = [['field' => 'peminjam', 'value' => '']];
 $filter_fields = ['peminjam' => 'Peminjam / NIM', 'barang' => 'Nama barang / kode', 'status' => 'Status', 'tanggal' => 'Tanggal pinjam', 'keperluan' => 'Keperluan'];
@@ -95,7 +103,7 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
                     <a href="<?= base_url('index.php/admin/peminjaman') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-clipboard-data me-1"></i> Peminjaman</a>
                     <a href="<?= base_url('index.php/admin/pengembalian/scanner') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-qr-code-scan me-1"></i> Scanner</a>
                     <a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
-                    <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3"><i class="bi bi-box-arrow-right me-1"></i> Logout</a>
+                    <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
                 </div>
             </div>
         </div>
@@ -179,9 +187,13 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
                         <ul class="pagination pagination-sm loan-pagination">
                             <?php $prev_query = http_build_query(array_merge($base_query, ['page' => max(1, $page - 1)])); ?>
                             <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/pengembalian'.($prev_query ? '?'.$prev_query : '')) ?>">Previous</a></li>
-                            <?php for($i = 1; $i <= $total_pages; $i++): $page_query = http_build_query(array_merge($base_query, ['page' => $i])); ?>
-                                <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/pengembalian'.($page_query ? '?'.$page_query : '')) ?>"><?= $i ?></a></li>
-                            <?php endfor; ?>
+                            <?php foreach ($compact_pagination_pages($page, $total_pages) as $i): ?>
+                                <?php if (is_string($i)): ?>
+                                    <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                                <?php else: $page_query = http_build_query(array_merge($base_query, ['page' => $i])); ?>
+                                    <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/pengembalian'.($page_query ? '?'.$page_query : '')) ?>"><?= $i ?></a></li>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
                             <?php $next_query = http_build_query(array_merge($base_query, ['page' => min($total_pages, $page + 1)])); ?>
                             <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/pengembalian'.($next_query ? '?'.$next_query : '')) ?>">Next</a></li>
                         </ul>

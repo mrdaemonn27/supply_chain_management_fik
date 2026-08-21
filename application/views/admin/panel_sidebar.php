@@ -114,5 +114,32 @@ $sidebar_items = [
     body.scm-admin-shell > .topbar .text-fik-orange {
         color: #ff7900 !important;
     }
+
+    body.scm-admin-shell .admin-logout-button {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        gap: .35rem;
+        min-width: 104px;
+        min-height: 36px;
+        padding: .45rem .9rem !important;
+        border-radius: 999px !important;
+        line-height: 1;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+
+    body.scm-admin-shell .admin-logout-button i {
+        font-size: .9rem;
+        line-height: 1;
+    }
+
+    @media (max-width: 575.98px) {
+        body.scm-admin-shell .admin-logout-button {
+            min-width: 96px;
+            min-height: 34px;
+            padding-inline: .72rem !important;
+        }
+    }
 </style>
 <?php endif; ?>

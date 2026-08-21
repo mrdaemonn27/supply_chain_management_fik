@@ -172,6 +172,7 @@ $approval_total = count($pengajuan);
                     <a href="<?= base_url('index.php/admin/peminjaman/scanner') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-qr-code-scan me-1"></i> Scanner</a>
                     <a href="<?= base_url('index.php/admin/dashboard') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-speedometer2 me-1"></i> Dashboard</a>
                     <a href="<?= base_url('index.php/admin/peminjaman') ?>" class="btn btn-sm btn-outline-light rounded-pill px-3"><i class="bi bi-list-check me-1"></i> Peminjaman</a>
+                    <a href="<?= base_url('index.php/auth/logout') ?>" class="btn btn-sm btn-fik rounded-pill px-3 admin-logout-button"><i class="bi bi-box-arrow-right me-1" aria-hidden="true"></i> Logout</a>
                 </div>
             </div>
         </div>
@@ -346,6 +347,12 @@ $approval_total = count($pengajuan);
             if (!rows.length || !select || !status || !nav) return;
             let page = 1;
             const pageSize = () => select.value === 'all' ? Math.max(rows.length, 1) : Number(select.value) || 10;
+            const compactPageTokens = (totalPages, currentPage) => {
+                if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+                if (currentPage <= 3) return [1, 2, 3, 4, 5, 'ellipsis', totalPages];
+                if (currentPage >= totalPages - 2) return [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                return [1, 'ellipsis', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis', totalPages];
+            };
             const button = (label, target, disabled, active) => {
                 const li = document.createElement('li');
                 li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
@@ -366,7 +373,20 @@ $approval_total = count($pengajuan);
                 if (totalItems) totalItems.textContent = 'Total item: ' + filtered.length;
                 nav.innerHTML = '';
                 button('Previous', Math.max(1, page - 1), page === 1, false);
-                for (let index = 1; index <= totalPages; index += 1) button(String(index), index, false, index === page);
+                compactPageTokens(totalPages, page).forEach((token) => {
+                    if (typeof token === 'string') {
+                        const item = document.createElement('li');
+                        item.className = 'page-item disabled';
+                        item.setAttribute('aria-hidden', 'true');
+                        const separator = document.createElement('span');
+                        separator.className = 'page-link';
+                        separator.textContent = '...';
+                        item.appendChild(separator);
+                        nav.appendChild(item);
+                    } else {
+                        button(String(token), token, false, token === page);
+                    }
+                });
                 button('Next', Math.min(totalPages, page + 1), page === totalPages, false);
             }
             select.addEventListener('change', function () { page = 1; render(); });

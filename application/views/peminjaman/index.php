@@ -686,8 +686,18 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         : Math.max(Number(catalogPageSize.value) || 12, 1);
                 }
 
-                function addCatalogPageButton(label, target, disabled, active, ariaLabel) {
+                function addCatalogPageButton(label, target, disabled, active, ariaLabel, ellipsis) {
                     const item = document.createElement('li');
+                    if (ellipsis) {
+                        item.className = 'page-item disabled';
+                        item.setAttribute('aria-hidden', 'true');
+                        const separator = document.createElement('span');
+                        separator.className = 'page-link';
+                        separator.textContent = '...';
+                        item.appendChild(separator);
+                        catalogPageNav.appendChild(item);
+                        return;
+                    }
                     const link = document.createElement('button');
                     item.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
                     link.type = 'button';
@@ -709,13 +719,20 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     catalogPageNav.innerHTML = '';
                     addCatalogPageButton('Previous', Math.max(1, catalogPage - 1), catalogPage <= 1, false, 'Halaman sebelumnya');
 
-                    let startPage = Math.max(1, catalogPage - 2);
-                    let endPage = Math.min(totalPages, startPage + 4);
-                    startPage = Math.max(1, endPage - 4);
-
-                    for (let pageNumber = startPage; pageNumber <= endPage; pageNumber += 1) {
-                        addCatalogPageButton(String(pageNumber), pageNumber, false, pageNumber === catalogPage, 'Halaman ' + pageNumber);
-                    }
+                    const pageTokens = totalPages <= 7
+                        ? Array.from({ length: totalPages }, (_, index) => index + 1)
+                        : catalogPage <= 3
+                            ? [1, 2, 3, 4, 5, 'ellipsis', totalPages]
+                            : catalogPage >= totalPages - 2
+                                ? [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+                                : [1, 'ellipsis', catalogPage - 2, catalogPage - 1, catalogPage, catalogPage + 1, catalogPage + 2, 'ellipsis', totalPages];
+                    pageTokens.forEach((token) => {
+                        if (typeof token === 'string') {
+                            addCatalogPageButton('...', catalogPage, true, false, 'Pemisah halaman', true);
+                        } else {
+                            addCatalogPageButton(String(token), token, false, token === catalogPage, 'Halaman ' + token);
+                        }
+                    });
 
                     addCatalogPageButton('Next', Math.min(totalPages, catalogPage + 1), catalogPage >= totalPages, false, 'Halaman berikutnya');
                 }
