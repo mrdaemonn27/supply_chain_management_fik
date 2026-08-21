@@ -1193,6 +1193,56 @@ function kaur_module_url($module) {
     </style>
     <link rel="stylesheet" href="<?= base_url('assets/dashboard-theme.css') ?>">
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
+
+    <style>
+        /*
+         * ACC Peminjaman Kaur
+         * Pagination pada halaman ini berada di .kaur-loan-table-card,
+         * bukan .kaur-submission-table-card.
+         */
+        .scm-dashboard.kaur-loan-page
+        .kaur-loan-table-card
+        .kaur-submission-pagination
+        .page-link {
+            color: #64748b !important;
+            background-color: #ffffff !important;
+            border-color: #e1e5e9 !important;
+            opacity: 1 !important;
+            box-shadow: none !important;
+        }
+
+        .scm-dashboard.kaur-loan-page
+        .kaur-loan-table-card
+        .kaur-submission-pagination
+        .page-item.disabled
+        .page-link {
+            color: #9aa0a6 !important;
+            background-color: #ffffff !important;
+            border-color: #e1e5e9 !important;
+            opacity: 1 !important;
+            pointer-events: none;
+        }
+
+        .scm-dashboard.kaur-loan-page
+        .kaur-loan-table-card
+        .kaur-submission-pagination
+        .page-item.active
+        .page-link {
+            color: #ffffff !important;
+            background-color: #ff7900 !important;
+            border-color: #ff7900 !important;
+        }
+
+        .scm-dashboard.kaur-loan-page
+        .kaur-loan-table-card
+        .kaur-submission-pagination
+        .page-item:not(.active):not(.disabled)
+        .page-link:hover {
+            color: #ea5b1a !important;
+            background-color: #fff7f2 !important;
+            border-color: #e1e5e9 !important;
+        }
+    </style>
 </head>
 <body class="scm-dashboard scm-dashboard-kaur<?= $active_module === 'peminjaman' ? ' kaur-loan-page' : '' ?>">
     <aside class="dashboard-sidebar" aria-label="Navigasi Panel Kaur">
@@ -1415,17 +1465,12 @@ function kaur_module_url($module) {
                         <th><a href="<?= sort_url_kaur('peminjaman', $filters, 'status', 1, $per_page) ?>" class="text-decoration-none text-dark">Progress Peminjaman <?= sort_icon_kaur($filters, 'status') ?></a></th>
                         <th class="text-end">Aksi</th>
                     </tr></thead>
-<<<<<<< HEAD
-                    <tbody id="kaurApprovalTableBody">
-                    <?php if(empty($peminjaman_pending_kaur)): ?>
-                        <tr><td colspan="6" class="text-center text-muted py-5">Tidak ada peminjaman yang menunggu ACC Kaur.</td></tr>
-                    <?php else: foreach($peminjaman_pending_kaur as $index => $p): ?>
-=======
+
                     <tbody>
                     <?php if(empty($peminjaman_visible_kaur)): ?>
                         <tr><td colspan="6" class="text-center text-muted py-5">Belum ada data peminjaman.</td></tr>
                     <?php else: foreach($peminjaman_visible_kaur as $index => $p): ?>
->>>>>>> origin/main
+
                         <?php
                             $barang_names = [];
                             $labs = [];
@@ -1456,19 +1501,7 @@ function kaur_module_url($module) {
                     </tbody>
                 </table>
             </div>
-<<<<<<< HEAD
-            <?php if(!empty($peminjaman_pending_kaur)): ?>
-            <div class="kaur-return-pagination-footer">
-                <div class="kaur-return-pagination-summary">
-                    <label for="kaurLoanPageSize">Tampilkan:</label>
-                    <select id="kaurLoanPageSize" class="form-select form-select-sm" aria-label="Jumlah peminjaman ACC per halaman"><option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="all">Semua</option></select>
-                    <span>Total item: <span id="kaurLoanTotalItems"><?= count($peminjaman_pending_kaur) ?></span></span>
-                </div>
-                <div class="kaur-return-pagination-status" id="kaurLoanPageStatus">Halaman: 1 dari 1</div>
-                <nav aria-label="Pagination approval peminjaman"><ul class="pagination pagination-sm kaur-return-pagination" id="kaurLoanPageNav"></ul></nav>
-            </div>
-            <?php endif; ?>
-=======
+
             <?php $loan_first = $loan_total_rows > 0 ? (($page - 1) * (int) $per_page) + 1 : 0; $loan_last = min($loan_total_rows, $page * (int) $per_page); ?>
             <div class="kaur-submission-pagination-footer">
                 <div class="kaur-submission-pagination-summary">
@@ -1487,7 +1520,7 @@ function kaur_module_url($module) {
                     <li class="page-item <?= $page >= $loan_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= kaur_module_url('peminjaman') . '?' . query_kaur($filters, min($loan_total_pages, $page + 1), $per_page) ?>">Next</a></li>
                 </ul></nav>
             </div>
->>>>>>> origin/main
+
             </div>
         </section>
         <?php foreach($peminjaman_visible_kaur as $p): ?>

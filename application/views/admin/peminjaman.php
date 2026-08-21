@@ -365,7 +365,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                         <ul class="pagination pagination-sm loan-pagination">
                             <?php $prev_query = http_build_query(array_merge($base_query, ['page' => max(1, $page - 1)])); ?>
                             <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman'.($prev_query ? '?'.$prev_query : '')) ?>">Previous</a></li>
-<<<<<<< HEAD
+
                             <?php foreach ($compact_pagination_pages($page, $total_pages) as $i): ?>
                                 <?php if (is_string($i)): ?>
                                     <li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
@@ -373,11 +373,11 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                                     <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman'.($page_query ? '?'.$page_query : '')) ?>"><?= $i ?></a></li>
                                 <?php endif; ?>
                             <?php endforeach; ?>
-=======
+
                             <?php $start_page = max(1, $page - 2); $end_page = min($total_pages, $start_page + 4); $start_page = max(1, $end_page - 4); for($i = $start_page; $i <= $end_page; $i++): $page_query = http_build_query(array_merge($base_query, ['page' => $i])); ?>
                                 <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman'.($page_query ? '?'.$page_query : '')) ?>"><?= $i ?></a></li>
                             <?php endfor; ?>
->>>>>>> origin/main
+
                             <?php $next_query = http_build_query(array_merge($base_query, ['page' => min($total_pages, $page + 1)])); ?>
                             <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman'.($next_query ? '?'.$next_query : '')) ?>">Next</a></li>
                         </ul>

@@ -1,5 +1,4 @@
 <?php
-// Mencegah akses langsung.
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 // Logika routing dan session bawaan — jangan diubah.
@@ -22,12 +21,8 @@ if ($logged_in) {
 
 $login_url  = base_url('index.php/auth');
 $signup_url = base_url('index.php/auth/signup');
-<<<<<<< HEAD
 $faq_endpoint = base_url('index.php/welcome/faq_search');
 $faqs = (isset($faqs) && is_array($faqs)) ? $faqs : array();
-=======
-$faq_items  = isset($faq_items) && is_array($faq_items) ? array_values($faq_items) : array();
->>>>>>> origin/main
 
 // Satu-satunya aset tiga dimensi: kamera yang bodi dan lensanya terpisah,
 // sehingga keduanya bisa dianimasikan sendiri-sendiri.
@@ -333,6 +328,33 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
         .rev__tx { flex: 1; margin: 20px 0 26px; color: var(--ink); font-size: 1.0625rem; font-weight: 450; line-height: 1.68; letter-spacing: -.01em; }
         .rev__by { color: var(--ink); font-size: .9375rem; font-weight: 600; }
         .rev__ro { margin-top: 4px; color: var(--gray); font-size: .875rem; }
+
+        /* ============ FAQ PROMO & ACCORDION ============
+           Ditulis di sini (bukan di faq-assistant.css) karena file itu dibuat
+           untuk panel FAQ lama, bukan untuk komponen accordion ini — kalau
+           style-nya cuma mengandalkan file luar yang tidak cocok, tampilannya
+           jatuh ke default peramban seperti yang terjadi sebelumnya. */
+        .faq-promo { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: clamp(32px, 4vw, 72px); align-items: start; }
+        .faq-promo__copy { grid-column: 1 / span 5; }
+        .faq-promo__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 44px; }
+        .faq-promo__note { display: inline-flex; align-items: center; gap: 8px; color: var(--gray); font-size: .8125rem; }
+        .faq-promo__note i { color: var(--acc); }
+
+        .acc { grid-column: 7 / span 6; display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--white); overflow: hidden; box-shadow: var(--sh-sm); }
+        .acc__item { border-bottom: 1px solid var(--line); }
+        .acc__item:last-child { border-bottom: 0; }
+        .acc__hd { display: flex; align-items: center; justify-content: space-between; gap: 18px; width: 100%; padding: 22px 26px; border: 0; background: transparent; color: var(--ink); font-size: .9375rem; font-weight: 700; letter-spacing: -.01em; line-height: 1.4; text-align: left; cursor: pointer; transition: color .25s ease; }
+        .acc__hd:hover { color: var(--acc-dk); }
+        .acc__hd i { flex: 0 0 auto; color: var(--acc); font-size: .9rem; transition: transform .35s var(--ease); }
+        .acc__item.is-open .acc__hd { color: var(--acc-dk); }
+        .acc__item.is-open .acc__hd i { transform: rotate(45deg); }
+        .acc__bd { height: 0; overflow: hidden; }
+        .acc__bd p { margin: 0; padding: 0 26px 24px; color: var(--gray); font-size: .9rem; line-height: 1.7; }
+
+        @media (max-width: 1023.98px) {
+            .faq-promo__copy, .acc { grid-column: 1 / -1; }
+            .acc { margin-top: 8px; }
+        }
 
         /* ============ FOOTER ============ */
         .foot { position: relative; z-index: 5; padding: clamp(80px, 11vh, 140px) var(--gutter) 0; color: #eef1f3; background: #272b30; border-top: 3px solid var(--acc); }
@@ -694,11 +716,7 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
         </div>
 
         <div class="solid">
-<<<<<<< HEAD
-            <!-- 10 FAQ — sumber pertanyaan dan jawaban berasal dari tabel FAQ aktif -->
-=======
-            <!-- 10 FAQ Assistant — data berasal dari tabel faq -->
->>>>>>> origin/main
+            <!-- 10 FAQ Assistant — sumber pertanyaan dan jawaban berasal dari tabel FAQ aktif -->
             <section class="sec">
                 <div class="sec__in faq-promo">
                     <div class="faq-promo__copy">
@@ -712,7 +730,6 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                             <span class="faq-promo__note"><i class="bi bi-database-check" aria-hidden="true"></i> Jawaban bersumber dari fitur SCM FIK</span>
                         </div>
                     </div>
-<<<<<<< HEAD
                     <div class="acc split__media" data-fade>
                         <?php if (!empty($faqs)): ?>
                             <?php foreach ($faqs as $index => $faq): ?>
@@ -729,27 +746,6 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                                 <div class="acc__bd" style="height:auto"><p>FAQ belum tersedia saat ini.</p></div>
                             </div>
                         <?php endif; ?>
-=======
-                    <div class="faq-demo" data-fade>
-                        <div class="faq-demo__head">
-                            <span class="faq-avatar" aria-hidden="true"><i class="bi bi-stars"></i></span>
-                            <div>
-                                <p class="faq-demo__title">SCM FIK Assistant</p>
-                                <p class="faq-demo__status">Siap membantu</p>
-                            </div>
-                        </div>
-                        <div class="faq-demo__body">
-                            <p class="faq-demo__bubble">Halo! Ada yang ingin diketahui tentang peminjaman aset FIK?</p>
-                            <div class="faq-demo__questions">
-                                <?php foreach (array_slice($faq_items, 0, 3, true) as $faq_index => $faq): ?>
-                                    <button class="faq-demo__question" type="button" data-faq-open data-faq-index="<?= (int) $faq_index; ?>">
-                                        <?= html_escape($faq['question']); ?>
-                                        <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                                    </button>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
->>>>>>> origin/main
                     </div>
                 </div>
             </section>
@@ -791,61 +787,6 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
             <span>Sistem Supply Chain Management</span>
         </div>
     </footer>
-
-    <button class="faq-launcher" id="faqLauncher" type="button" aria-controls="faqAssistant" aria-expanded="false">
-        <span class="faq-launcher__icon" aria-hidden="true"><i class="bi bi-chat-dots-fill"></i></span>
-        <span>Tanya SCM FIK</span>
-        <span class="faq-launcher__badge" aria-hidden="true"></span>
-    </button>
-
-    <section class="faq-assistant" id="faqAssistant" role="dialog" aria-modal="false" aria-labelledby="faqAssistantTitle" aria-hidden="true">
-        <header class="faq-assistant__head">
-            <span class="faq-avatar" aria-hidden="true"><i class="bi bi-stars"></i></span>
-            <div class="faq-assistant__identity">
-                <h2 class="faq-assistant__title" id="faqAssistantTitle">SCM FIK Assistant</h2>
-                <p class="faq-assistant__status">FAQ layanan aset</p>
-            </div>
-            <button class="faq-assistant__close" id="faqClose" type="button" aria-label="Tutup FAQ Assistant">
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
-            </button>
-        </header>
-
-        <div class="faq-assistant__chat" id="faqChat" role="log" aria-live="polite" aria-relevant="additions">
-            <div class="faq-message faq-message--assistant">
-                <span class="faq-message__avatar" aria-hidden="true"><i class="bi bi-stars"></i></span>
-                <div class="faq-message__bubble">Halo! Saya membantu menjelaskan fitur dan alur peminjaman SCM FIK. Cari atau pilih salah satu pertanyaan di bawah.</div>
-            </div>
-        </div>
-
-        <div class="faq-assistant__browser">
-            <div class="faq-search">
-                <label class="faq-search__sr" for="faqSearch">Cari pertanyaan FAQ</label>
-                <i class="bi bi-search" aria-hidden="true"></i>
-                <input class="faq-search__input" id="faqSearch" type="search" placeholder="Cari pertanyaan, misalnya QR..." autocomplete="off">
-                <button class="faq-search__clear" id="faqSearchClear" type="button" aria-label="Hapus pencarian">
-                    <i class="bi bi-x" aria-hidden="true"></i>
-                </button>
-            </div>
-            <div class="faq-assistant__label">
-                <span>Pertanyaan umum</span>
-                <span id="faqResultCount"><?= count($faq_items); ?> pertanyaan</span>
-            </div>
-            <div class="faq-question-list" id="faqQuestionList">
-                <?php foreach ($faq_items as $faq_index => $faq): ?>
-                    <button class="faq-question" type="button" data-faq-question data-faq-index="<?= (int) $faq_index; ?>">
-                        <span><?= html_escape($faq['question']); ?></span>
-                        <i class="bi bi-chevron-right" aria-hidden="true"></i>
-                    </button>
-                <?php endforeach; ?>
-            </div>
-            <p class="faq-empty" id="faqEmpty">Pertanyaan tidak ditemukan. Coba kata kunci lain atau hubungi Laboran melalui dashboard.</p>
-            <div class="faq-assistant__label">
-                <span class="faq-assistant__data-source">Sumber data: tabel FAQ SCM FIK</span>
-            </div>
-        </div>
-    </section>
-
-    <script type="application/json" id="faqData"><?= json_encode($faq_items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
 
     <button class="ico top" id="top" type="button" aria-label="Kembali ke atas"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
     <div class="cur" id="cur" aria-hidden="true"></div>
@@ -1592,7 +1533,6 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                 });
             }
 
-<<<<<<< HEAD
             function accordions() {
                 doc.querySelectorAll(".acc").forEach((acc) => {
                     const items = Array.from(acc.querySelectorAll(".acc__item"));
@@ -1809,15 +1749,31 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                 });
                 close.addEventListener("click", () => setOpen(false));
                 doc.addEventListener("click", (event) => {
-                    if (root.classList.contains("is-open") && !root.contains(event.target)) setOpen(false);
+                    const faqOpenTrigger = event.target.closest("[data-faq-open]");
+
+                    if (
+                        root.classList.contains("is-open") &&
+                        !root.contains(event.target) &&
+                        !faqOpenTrigger
+                    ) {
+                        setOpen(false);
+                    }
                 });
                 doc.addEventListener("keydown", (event) => {
                     if (event.key === "Escape") setOpen(false);
                 });
+
+                // Tombol promo "Buka FAQ Assistant" membuka chat widget yang sama,
+                // bukan panel terpisah — satu pintu masuk untuk satu chatbot.
+                doc.querySelectorAll("[data-faq-open]").forEach((trigger) => {
+                    trigger.addEventListener("click", (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        setOpen(true);
+                    });
+                });
             }
 
-=======
->>>>>>> origin/main
             function chrome() {
                 let q = false;
                 addEventListener("scroll", () => {
@@ -1892,7 +1848,7 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                 gsap.registerPlugin(ScrollTrigger);
                 ScrollTrigger.config({ ignoreMobileResize: true });
 
-                smooth(); opening(); headings(); reveals();
+                smooth(); opening(); headings(); reveals(); accordions();
                 glows(); cursor();
 
                 const refresh = () => ScrollTrigger.refresh();
@@ -1915,6 +1871,5 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
     </script>
     <script src="<?= base_url('assets/js/hero-video.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/hero-video.js'); ?>"></script>
     <script src="<?= base_url('assets/js/landing-lab-coverflow.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/landing-lab-coverflow.js'); ?>"></script>
-    <script src="<?= base_url('assets/js/faq-assistant.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/faq-assistant.js'); ?>"></script>
 </body>
 </html>
