@@ -27,6 +27,8 @@ class Barang extends CI_Controller {
         // Memanggil Model sesuai struktur folder Anda
         $this->load->helper('url');
         $this->load->model('admin/Barang_model', 'Barang_model');
+        // Memastikan kolom ledger stok tersedia juga pada instalasi lama.
+        $this->load->model('Peminjaman_model');
     }
 
     public function index() {
@@ -126,7 +128,9 @@ class Barang extends CI_Controller {
                 'nama_aset' => $row['nama_aset'],
                 'id_ruangan' => $row['id_ruangan'],
                 'jumlah_total' => max(0, (int) $row['jumlah_total']),
-                'jumlah_tersedia' => max(0, (int) $row['jumlah_tersedia']),
+                'jumlah_reserved' => 0,
+                'jumlah_dipinjam' => 0,
+                'jumlah_tersedia' => max(0, (int) $row['jumlah_total']),
                 'kondisi' => $row['kondisi'],
                 'deskripsi' => $row['deskripsi'],
                 'created_at' => date('Y-m-d H:i:s'),
@@ -138,8 +142,13 @@ class Barang extends CI_Controller {
                     $skipped++;
                     continue;
                 }
-                $unit_dipinjam = max(0, (int) $duplicate->jumlah_total - (int) $duplicate->jumlah_tersedia);
-                $aset['jumlah_tersedia'] = max(0, (int) $aset['jumlah_total'] - $unit_dipinjam);
+                $reserved = max(0, (int) ($duplicate->jumlah_reserved ?? 0));
+                $borrowed = max(0, (int) ($duplicate->jumlah_dipinjam ?? 0));
+                $allocated = $reserved + $borrowed;
+                $aset['jumlah_total'] = max((int) $aset['jumlah_total'], $allocated);
+                $aset['jumlah_reserved'] = $reserved;
+                $aset['jumlah_dipinjam'] = $borrowed;
+                $aset['jumlah_tersedia'] = $aset['jumlah_total'] - $allocated;
                 $this->Barang_model->update($duplicate->id_aset, $aset);
                 $updated++;
                 continue;
@@ -375,9 +384,10 @@ class Barang extends CI_Controller {
             'kode_aset'       => $this->input->post('kode_aset'),
             'nama_aset'       => $this->input->post('nama_aset'),
             'id_ruangan'      => $this->input->post('id_ruangan'),
-            'jumlah_total'    => $this->input->post('jumlah_total'),
-            // PERBAIKAN STOK: Memastikan jumlah_tersedia ikut diperbarui baik saat Tambah maupun Edit
-            'jumlah_tersedia' => $this->input->post('jumlah_total'),
+            'jumlah_total'    => max(0, (int) $this->input->post('jumlah_total')),
+            'jumlah_reserved' => 0,
+            'jumlah_dipinjam' => 0,
+            'jumlah_tersedia' => max(0, (int) $this->input->post('jumlah_total')),
             'kondisi'         => $this->input->post('kondisi')
         ];
 
@@ -394,8 +404,16 @@ class Barang extends CI_Controller {
 
         if (!empty($id_aset)) {
             $existing = $this->Barang_model->get_by_id($id_aset);
-            $unit_dipinjam = $existing ? max(0, (int) $existing->jumlah_total - (int) $existing->jumlah_tersedia) : 0;
-            $data['jumlah_tersedia'] = max(0, (int) $data['jumlah_total'] - $unit_dipinjam);
+            $reserved = $existing ? max(0, (int) ($existing->jumlah_reserved ?? 0)) : 0;
+            $borrowed = $existing ? max(0, (int) ($existing->jumlah_dipinjam ?? 0)) : 0;
+            $allocated = $reserved + $borrowed;
+            if ((int) $data['jumlah_total'] < $allocated) {
+                $this->session->set_flashdata('error', 'Total fisik tidak boleh lebih kecil dari ' . $allocated . ' unit yang sedang dialokasikan.');
+                redirect('admin/barang/edit/' . $id_aset);
+            }
+            $data['jumlah_reserved'] = $reserved;
+            $data['jumlah_dipinjam'] = $borrowed;
+            $data['jumlah_tersedia'] = (int) $data['jumlah_total'] - $allocated;
         }
 
         // LOGIKA UPLOAD GAMBAR DINAMIS

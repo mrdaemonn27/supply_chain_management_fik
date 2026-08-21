@@ -4,6 +4,14 @@ $pengembalian = is_array($pengembalian ?? null) ? $pengembalian : [];
 $filter_keyword = trim((string) ($filters['q'] ?? ''));
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
+$approval_total = (int) ($approval_total ?? count($pengajuan));
+$kaprodi_actionable = (int) ($approval_actionable ?? count(array_filter($pengajuan, static function ($p) { return scm_loan_can_act($p, 'kaprodi'); })));
+$page = max(1, (int) ($page ?? 1));
+$per_page = (int) ($per_page ?? 10);
+$total_pages = max(1, (int) ($total_pages ?? 1));
+$return_total = (int) ($return_total ?? count($pengembalian));
+$return_page = max(1, (int) ($return_page ?? 1));
+$return_total_pages = max(1, (int) ($return_total_pages ?? 1));
 
 if (!function_exists('kaprodi_loan_status_tone')) {
     function kaprodi_loan_status_tone($status)
@@ -55,31 +63,40 @@ if (!function_exists('kaprodi_client_filter_fields')) {
     }
 }
 if (!function_exists('render_kaprodi_client_filter')) {
-    function render_kaprodi_client_filter($scope, $id)
+    function render_kaprodi_client_filter($scope, $id, $selected_rows = [], $per_page = 10)
     {
         $fields = kaprodi_client_filter_fields($scope);
         $default_field = (string) array_key_first($fields);
-        $default_meta = $fields[$default_field];
+        $selected_rows = is_array($selected_rows) && !empty($selected_rows) ? array_slice($selected_rows, 0, 4) : [['field' => $default_field, 'value' => '']];
+        $is_server = $scope === 'approval';
         ?>
-        <div id="<?= html_escape($id) ?>" class="kp-multi-filter" data-kp-multi-filter data-max-filters="4">
+        <?php if ($is_server): ?><form method="get" action="<?= current_url() ?>"><input type="hidden" name="page" value="1"><input type="hidden" name="per_page" value="<?= (int) $per_page ?>"><?php endif; ?>
+        <div id="<?= html_escape($id) ?>" class="kp-multi-filter scm-search-filter" data-kp-multi-filter data-max-filters="4">
             <div class="kp-multi-filter-heading">
                 <h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3>
             </div>
             <div class="kp-multi-filter-list" data-filter-list>
+                <?php foreach ($selected_rows as $row_index => $selected_row): $selected_field = (string) ($selected_row['field'] ?? $default_field); $selected_value = (string) ($selected_row['value'] ?? ''); if (!isset($fields[$selected_field])) $selected_field = $default_field; $selected_meta = $fields[$selected_field]; ?>
                 <div class="kp-multi-filter-row" data-filter-row>
-                    <select class="form-select kp-multi-filter-field" aria-label="Jenis filter 1">
+                    <select class="form-select kp-multi-filter-field" <?= $is_server ? 'name="filter_field[]"' : '' ?> aria-label="Jenis filter <?= $row_index + 1 ?>">
                         <?php foreach ($fields as $key => $meta): ?>
-                            <option value="<?= html_escape($key) ?>" data-input-type="<?= html_escape($meta['type'] ?? 'search') ?>" data-placeholder="<?= html_escape($meta['placeholder']) ?>"><?= html_escape($meta['label']) ?></option>
+                            <option value="<?= html_escape($key) ?>" data-input-type="<?= html_escape($meta['type'] ?? 'search') ?>" data-placeholder="<?= html_escape($meta['placeholder']) ?>" <?= $selected_field === $key ? 'selected' : '' ?>><?= html_escape($meta['label']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <input type="<?= html_escape($default_meta['type'] ?? 'search') ?>" class="form-control kp-multi-filter-value" placeholder="<?= html_escape($default_meta['placeholder']) ?>" autocomplete="off" aria-label="Nilai filter 1">
+                    <input type="<?= html_escape($selected_meta['type'] ?? 'search') ?>" class="form-control kp-multi-filter-value" <?= $is_server ? 'name="filter_value[]"' : '' ?> value="<?= html_escape($selected_value) ?>" placeholder="<?= html_escape($selected_meta['placeholder']) ?>" autocomplete="off" aria-label="Nilai filter <?= $row_index + 1 ?>">
                     <div class="kp-multi-filter-tools">
                         <button type="button" class="btn btn-outline-secondary kp-multi-filter-icon kp-multi-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>
                         <button type="button" class="btn btn-outline-primary kp-multi-filter-icon kp-multi-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>
                     </div>
                 </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="scm-search-filter__actions mt-3">
+                <button type="<?= $is_server ? 'submit' : 'button' ?>" class="btn scm-search-filter__apply" data-kp-filter-apply><i class="bi bi-search"></i> Terapkan filter</button>
+                <?php if ($is_server): ?><a href="<?= current_url() ?>" class="btn scm-search-filter__reset"><i class="bi bi-arrow-counterclockwise"></i> Reset</a><?php else: ?><button type="button" class="btn scm-search-filter__reset" data-kp-filter-reset><i class="bi bi-arrow-counterclockwise"></i> Reset</button><?php endif; ?>
             </div>
         </div>
+        <?php if ($is_server): ?></form><?php endif; ?>
         <?php
     }
 }
@@ -94,6 +111,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= base_url('assets/dashboard-theme.css') ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/loan-progress.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-progress.css'); ?>">
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     <style>
         .kaprodi-loan-page {
@@ -727,6 +745,9 @@ if (!function_exists('render_kaprodi_client_filter')) {
         }
 
         .kp-page-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             min-width: 36px;
             height: 32px;
             padding: 0 10px;
@@ -735,6 +756,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
             background: var(--kp-surface);
             color: var(--kp-text);
             font-size: .67rem;
+            text-decoration: none;
         }
 
         .kp-pagination li:last-child .kp-page-button {
@@ -746,10 +768,12 @@ if (!function_exists('render_kaprodi_client_filter')) {
             color: #fff;
         }
 
-        .kp-page-button:disabled {
+        .kp-page-button:disabled,
+        .kp-page-button.disabled {
             background: var(--kp-surface);
             color: #a7afb9;
             cursor: default;
+            pointer-events: none;
         }
 
         .kp-loan-modal .modal-dialog {
@@ -1138,15 +1162,15 @@ if (!function_exists('render_kaprodi_client_filter')) {
     </div>
 
     <section class="kp-card kp-summary">
-        <h2 class="kp-section-title">Approval Peminjaman oleh Kaprodi</h2>
+        <div><h2 class="kp-section-title">Progress Seluruh Peminjaman</h2><p class="kp-section-copy mt-1">Semua tahap dapat dipantau; aksi hanya tersedia saat menunggu Kaprodi.</p></div>
         <span class="kp-count-badge">
             <span class="kp-status-dot"></span>
-            <?= count($pengajuan) ?> menunggu ACC
+            <?= $kaprodi_actionable ?> perlu aksi · <?= number_format($approval_total, 0, ',', '.') ?> total
         </span>
     </section>
 
     <section class="kp-card kp-filter-card mt-3" aria-label="Filter pengajuan peminjaman">
-        <?php render_kaprodi_client_filter('approval', 'kaprodiApprovalFilters'); ?>
+        <?php render_kaprodi_client_filter('approval', 'kaprodiApprovalFilters', $filter_rows ?? [], $per_page); ?>
     </section>
 
     <section class="kp-card kp-table-card mb-3" aria-labelledby="kaprodiApprovalTitle">
@@ -1193,7 +1217,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                 <tbody id="kaprodiApprovalBody">
                 <?php if (empty($pengajuan)): ?>
                     <tr class="kp-empty-row">
-                        <td colspan="7">Tidak ada pengajuan menunggu ACC Kaprodi.</td>
+                        <td colspan="7">Belum ada data peminjaman.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($pengajuan as $p): ?>
@@ -1212,6 +1236,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                         $laboratories = array_values(array_unique($laboratories));
                         $period = masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null);
                         $status = $p->status ?? '-';
+                        $can_kaprodi_act = scm_loan_can_act($p, 'kaprodi');
                         $search_text = implode(' ', [
                             $number,
                             $p->id_peminjaman ?? '',
@@ -1267,11 +1292,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                                 <div class="kp-primary-text"><?= html_escape(tanggal_indonesia($p->tanggal_pinjam ?? null)) ?></div>
                                 <div class="kp-secondary-text">s.d. <?= html_escape(tanggal_indonesia($p->tanggal_kembali_rencana ?? null)) ?></div>
                             </td>
-                            <td>
-                                <span class="kp-status-badge <?= kaprodi_loan_status_tone($status) ?>">
-                                    <span class="kp-status-dot"></span><?= html_escape($status) ?>
-                                </span>
-                            </td>
+                            <td><?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?></td>
                             <td class="text-end">
                                 <button
                                     type="button"
@@ -1295,17 +1316,19 @@ if (!function_exists('render_kaprodi_client_filter')) {
             <div class="kp-pagination-footer">
                 <div class="kp-page-size">
                     <label for="kaprodiApprovalPageSize">Tampilkan:</label>
-                    <select id="kaprodiApprovalPageSize" class="form-select form-select-sm">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="all">Semua</option>
+                    <select id="kaprodiApprovalPageSize" class="form-select form-select-sm" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.href=u.toString();">
+                        <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                     </select>
-                    <span id="kaprodiApprovalTotal"></span>
+                    <span id="kaprodiApprovalTotal">Total item: <?= number_format($approval_total, 0, ',', '.') ?></span>
                 </div>
-                <div id="kaprodiApprovalPageStatus" class="kp-page-status"></div>
+                <?php $first_item = $approval_total > 0 ? (($page - 1) * $per_page) + 1 : 0; $last_item = min($approval_total, $page * $per_page); ?>
+                <div id="kaprodiApprovalPageStatus" class="kp-page-status">Menampilkan <?= $first_item ?>–<?= $last_item ?> dari <?= number_format($approval_total, 0, ',', '.') ?> data</div>
                 <nav class="kp-pagination-nav" aria-label="Paging pengajuan">
-                    <ul id="kaprodiApprovalPagination" class="kp-pagination"></ul>
+                    <ul id="kaprodiApprovalPagination" class="kp-pagination">
+                        <?php $kp_query = $_GET; $kp_query['per_page'] = $per_page; $kp_query['page'] = max(1, $page - 1); ?><li><a class="kp-page-button <?= $page <= 1 ? 'disabled' : '' ?>" href="<?= current_url() . '?' . http_build_query($kp_query) ?>">Previous</a></li>
+                        <?php $start_page = max(1, $page - 2); $end_page = min($total_pages, $start_page + 4); $start_page = max(1, $end_page - 4); for ($i = $start_page; $i <= $end_page; $i++): $kp_query['page'] = $i; ?><li><a class="kp-page-button <?= $i === $page ? 'is-active' : '' ?>" href="<?= current_url() . '?' . http_build_query($kp_query) ?>"><?= $i ?></a></li><?php endfor; $kp_query['page'] = min($total_pages, $page + 1); ?>
+                        <li><a class="kp-page-button <?= $page >= $total_pages ? 'disabled' : '' ?>" href="<?= current_url() . '?' . http_build_query($kp_query) ?>">Next</a></li>
+                    </ul>
                 </nav>
             </div>
         <?php endif; ?>
@@ -1379,7 +1402,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                             data-sort-masa="<?= (int) strtotime((string) ($p->tanggal_pinjam ?? '')) ?>"
                             data-sort-status="<?= html_escape($status) ?>"
                         >
-                            <td class="kp-number-cell" data-row-number><?= (int) $return_index + 1 ?></td>
+                            <td class="kp-number-cell" data-row-number><?= (($return_page - 1) * $per_page) + (int) $return_index + 1 ?></td>
                             <td>
                                 <div class="kp-primary-text"><?= html_escape($p->nama_peminjam ?? '-') ?></div>
                                 <div class="kp-secondary-text"><?= html_escape($p->nim_nip ?? '-') ?></div>
@@ -1404,17 +1427,19 @@ if (!function_exists('render_kaprodi_client_filter')) {
             <div class="kp-pagination-footer">
                 <div class="kp-page-size">
                     <label for="kaprodiReturnPageSize">Tampilkan:</label>
-                    <select id="kaprodiReturnPageSize" class="form-select form-select-sm">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="all">Semua</option>
+                    <select id="kaprodiReturnPageSize" class="form-select form-select-sm" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('return_page','1');window.location.href=u.toString();">
+                        <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                     </select>
-                    <span id="kaprodiReturnTotal"></span>
+                    <span id="kaprodiReturnTotal">Total item: <?= number_format($return_total, 0, ',', '.') ?></span>
                 </div>
-                <div id="kaprodiReturnPageStatus" class="kp-page-status"></div>
+                <?php $return_first = $return_total > 0 ? (($return_page - 1) * $per_page) + 1 : 0; $return_last = min($return_total, $return_page * $per_page); ?>
+                <div id="kaprodiReturnPageStatus" class="kp-page-status">Menampilkan <?= $return_first ?>–<?= $return_last ?> dari <?= number_format($return_total, 0, ',', '.') ?> data</div>
                 <nav class="kp-pagination-nav" aria-label="Paging status pengembalian">
-                    <ul id="kaprodiReturnPagination" class="kp-pagination"></ul>
+                    <ul id="kaprodiReturnPagination" class="kp-pagination">
+                        <?php $return_query = $_GET; $return_query['per_page'] = $per_page; $return_query['return_page'] = max(1, $return_page - 1); ?><li><a class="kp-page-button <?= $return_page <= 1 ? 'disabled' : '' ?>" href="<?= current_url() . '?' . http_build_query($return_query) ?>">Previous</a></li>
+                        <?php $return_start_page = max(1, $return_page - 2); $return_end_page = min($return_total_pages, $return_start_page + 4); $return_start_page = max(1, $return_end_page - 4); for ($i = $return_start_page; $i <= $return_end_page; $i++): $return_query['return_page'] = $i; ?><li><a class="kp-page-button <?= $i === $return_page ? 'is-active' : '' ?>" href="<?= current_url() . '?' . http_build_query($return_query) ?>"><?= $i ?></a></li><?php endfor; $return_query['return_page'] = min($return_total_pages, $return_page + 1); ?>
+                        <li><a class="kp-page-button <?= $return_page >= $return_total_pages ? 'disabled' : '' ?>" href="<?= current_url() . '?' . http_build_query($return_query) ?>">Next</a></li>
+                    </ul>
                 </nav>
             </div>
         <?php endif; ?>
@@ -1426,6 +1451,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
     <?php
     $number = $p->group_id ?? $p->id_peminjaman ?? '-';
     $status = $p->status ?? '-';
+    $can_kaprodi_act = scm_loan_can_act($p, 'kaprodi');
     ?>
     <div
         class="modal fade kp-loan-modal"
@@ -1471,6 +1497,11 @@ if (!function_exists('render_kaprodi_client_filter')) {
                 </div>
                 <div class="modal-body">
                     <section class="kp-modal-section">
+                        <div class="kp-modal-section-title">Progress Peminjaman</div>
+                        <?php $loan_progress_item = $p; $loan_progress_compact = false; include APPPATH . 'views/shared/loan_progress.php'; ?>
+                        <?php if (!$can_kaprodi_act): ?><div class="alert alert-info small mt-3 mb-0">Data ini ditampilkan untuk pemantauan. Tombol persetujuan hanya aktif saat status menunggu Kaprodi.</div><?php endif; ?>
+                    </section>
+                    <section class="kp-modal-section">
                         <div class="kp-modal-section-title">Keperluan</div>
                         <p class="kp-purpose"><?= nl2br(html_escape($p->keperluan ?? '-')) ?></p>
                     </section>
@@ -1513,6 +1544,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                             class="form-control"
                             rows="3"
                             placeholder="Catatan persetujuan atau alasan penolakan"
+                            <?= $can_kaprodi_act ? '' : 'disabled'; ?>
                         ></textarea>
                     </section>
                 </div>
@@ -1523,6 +1555,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                         formaction="<?= base_url('index.php/kaprodi/peminjaman/tolak/' . $p->id_peminjaman) ?>"
                         class="btn btn-outline-danger"
                         onclick="return confirm('Tolak pengajuan ini? Pastikan alasan sudah diisi.')"
+                        <?= $can_kaprodi_act ? '' : 'disabled'; ?>
                     >
                         <i class="bi bi-x-lg me-1"></i>Tolak
                     </button>
@@ -1530,6 +1563,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                         type="submit"
                         class="btn btn-success"
                         onclick="return confirm('Setujui dan teruskan ke Laboran?')"
+                        <?= $can_kaprodi_act ? '' : 'disabled'; ?>
                     >
                         <i class="bi bi-check2 me-1"></i>Setujui
                     </button>
@@ -1582,9 +1616,11 @@ document.addEventListener('DOMContentLoaded', function () {
             var row = document.createElement('div');
             row.className = 'kp-multi-filter-row';
             row.dataset.filterRow = '';
+            var serverNames = root.closest('form') ? ' name="filter_field[]"' : '';
+            var serverValueName = root.closest('form') ? ' name="filter_value[]"' : '';
             row.innerHTML =
-                '<select class="form-select kp-multi-filter-field" aria-label="Jenis filter ' + (rows.length + 1) + '">' + sourceSelect.innerHTML + '</select>' +
-                '<input type="search" class="form-control kp-multi-filter-value" autocomplete="off" aria-label="Nilai filter ' + (rows.length + 1) + '">' +
+                '<select class="form-select kp-multi-filter-field"' + serverNames + ' aria-label="Jenis filter ' + (rows.length + 1) + '">' + sourceSelect.innerHTML + '</select>' +
+                '<input type="search" class="form-control kp-multi-filter-value"' + serverValueName + ' autocomplete="off" aria-label="Nilai filter ' + (rows.length + 1) + '">' +
                 '<div class="kp-multi-filter-tools">' +
                     '<button type="button" class="btn btn-outline-secondary kp-multi-filter-icon kp-multi-filter-remove" aria-label="Hapus filter"><i class="bi bi-dash-lg" aria-hidden="true"></i></button>' +
                     '<button type="button" class="btn btn-outline-primary kp-multi-filter-icon kp-multi-filter-add" aria-label="Tambah filter"><i class="bi bi-plus-lg" aria-hidden="true"></i></button>' +
@@ -1618,6 +1654,18 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         list.addEventListener('input', function (event) {
             if (event.target.matches('.kp-multi-filter-value')) notify();
+        });
+        root.querySelector('[data-kp-filter-apply]')?.addEventListener('click', notify);
+        root.querySelector('[data-kp-filter-reset]')?.addEventListener('click', function () {
+            var rows = Array.prototype.slice.call(list.querySelectorAll('[data-filter-row]'));
+            rows.slice(1).forEach(function (row) { row.remove(); });
+            if (rows[0]) {
+                var select = rows[0].querySelector('.kp-multi-filter-field');
+                if (select) select.selectedIndex = 0;
+                syncInput(rows[0], true);
+            }
+            updateButtons();
+            notify();
         });
         return root;
     }
@@ -1844,31 +1892,8 @@ document.addEventListener('DOMContentLoaded', function () {
         render();
     }
 
-    initClientTable({
-        bodyId: 'kaprodiApprovalBody',
-        rowSelector: '[data-approval-row]',
-        filterRootId: 'kaprodiApprovalFilters',
-        pageSizeId: 'kaprodiApprovalPageSize',
-        totalId: 'kaprodiApprovalTotal',
-        pageStatusId: 'kaprodiApprovalPageStatus',
-        paginationId: 'kaprodiApprovalPagination',
-        emptyId: 'kaprodiApprovalEmpty',
-        sortSelector: '[data-approval-sort]',
-        sortAttribute: 'data-approval-sort'
-    });
-
-    initClientTable({
-        bodyId: 'kaprodiReturnBody',
-        rowSelector: '[data-return-row]',
-        filterRootId: 'kaprodiReturnFilters',
-        pageSizeId: 'kaprodiReturnPageSize',
-        totalId: 'kaprodiReturnTotal',
-        pageStatusId: 'kaprodiReturnPageStatus',
-        paginationId: 'kaprodiReturnPagination',
-        emptyId: 'kaprodiReturnEmpty',
-        sortSelector: '[data-return-sort]',
-        sortAttribute: 'data-return-sort'
-    });
+    initMultiFilter('kaprodiApprovalFilters');
+    initMultiFilter('kaprodiReturnFilters');
 });
 </script>
 </body>

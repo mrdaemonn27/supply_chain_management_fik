@@ -22,8 +22,12 @@ if ($logged_in) {
 
 $login_url  = base_url('index.php/auth');
 $signup_url = base_url('index.php/auth/signup');
+<<<<<<< HEAD
 $faq_endpoint = base_url('index.php/welcome/faq_search');
 $faqs = (isset($faqs) && is_array($faqs)) ? $faqs : array();
+=======
+$faq_items  = isset($faq_items) && is_array($faq_items) ? array_values($faq_items) : array();
+>>>>>>> origin/main
 
 // Satu-satunya aset tiga dimensi: kamera yang bodi dan lensanya terpisah,
 // sehingga keduanya bisa dianimasikan sendiri-sendiri.
@@ -32,6 +36,7 @@ $model_camera  = base_url('assets/models/camera-parts.glb');
 // digambar ulang di tiap frame gulir, jadi berkas 2,2 MB versi PNG-nya terlalu
 // berat untuk dipakai langsung. Berkas aslinya tetap ada di folder yang sama.
 $img_night     = base_url('assets/images/hero-campus-night.webp');
+$img_testimonials = base_url('assets/logo/BG-FIK-VSCO.jpg');
 $video_hero    = base_url('assets/uploads/videos/landing-cinematic.mp4');
 $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
 ?>
@@ -289,7 +294,7 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
            mengikuti gulir tanpa perlu disinkronkan. */
         .sec--photo {
             position: relative; overflow: hidden; color: var(--white);
-            background-image: url("<?= $img_night; ?>");
+            background-image: url("<?= $img_testimonials; ?>");
             background-attachment: fixed;
             background-position: center center;
             background-size: cover;
@@ -328,16 +333,6 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
         .rev__tx { flex: 1; margin: 20px 0 26px; color: var(--ink); font-size: 1.0625rem; font-weight: 450; line-height: 1.68; letter-spacing: -.01em; }
         .rev__by { color: var(--ink); font-size: .9375rem; font-weight: 600; }
         .rev__ro { margin-top: 4px; color: var(--gray); font-size: .875rem; }
-
-        /* ============ AKORDION ============ */
-        .acc { border-top: 1px solid var(--line); }
-        .acc__item { border-bottom: 1px solid var(--line); }
-        .acc__hd { display: flex; align-items: center; justify-content: space-between; gap: 22px; width: 100%; padding: 28px 0; background: none; border: 0; text-align: left; cursor: pointer; color: var(--ink); font-size: var(--fs-h3); font-weight: 700; letter-spacing: -.02em; transition: color .28s; }
-        .acc__hd:hover { color: var(--acc); }
-        .acc__hd i { color: var(--gray); font-size: .85rem; flex-shrink: 0; transition: transform .35s var(--ease), color .3s; }
-        .acc__item.is-open .acc__hd i { transform: rotate(45deg); color: var(--acc); }
-        .acc__bd { overflow: hidden; height: 0; }
-        .acc__bd p { max-width: 56ch; margin: 0 0 28px; color: var(--gray); font-size: var(--fs-body); line-height: 1.7; }
 
         /* ============ FOOTER ============ */
         .foot { position: relative; z-index: 5; padding: clamp(80px, 11vh, 140px) var(--gutter) 0; color: #eef1f3; background: #272b30; border-top: 3px solid var(--acc); }
@@ -472,11 +467,13 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
             *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
             .prog, .cur { display: none; }
             .line { overflow: visible; }
-            .acc__bd { height: auto; }
         }
     </style>
+    <link rel="stylesheet" href="<?= base_url('assets/css/filter-autocomplete.css') ?>?v=<?= @filemtime(FCPATH . 'assets/css/filter-autocomplete.css') ?>">
+    <script defer src="<?= base_url('assets/js/filter-autocomplete.js') ?>?v=<?= @filemtime(FCPATH . 'assets/js/filter-autocomplete.js') ?>"></script>
     <link rel="stylesheet" href="<?= base_url('assets/css/landing-particles.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/landing-particles.css'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/landing-video.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/landing-video.css'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/faq-assistant.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/faq-assistant.css'); ?>">
 </head>
 <body class="is-loading">
     <noscript>
@@ -517,10 +514,6 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
             <a class="nav__brand" href="<?= base_url(); ?>" aria-label="SCM FIK — Beranda">
                 <img src="<?= base_url('assets/logo/logo.webp'); ?>" alt="Logo Fakultas Industri Kreatif">
             </a>
-            <div class="nav__act">
-                <a class="btn btn--ghost btn--sm" href="<?= $login_url; ?>">Masuk</a>
-                <a class="btn btn--dark btn--sm" href="<?= $signup_url; ?>">Daftar</a>
-            </div>
         </div>
     </nav>
 
@@ -701,14 +694,25 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
         </div>
 
         <div class="solid">
+<<<<<<< HEAD
             <!-- 10 FAQ — sumber pertanyaan dan jawaban berasal dari tabel FAQ aktif -->
+=======
+            <!-- 10 FAQ Assistant — data berasal dari tabel faq -->
+>>>>>>> origin/main
             <section class="sec">
-                <div class="sec__in split">
-                    <div class="split__copy">
-                        <p class="eyebrow" data-fade>FAQ</p>
-                        <h2 class="h2" data-fade>Hal yang sering <span class="hl">ditanya</span>.</h2>
-                        <p class="sub" data-fade>Belum terjawab? Hubungi laboran melalui dashboard.</p>
+                <div class="sec__in faq-promo">
+                    <div class="faq-promo__copy">
+                        <p class="eyebrow" data-fade>FAQ Assistant</p>
+                        <h2 class="h2" data-fade>Tanyakan alur SCM, temukan jawaban <span class="hl">seketika</span>.</h2>
+                        <p class="sub" data-fade>Pilih pertanyaan atau cari topik tentang pengajuan, persetujuan, QR, dan pengembalian barang.</p>
+                        <div class="faq-promo__actions" data-fade>
+                            <button class="btn btn--dark" type="button" data-faq-open>
+                                Buka FAQ Assistant <i class="bi bi-chat-dots btn__ar" aria-hidden="true"></i>
+                            </button>
+                            <span class="faq-promo__note"><i class="bi bi-database-check" aria-hidden="true"></i> Jawaban bersumber dari fitur SCM FIK</span>
+                        </div>
                     </div>
+<<<<<<< HEAD
                     <div class="acc split__media" data-fade>
                         <?php if (!empty($faqs)): ?>
                             <?php foreach ($faqs as $index => $faq): ?>
@@ -725,6 +729,27 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                                 <div class="acc__bd" style="height:auto"><p>FAQ belum tersedia saat ini.</p></div>
                             </div>
                         <?php endif; ?>
+=======
+                    <div class="faq-demo" data-fade>
+                        <div class="faq-demo__head">
+                            <span class="faq-avatar" aria-hidden="true"><i class="bi bi-stars"></i></span>
+                            <div>
+                                <p class="faq-demo__title">SCM FIK Assistant</p>
+                                <p class="faq-demo__status">Siap membantu</p>
+                            </div>
+                        </div>
+                        <div class="faq-demo__body">
+                            <p class="faq-demo__bubble">Halo! Ada yang ingin diketahui tentang peminjaman aset FIK?</p>
+                            <div class="faq-demo__questions">
+                                <?php foreach (array_slice($faq_items, 0, 3, true) as $faq_index => $faq): ?>
+                                    <button class="faq-demo__question" type="button" data-faq-open data-faq-index="<?= (int) $faq_index; ?>">
+                                        <?= html_escape($faq['question']); ?>
+                                        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+>>>>>>> origin/main
                     </div>
                 </div>
             </section>
@@ -766,6 +791,61 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
             <span>Sistem Supply Chain Management</span>
         </div>
     </footer>
+
+    <button class="faq-launcher" id="faqLauncher" type="button" aria-controls="faqAssistant" aria-expanded="false">
+        <span class="faq-launcher__icon" aria-hidden="true"><i class="bi bi-chat-dots-fill"></i></span>
+        <span>Tanya SCM FIK</span>
+        <span class="faq-launcher__badge" aria-hidden="true"></span>
+    </button>
+
+    <section class="faq-assistant" id="faqAssistant" role="dialog" aria-modal="false" aria-labelledby="faqAssistantTitle" aria-hidden="true">
+        <header class="faq-assistant__head">
+            <span class="faq-avatar" aria-hidden="true"><i class="bi bi-stars"></i></span>
+            <div class="faq-assistant__identity">
+                <h2 class="faq-assistant__title" id="faqAssistantTitle">SCM FIK Assistant</h2>
+                <p class="faq-assistant__status">FAQ layanan aset</p>
+            </div>
+            <button class="faq-assistant__close" id="faqClose" type="button" aria-label="Tutup FAQ Assistant">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </header>
+
+        <div class="faq-assistant__chat" id="faqChat" role="log" aria-live="polite" aria-relevant="additions">
+            <div class="faq-message faq-message--assistant">
+                <span class="faq-message__avatar" aria-hidden="true"><i class="bi bi-stars"></i></span>
+                <div class="faq-message__bubble">Halo! Saya membantu menjelaskan fitur dan alur peminjaman SCM FIK. Cari atau pilih salah satu pertanyaan di bawah.</div>
+            </div>
+        </div>
+
+        <div class="faq-assistant__browser">
+            <div class="faq-search">
+                <label class="faq-search__sr" for="faqSearch">Cari pertanyaan FAQ</label>
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <input class="faq-search__input" id="faqSearch" type="search" placeholder="Cari pertanyaan, misalnya QR..." autocomplete="off">
+                <button class="faq-search__clear" id="faqSearchClear" type="button" aria-label="Hapus pencarian">
+                    <i class="bi bi-x" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="faq-assistant__label">
+                <span>Pertanyaan umum</span>
+                <span id="faqResultCount"><?= count($faq_items); ?> pertanyaan</span>
+            </div>
+            <div class="faq-question-list" id="faqQuestionList">
+                <?php foreach ($faq_items as $faq_index => $faq): ?>
+                    <button class="faq-question" type="button" data-faq-question data-faq-index="<?= (int) $faq_index; ?>">
+                        <span><?= html_escape($faq['question']); ?></span>
+                        <i class="bi bi-chevron-right" aria-hidden="true"></i>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+            <p class="faq-empty" id="faqEmpty">Pertanyaan tidak ditemukan. Coba kata kunci lain atau hubungi Laboran melalui dashboard.</p>
+            <div class="faq-assistant__label">
+                <span class="faq-assistant__data-source">Sumber data: tabel FAQ SCM FIK</span>
+            </div>
+        </div>
+    </section>
+
+    <script type="application/json" id="faqData"><?= json_encode($faq_items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?></script>
 
     <button class="ico top" id="top" type="button" aria-label="Kembali ke atas"><i class="bi bi-arrow-up" aria-hidden="true"></i></button>
     <div class="cur" id="cur" aria-hidden="true"></div>
@@ -1512,6 +1592,7 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                 });
             }
 
+<<<<<<< HEAD
             function accordions() {
                 doc.querySelectorAll(".acc").forEach((acc) => {
                     const items = Array.from(acc.querySelectorAll(".acc__item"));
@@ -1735,6 +1816,8 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                 });
             }
 
+=======
+>>>>>>> origin/main
             function chrome() {
                 let q = false;
                 addEventListener("scroll", () => {
@@ -1795,7 +1878,6 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                 body.classList.remove("is-loading");
                 doc.querySelectorAll("[data-fade], [data-stagger] > *, .w").forEach((e) => { e.style.opacity = "1"; });
                 doc.querySelectorAll(".line > span, .w").forEach((e) => { e.style.transform = "none"; });
-                doc.querySelectorAll(".acc__bd").forEach((e) => { e.style.height = "auto"; });
                 if (prog) prog.style.display = "none";
             }
 
@@ -1811,7 +1893,7 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                 ScrollTrigger.config({ ignoreMobileResize: true });
 
                 smooth(); opening(); headings(); reveals();
-                accordions(); glows(); cursor();
+                glows(); cursor();
 
                 const refresh = () => ScrollTrigger.refresh();
                 if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(refresh).catch(refresh);
@@ -1833,5 +1915,6 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
     </script>
     <script src="<?= base_url('assets/js/hero-video.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/hero-video.js'); ?>"></script>
     <script src="<?= base_url('assets/js/landing-lab-coverflow.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/landing-lab-coverflow.js'); ?>"></script>
+    <script src="<?= base_url('assets/js/faq-assistant.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/faq-assistant.js'); ?>"></script>
 </body>
 </html>

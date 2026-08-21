@@ -13,12 +13,28 @@ class Peminjaman_model extends CI_Model {
     private $table_peminjaman_detail = 'peminjaman_detail';
     private $table_notifikasi = 'notifikasi_progress';
     private $table_blokir = 'blokir_pengguna';
+    private $table_settings = 'peminjaman_settings';
+    private $last_expired_count = 0;
+    private $workflow_schema_version = 2;
 
     public function __construct() {
         parent::__construct();
         $this->load->database();
         $this->load->helper('url');
-        $this->ensure_workflow_schema();
+        $this->load->model('Aset_model');
+        if (!$this->workflow_schema_is_current()) {
+            $this->ensure_workflow_schema();
+        }
+        $this->last_expired_count = $this->expire_overdue_kaprodi_approvals();
+    }
+
+    private function workflow_schema_is_current() {
+        if (!$this->db->table_exists($this->table_settings)
+            || !$this->db->field_exists('schema_version', $this->table_settings)) {
+            return false;
+        }
+        $row = $this->db->select('schema_version')->where('id_setting', 1)->get($this->table_settings)->row();
+        return $row && (int) $row->schema_version >= $this->workflow_schema_version;
     }
 
     private function ensure_workflow_schema() {
@@ -37,7 +53,7 @@ class Peminjaman_model extends CI_Model {
 
             if (!$this->db->field_exists('status_kaprodi', $this->table_peminjaman)) {
                 $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `status_kaprodi` varchar(20) NOT NULL DEFAULT 'Pending' AFTER `status`");
-                $this->db->query("UPDATE `{$this->table_peminjaman}` SET `status_kaprodi` = 'Disetujui' WHERE `status` NOT IN ('Menunggu ACC Kaprodi', 'Ditolak')");
+                $this->db->query("UPDATE `{$this->table_peminjaman}` SET `status_kaprodi` = 'Disetujui' WHERE `status` NOT IN ('Menunggu ACC Kaprodi', 'Ditolak', 'Kedaluwarsa / Ditolak Otomatis')");
             }
             if (!$this->db->field_exists('catatan_kaprodi', $this->table_peminjaman)) {
                 $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `catatan_kaprodi` text DEFAULT NULL AFTER `status_kaprodi`");
@@ -87,6 +103,8 @@ class Peminjaman_model extends CI_Model {
                 $this->db->query("ALTER TABLE `aset` MODIFY `kondisi` varchar(50) DEFAULT 'Baik'");
             }
         }
+
+        $this->ensure_stock_schema();
 
         if (!$this->db->table_exists($this->table_notifikasi)) {
             $this->db->query("CREATE TABLE `notifikasi_progress` (
@@ -155,6 +173,80 @@ class Peminjaman_model extends CI_Model {
                 KEY `idx_blokir_status` (`status`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
         }
+
+        $this->ensure_kaprodi_expiration_schema();
+        $this->db->where('id_setting', 1)->update($this->table_settings, [
+            'schema_version' => $this->workflow_schema_version,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+
+    private function ensure_kaprodi_expiration_schema() {
+        if (!$this->db->table_exists($this->table_settings)) {
+            $this->db->query("CREATE TABLE `{$this->table_settings}` (
+                `id_setting` tinyint(3) unsigned NOT NULL DEFAULT 1,
+                `kaprodi_approval_days` int(11) NOT NULL DEFAULT 4,
+                `schema_version` int(11) NOT NULL DEFAULT 0,
+                `updated_by` int(11) DEFAULT NULL,
+                `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+                `updated_at` datetime DEFAULT NULL,
+                PRIMARY KEY (`id_setting`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        }
+        if (!$this->db->field_exists('schema_version', $this->table_settings)) {
+            $this->db->query("ALTER TABLE `{$this->table_settings}` ADD `schema_version` int(11) NOT NULL DEFAULT 0 AFTER `kaprodi_approval_days`");
+        }
+        $this->db->query("INSERT IGNORE INTO `{$this->table_settings}` (`id_setting`, `kaprodi_approval_days`, `updated_at`) VALUES (1, 4, NOW())");
+
+        if (!$this->db->table_exists($this->table_peminjaman)) return;
+        if (!$this->db->field_exists('kaprodi_approval_limit_days', $this->table_peminjaman)) {
+            $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `kaprodi_approval_limit_days` int(11) DEFAULT NULL AFTER `status_kaprodi`");
+        }
+        if (!$this->db->field_exists('kaprodi_deadline_at', $this->table_peminjaman)) {
+            $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `kaprodi_deadline_at` datetime DEFAULT NULL AFTER `kaprodi_approval_limit_days`");
+        }
+        if (!$this->db->field_exists('kaprodi_expired_at', $this->table_peminjaman)) {
+            $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `kaprodi_expired_at` datetime DEFAULT NULL AFTER `kaprodi_deadline_at`");
+        }
+        $expiry_index = $this->db->query("SHOW INDEX FROM `{$this->table_peminjaman}` WHERE Key_name = 'idx_kaprodi_expiry'")->row();
+        if (!$expiry_index) {
+            $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD INDEX `idx_kaprodi_expiry` (`status`, `status_kaprodi`, `kaprodi_deadline_at`)");
+        }
+
+        $days = $this->get_kaprodi_approval_days();
+        // Data lama mendapat masa transisi dari waktu migrasi, bukan dihitung
+        // mundur dari created_at, sehingga rollout tidak menolak data massal.
+        $this->db->query("UPDATE `{$this->table_peminjaman}`
+            SET `kaprodi_approval_limit_days` = ?,
+                `kaprodi_deadline_at` = DATE_ADD(NOW(), INTERVAL {$days} DAY)
+            WHERE `status` = 'Menunggu ACC Kaprodi'
+              AND `status_kaprodi` = 'Pending'
+              AND `kaprodi_deadline_at` IS NULL", [$days]);
+    }
+
+    public function get_loan_settings() {
+        $row = $this->db->where('id_setting', 1)->get($this->table_settings)->row();
+        return $row ?: (object) [
+            'id_setting' => 1,
+            'kaprodi_approval_days' => 4,
+            'updated_by' => null,
+            'updated_at' => null,
+        ];
+    }
+
+    public function get_kaprodi_approval_days() {
+        $settings = $this->get_loan_settings();
+        return min(30, max(1, (int) ($settings->kaprodi_approval_days ?? 4)));
+    }
+
+    public function update_kaprodi_approval_days($days, $updated_by = null) {
+        $days = (int) $days;
+        if ($days < 1 || $days > 30) return false;
+        return $this->db->where('id_setting', 1)->update($this->table_settings, [
+            'kaprodi_approval_days' => $days,
+            'updated_by' => $updated_by ?: null,
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]);
     }
 
     // ===================== PEMINJAM =====================
@@ -205,10 +297,389 @@ class Peminjaman_model extends CI_Model {
     }
 
     /**
+     * Membuat pengajuan dan reservasi dalam satu transaksi atomik.
+     * Return false berarti stok sudah berubah/tidak cukup atau INSERT gagal.
+     */
+    public function create_with_stock_reservation(array $data) {
+        $id_aset = (int) ($data['id_aset'] ?? 0);
+        $jumlah = (int) ($data['jumlah_pinjam'] ?? 0);
+        if ($id_aset < 1 || $jumlah < 1) return false;
+
+        $days = $this->get_kaprodi_approval_days();
+        $created_at = !empty($data['created_at']) && strtotime((string) $data['created_at']) !== false
+            ? (string) $data['created_at']
+            : date('Y-m-d H:i:s');
+        $db_now_row = $this->db->query('SELECT NOW() AS db_now')->row();
+        $deadline_base = (string) ($db_now_row->db_now ?? $created_at);
+        $data['created_at'] = $created_at;
+        $data['kaprodi_approval_limit_days'] = $days;
+        $data['kaprodi_deadline_at'] = date('Y-m-d H:i:s', strtotime('+' . $days . ' days', strtotime($deadline_base)));
+        $data['kaprodi_expired_at'] = null;
+
+        $this->db->trans_begin();
+        if (!$this->Aset_model->reserve_stock($id_aset, $jumlah)) {
+            $this->db->trans_rollback();
+            return false;
+        }
+
+        $data['jumlah_pinjam'] = $jumlah;
+        $data['stock_allocation_status'] = 'reserved';
+        $data['stock_allocated_at'] = date('Y-m-d H:i:s');
+        $data['stock_released_at'] = null;
+        if (!$this->db->insert($this->table_peminjaman, $data)) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $id = (int) $this->db->insert_id();
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $this->db->trans_commit();
+        return $id;
+    }
+
+    private function allocation_rows_for_update($group_id) {
+        if (strpos((string) $group_id, 'single-') === 0) {
+            return $this->db->query('SELECT * FROM `' . $this->table_peminjaman . '` WHERE id_peminjaman = ? FOR UPDATE', [(int) str_replace('single-', '', $group_id)])->result();
+        }
+        return $this->db->query('SELECT * FROM `' . $this->table_peminjaman . '` WHERE group_id = ? ORDER BY id_peminjaman ASC FOR UPDATE', [(string) $group_id])->result();
+    }
+
+    /** Pastikan data legacy juga mempunyai reservasi sebelum approval lanjut. */
+    public function ensure_group_reserved($group_id) {
+        $this->db->trans_begin();
+        $rows = $this->allocation_rows_for_update($group_id);
+        if (empty($rows)) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        foreach ($rows as $row) {
+            $state = (string) ($row->stock_allocation_status ?? 'none');
+            if (in_array($state, ['reserved', 'borrowed'], true)) continue;
+            if (!in_array($state, ['none', 'awaiting_stock'], true)
+                || !$this->Aset_model->reserve_stock($row->id_aset, $row->jumlah_pinjam)) {
+                $this->db->trans_rollback();
+                return false;
+            }
+            $this->db->where('id_peminjaman', $row->id_peminjaman)->update($this->table_peminjaman, [
+                'stock_allocation_status' => 'reserved',
+                'stock_allocated_at' => date('Y-m-d H:i:s'),
+                'stock_released_at' => null,
+            ]);
+        }
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $this->db->trans_commit();
+        return true;
+    }
+
+    /**
+     * Mengunci status workflow dan reservasi dalam transaksi yang sama agar
+     * aksi setuju/tolak bersamaan tidak menghasilkan status tanpa stok.
+     */
+    public function approve_group_with_reservation($group_id, array $expected_statuses, array $status_update) {
+        if (empty($expected_statuses)) return false;
+
+        $this->db->trans_begin();
+        $rows = $this->allocation_rows_for_update($group_id);
+        if (empty($rows)) {
+            $this->db->trans_rollback();
+            return false;
+        }
+
+        foreach ($rows as $row) {
+            if (!in_array((string) $row->status, $expected_statuses, true)) {
+                $this->db->trans_rollback();
+                return false;
+            }
+            $state = (string) ($row->stock_allocation_status ?? 'none');
+            if ($state === 'reserved') continue;
+            if (!in_array($state, ['none', 'awaiting_stock'], true)
+                || !$this->Aset_model->reserve_stock($row->id_aset, $row->jumlah_pinjam)) {
+                $this->db->trans_rollback();
+                return false;
+            }
+            $this->db->where('id_peminjaman', $row->id_peminjaman)->update($this->table_peminjaman, [
+                'stock_allocation_status' => 'reserved',
+                'stock_allocated_at' => date('Y-m-d H:i:s'),
+                'stock_released_at' => null,
+            ]);
+        }
+
+        $status_update['updated_at'] = $status_update['updated_at'] ?? date('Y-m-d H:i:s');
+        if (strpos((string) $group_id, 'single-') === 0) {
+            $this->db->where('id_peminjaman', (int) str_replace('single-', '', $group_id));
+        } else {
+            $this->db->where('group_id', $group_id);
+        }
+        $this->db->update($this->table_peminjaman, $status_update);
+
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $this->db->trans_commit();
+        return true;
+    }
+
+    /** Penolakan + pelepasan reservasi dilakukan atomik dan idempotent. */
+    public function reject_group_and_release($group_id, array $status_update, array $expected_statuses = []) {
+        $this->db->trans_begin();
+        $rows = $this->allocation_rows_for_update($group_id);
+        if (empty($rows)) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $now = date('Y-m-d H:i:s');
+        foreach ($rows as $row) {
+            if (!empty($expected_statuses) && !in_array((string) $row->status, $expected_statuses, true)) {
+                $this->db->trans_rollback();
+                return false;
+            }
+            $state = (string) ($row->stock_allocation_status ?? 'none');
+            if ($state === 'borrowed') {
+                $this->db->trans_rollback();
+                return false;
+            }
+            if ($state === 'reserved' && !$this->Aset_model->release_reserved_stock($row->id_aset, $row->jumlah_pinjam)) {
+                $this->db->trans_rollback();
+                return false;
+            }
+            if (in_array($state, ['reserved', 'none', 'awaiting_stock'], true)) {
+                $this->db->where('id_peminjaman', $row->id_peminjaman)->update($this->table_peminjaman, [
+                    'stock_allocation_status' => 'released',
+                    'stock_released_at' => $now,
+                ]);
+            }
+        }
+        $status_update['updated_at'] = $now;
+        if (strpos((string) $group_id, 'single-') === 0) {
+            $this->db->where('id_peminjaman', (int) str_replace('single-', '', $group_id));
+        } else {
+            $this->db->where('group_id', $group_id);
+        }
+        $this->db->update($this->table_peminjaman, $status_update);
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $this->db->trans_commit();
+        return true;
+    }
+
+    /**
+     * Menolak seluruh group jika tenggat Kaprodi benar-benar sudah lewat.
+     * Lock baris membuatnya aman terhadap klik Setujui pada waktu bersamaan.
+     */
+    private function expire_kaprodi_group_if_due($group_id, $now) {
+        $this->db->trans_begin();
+        $rows = $this->allocation_rows_for_update($group_id);
+        if (empty($rows)) {
+            $this->db->trans_rollback();
+            return false;
+        }
+
+        foreach ($rows as $row) {
+            if ((string) $row->status !== 'Menunggu ACC Kaprodi'
+                || (string) ($row->status_kaprodi ?? 'Pending') !== 'Pending'
+                || empty($row->kaprodi_deadline_at)
+                || strtotime((string) $row->kaprodi_deadline_at) > strtotime($now)) {
+                $this->db->trans_rollback();
+                return false;
+            }
+        }
+
+        foreach ($rows as $row) {
+            $state = (string) ($row->stock_allocation_status ?? 'none');
+            if ($state === 'reserved'
+                && !$this->Aset_model->release_reserved_stock($row->id_aset, $row->jumlah_pinjam)) {
+                $this->db->trans_rollback();
+                return false;
+            }
+            if (in_array($state, ['reserved', 'none', 'awaiting_stock'], true)) {
+                $this->db->where('id_peminjaman', $row->id_peminjaman)->update($this->table_peminjaman, [
+                    'stock_allocation_status' => 'released',
+                    'stock_released_at' => $now,
+                ]);
+            } elseif ($state !== 'released') {
+                $this->db->trans_rollback();
+                return false;
+            }
+        }
+
+        $status_update = [
+            'status' => 'Kedaluwarsa / Ditolak Otomatis',
+            'status_kaprodi' => 'Ditolak',
+            'catatan_kaprodi' => 'Batas waktu persetujuan Kaprodi telah kedaluwarsa.',
+            'tgl_approve_kaprodi' => $now,
+            'id_approver_kaprodi' => null,
+            'kaprodi_expired_at' => $now,
+            'updated_at' => $now,
+        ];
+        if (strpos((string) $group_id, 'single-') === 0) {
+            $this->db->where('id_peminjaman', (int) str_replace('single-', '', $group_id));
+        } else {
+            $this->db->where('group_id', $group_id);
+        }
+        $this->db->update($this->table_peminjaman, $status_update);
+
+        $recipient_user_id = (int) ($rows[0]->id_user ?? 0);
+        if ($recipient_user_id > 0) {
+            $message = 'Batas waktu persetujuan Kaprodi telah kedaluwarsa. Pengajuan peminjaman dibatalkan secara otomatis. Silakan lakukan peminjaman kembali jika barang masih dibutuhkan.';
+            if (!$this->create_notifikasi(
+                null,
+                $recipient_user_id,
+                'Pengajuan peminjaman kedaluwarsa',
+                $message,
+                site_url('peminjaman/riwayat'),
+                'peminjaman_expired',
+                (int) $rows[0]->id_peminjaman
+            )) {
+                $this->db->trans_rollback();
+                return false;
+            }
+        }
+
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $this->db->trans_commit();
+        return true;
+    }
+
+    /** Dipanggil pada bootstrap aplikasi dan dapat dipanggil dari task CLI. */
+    public function expire_overdue_kaprodi_approvals($limit = 200) {
+        $limit = min(1000, max(1, (int) $limit));
+        $db_now_row = $this->db->query('SELECT NOW() AS db_now')->row();
+        $now = (string) ($db_now_row->db_now ?? date('Y-m-d H:i:s'));
+        $candidates = $this->db->select("COALESCE(NULLIF(group_id, ''), CONCAT('single-', id_peminjaman)) AS group_ref", false)
+            ->from($this->table_peminjaman)
+            ->where('status', 'Menunggu ACC Kaprodi')
+            ->where('status_kaprodi', 'Pending')
+            ->where('kaprodi_deadline_at IS NOT NULL', null, false)
+            ->where('kaprodi_deadline_at <=', $now)
+            ->group_by("COALESCE(NULLIF(group_id, ''), CONCAT('single-', id_peminjaman))", false)
+            ->order_by('MIN(kaprodi_deadline_at)', 'ASC', false)
+            ->limit($limit)
+            ->get()->result();
+
+        $expired = 0;
+        foreach ($candidates as $candidate) {
+            if ($this->expire_kaprodi_group_if_due($candidate->group_ref, $now)) {
+                $expired++;
+            }
+        }
+        return $expired;
+    }
+
+    public function get_last_expired_count() {
+        return (int) $this->last_expired_count;
+    }
+
+    public function convert_reservation_to_borrowed($id_peminjaman, $jumlah_aktual) {
+        $jumlah_aktual = max(0, (int) $jumlah_aktual);
+        $this->db->trans_begin();
+        $row = $this->db->query('SELECT * FROM `' . $this->table_peminjaman . '` WHERE id_peminjaman = ? LIMIT 1 FOR UPDATE', [(int) $id_peminjaman])->row();
+        if (!$row || $jumlah_aktual > (int) $row->jumlah_pinjam) {
+            $this->db->trans_rollback();
+            return false;
+        }
+
+        $reserved = (int) $row->jumlah_pinjam;
+        $state = (string) ($row->stock_allocation_status ?? 'none');
+        if (in_array($state, ['none', 'awaiting_stock'], true)) {
+            if (!$this->Aset_model->reserve_stock($row->id_aset, $reserved)) {
+                $this->db->trans_rollback();
+                return false;
+            }
+            $state = 'reserved';
+        }
+        if ($state !== 'reserved') {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $ok = $jumlah_aktual === 0
+            ? $this->Aset_model->release_reserved_stock($row->id_aset, $reserved)
+            : $this->Aset_model->reserved_to_borrowed($row->id_aset, $reserved, $jumlah_aktual);
+        if (!$ok) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $this->db->where('id_peminjaman', $row->id_peminjaman)->update($this->table_peminjaman, [
+            'jumlah_pinjam' => $jumlah_aktual,
+            'stock_allocation_status' => $jumlah_aktual > 0 ? 'borrowed' : 'released',
+            'stock_released_at' => $jumlah_aktual > 0 ? null : date('Y-m-d H:i:s'),
+        ]);
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $this->db->trans_commit();
+        return true;
+    }
+
+    public function return_stock_allocation($id_peminjaman, $jumlah_kembali, $make_available = true) {
+        $jumlah_kembali = max(0, (int) $jumlah_kembali);
+        $this->db->trans_begin();
+        $row = $this->db->query('SELECT * FROM `' . $this->table_peminjaman . '` WHERE id_peminjaman = ? LIMIT 1 FOR UPDATE', [(int) $id_peminjaman])->row();
+        if (!$row) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $state = (string) ($row->stock_allocation_status ?? 'none');
+        if (in_array($state, ['returned', 'unavailable', 'partial_unavailable'], true)) {
+            $this->db->trans_commit();
+            return true;
+        }
+        $borrowed_qty = max(0, (int) $row->jumlah_pinjam);
+        if ($state === 'released' && $borrowed_qty === 0) {
+            $this->db->where('id_peminjaman', $row->id_peminjaman)->update($this->table_peminjaman, [
+                'jumlah_kembali' => 0,
+                'stock_allocation_status' => 'returned',
+                'stock_released_at' => date('Y-m-d H:i:s'),
+            ]);
+            if ($this->db->trans_status() === false) {
+                $this->db->trans_rollback();
+                return false;
+            }
+            $this->db->trans_commit();
+            return true;
+        }
+        if ($state !== 'borrowed' || $jumlah_kembali > $borrowed_qty) {
+            $this->db->trans_rollback();
+            return false;
+        }
+
+        if ($make_available && $jumlah_kembali > 0
+            && !$this->Aset_model->return_borrowed_stock($row->id_aset, $jumlah_kembali, true)) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $allocation_status = !$make_available
+            ? 'unavailable'
+            : ($jumlah_kembali === $borrowed_qty ? 'returned' : 'partial_unavailable');
+        $this->db->where('id_peminjaman', $row->id_peminjaman)->update($this->table_peminjaman, [
+            'jumlah_kembali' => $jumlah_kembali,
+            'stock_allocation_status' => $allocation_status,
+            'stock_released_at' => date('Y-m-d H:i:s'),
+        ]);
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        $this->db->trans_commit();
+        return true;
+    }
+
+    /**
      * SEARCH PEMINJAMAN - DENGAN URUTAN TERBARU DI ATAS
      * FIX: Menambahkan ORDER BY yang benar untuk menampilkan data terbaru di paling atas
      */
-    public function search_peminjaman($filters = []) {
+    public function search_peminjaman($filters = [], $limit = null, $offset = 0) {
         // Select dengan GROUP BY group_id
         $this->db->select('
             COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman)) as group_id,
@@ -219,6 +690,9 @@ class Peminjaman_model extends CI_Model {
             MAX(p.tanggal_kembali_actual) as tanggal_kembali_actual,
             MAX(p.status) as status,
             MAX(p.status_kaprodi) as status_kaprodi,
+            MAX(p.kaprodi_approval_limit_days) as kaprodi_approval_limit_days,
+            MAX(p.kaprodi_deadline_at) as kaprodi_deadline_at,
+            MAX(p.kaprodi_expired_at) as kaprodi_expired_at,
             MAX(p.status_laboran) as status_laboran,
             MAX(p.status_kaur) as status_kaur,
             MAX(p.keperluan) as keperluan,
@@ -236,95 +710,7 @@ class Peminjaman_model extends CI_Model {
         $this->db->from($this->table_peminjaman . ' as p');
         $this->db->join('peminjam', 'peminjam.id_peminjam = p.id_peminjam', 'left');
         
-        // Filter status
-        if (!empty($filters['status'])) {
-            if ($filters['status'] == 'Terlambat') {
-                $this->db->where_in('p.status', ['Sedang Dipinjam', 'Dipinjam']);
-                $this->db->where('p.tanggal_kembali_rencana <', date('Y-m-d'));
-            } else {
-                $this->db->where('p.status', $filters['status']);
-            }
-        } elseif (!empty($filters['status_in']) && is_array($filters['status_in'])) {
-            $this->db->where_in('p.status', $filters['status_in']);
-        }
-
-        if (!empty($filters['exclude_status']) && is_array($filters['exclude_status'])) {
-            $this->db->where_not_in('p.status', $filters['exclude_status']);
-        }
-
-        // Filter bertingkat dari dashboard admin. Setiap baris filter digabungkan
-        // dengan AND agar Laboran dapat mempersempit hasil secara bertahap.
-        if (!empty($filters['multi_filters']) && is_array($filters['multi_filters'])) {
-            foreach ($filters['multi_filters'] as $filter) {
-                $field = (string) ($filter['field'] ?? '');
-                $value = trim((string) ($filter['value'] ?? ''));
-                if ($value === '') {
-                    continue;
-                }
-
-                switch ($field) {
-                    case 'peminjam':
-                        $this->db->group_start();
-                        $this->db->like('peminjam.nama_peminjam', $value);
-                        $this->db->or_like('peminjam.nim_nip', $value);
-                        $this->db->group_end();
-                        break;
-                    case 'barang':
-                        $search = '%' . $value . '%';
-                        $this->db->where("p.id_aset IN (
-                            SELECT a.id_aset FROM `aset` a
-                            WHERE a.nama_aset LIKE " . $this->db->escape($search) . "
-                               OR a.kode_aset LIKE " . $this->db->escape($search) . "
-                        )", null, false);
-                        break;
-                    case 'status':
-                        if ($value === 'Terlambat') {
-                            $this->db->where_in('p.status', ['Sedang Dipinjam', 'Dipinjam']);
-                            $this->db->where('p.tanggal_kembali_rencana <', date('Y-m-d'));
-                        } else {
-                            $this->db->where('p.status', $value);
-                        }
-                        break;
-                    case 'status_approval':
-                        $this->db->like('p.status', $value);
-                        break;
-                    case 'tanggal':
-                        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-                            $this->db->where('DATE(p.tanggal_pinjam)', $value);
-                        }
-                        break;
-                    case 'keperluan':
-                        $this->db->like('p.keperluan', $value);
-                        break;
-                }
-            }
-        }
-        
-        // Filter pencarian
-        if (!empty($filters['pencarian']) && trim($filters['pencarian']) != '') {
-            $search = '%' . trim($filters['pencarian']) . '%';
-            $this->db->group_start();
-            $this->db->like('peminjam.nama_peminjam', $search, 'both');
-            $this->db->or_like('peminjam.nim_nip', $search, 'both');
-            $this->db->or_like('p.keperluan', $search, 'both');
-            $this->db->or_where("p.id_aset IN (
-                SELECT a.id_aset FROM `aset` a
-                WHERE a.nama_aset LIKE " . $this->db->escape($search) . "
-                   OR a.kode_aset LIKE " . $this->db->escape($search) . "
-            )", null, false);
-            $this->db->group_end();
-        }
-        
-        // Filter tanggal
-        if (!empty($filters['tanggal'])) {
-            $this->db->where('DATE(p.tanggal_pinjam)', $filters['tanggal']);
-        }
-        if (!empty($filters['tanggal_dari'])) {
-            $this->db->where('DATE(p.tanggal_pinjam) >=', $filters['tanggal_dari']);
-        }
-        if (!empty($filters['tanggal_sampai'])) {
-            $this->db->where('DATE(p.tanggal_pinjam) <=', $filters['tanggal_sampai']);
-        }
+        $this->apply_peminjaman_search_filters($filters);
         
         $this->db->group_by('COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman))', false);
         
@@ -339,6 +725,15 @@ class Peminjaman_model extends CI_Model {
         $sort_key = $filters['sort_by'] ?? '';
         $sort_dir = strtoupper((string) ($filters['sort_dir'] ?? '')) === 'ASC' ? 'ASC' : 'DESC';
 
+        $action_role = strtolower((string) ($filters['action_role'] ?? ''));
+        if ($action_role === 'kaprodi') {
+            $this->db->order_by("CASE WHEN MAX(p.status) = 'Menunggu ACC Kaprodi' AND MAX(p.status_kaprodi) = 'Pending' THEN 0 ELSE 1 END", 'ASC', false);
+        } elseif ($action_role === 'laboran') {
+            $this->db->order_by("CASE WHEN MAX(p.status) IN ('Menunggu Verifikasi Laboran','Menunggu Pengecekan Laboran','Menunggu Persetujuan') AND MAX(p.status_kaprodi) = 'Disetujui' AND MAX(p.status_laboran) = 'Pending' THEN 0 ELSE 1 END", 'ASC', false);
+        } elseif ($action_role === 'kaur') {
+            $this->db->order_by("CASE WHEN MAX(p.status) = 'Menunggu ACC Kaur' AND MAX(p.status_kaprodi) = 'Disetujui' AND MAX(p.status_laboran) = 'Disetujui' AND MAX(p.status_kaur) = 'Pending' THEN 0 ELSE 1 END", 'ASC', false);
+        }
+
         if (isset($sort_map[$sort_key])) {
             $this->db->order_by($sort_map[$sort_key], $sort_dir);
             $this->db->order_by('id_peminjaman', 'DESC');
@@ -348,36 +743,161 @@ class Peminjaman_model extends CI_Model {
         }
         // ============================================
         
+        if ($limit !== null) {
+            $this->db->limit(max(1, (int) $limit), max(0, (int) $offset));
+        }
         $query = $this->db->get();
         $results = $query->result();
         
-        // Ambil detail barang untuk setiap group
+        if (empty($results)) return [];
+
+        $group_ids = [];
+        $single_ids = [];
         foreach ($results as $result) {
-            // Ambil SEMUA barang dalam group_id ini
-            $this->db->select('
-                p.id_peminjaman,
-                p.id_aset,
-                p.jumlah_pinjam,
-                a.nama_aset,
-                a.kode_aset,
-                r.nama_ruangan
-            ');
-            $this->db->from($this->table_peminjaman . ' as p');
-            $this->db->join('aset a', 'a.id_aset = p.id_aset', 'left');
-            $this->db->join('ruangan r', 'r.id_ruangan = a.id_ruangan', 'left');
             if (strpos((string) $result->group_id, 'single-') === 0) {
-                $this->db->where('p.id_peminjaman', (int) str_replace('single-', '', $result->group_id));
+                $single_ids[] = (int) str_replace('single-', '', $result->group_id);
             } else {
-                $this->db->where('p.group_id', $result->group_id);
+                $group_ids[] = (string) $result->group_id;
             }
-            $detail = $this->db->get()->result();
-            
-            $result->detail_barang = $detail;
+        }
+
+        $detail_map = [];
+        $this->db->select('COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman)) AS group_key, p.id_peminjaman, p.id_aset, p.jumlah_pinjam, a.nama_aset, a.kode_aset, r.nama_ruangan', false);
+        $this->db->from($this->table_peminjaman . ' as p');
+        $this->db->join('aset a', 'a.id_aset = p.id_aset', 'left');
+        $this->db->join('ruangan r', 'r.id_ruangan = a.id_ruangan', 'left');
+        $this->db->group_start();
+        if (!empty($group_ids)) $this->db->where_in('p.group_id', $group_ids);
+        if (!empty($single_ids)) {
+            if (!empty($group_ids)) $this->db->or_where_in('p.id_peminjaman', $single_ids);
+            else $this->db->where_in('p.id_peminjaman', $single_ids);
+        }
+        $this->db->group_end();
+        foreach ($this->db->get()->result() as $detail) {
+            $detail_map[(string) $detail->group_key][] = $detail;
+        }
+
+        $evidence_map = [];
+        if ($this->db->table_exists('peminjaman_evidence')) {
+            $this->db->select('peminjaman_evidence.*, COALESCE(group_id, CONCAT("single-", id_peminjaman)) AS group_key', false);
+            $this->db->from('peminjaman_evidence')->where('jenis', 'serah_terima');
+            $this->db->group_start();
+            if (!empty($group_ids)) $this->db->where_in('group_id', $group_ids);
+            if (!empty($single_ids)) {
+                if (!empty($group_ids)) $this->db->or_where_in('id_peminjaman', $single_ids);
+                else $this->db->where_in('id_peminjaman', $single_ids);
+            }
+            $this->db->group_end()->order_by('created_at', 'DESC');
+            foreach ($this->db->get()->result() as $evidence) {
+                $evidence_map[(string) $evidence->group_key][] = $evidence;
+            }
+        }
+
+        foreach ($results as $result) {
+            $key = (string) $result->group_id;
+            $result->detail_barang = $detail_map[$key] ?? [];
             $result->kegiatan = $result->keperluan;
-            $result->evidence_serah = $this->get_evidence_by_group_id($result->group_id, 'serah_terima');
+            $result->evidence_serah = $evidence_map[$key] ?? [];
         }
         
         return $results;
+    }
+
+    public function count_visible_peminjaman($filters = []) {
+        if (!empty($filters['q']) && empty($filters['pencarian'])) {
+            $filters['pencarian'] = $filters['q'];
+        }
+        $this->db->select('COUNT(DISTINCT COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman))) AS total', false);
+        $this->db->from($this->table_peminjaman . ' as p');
+        $this->db->join('peminjam', 'peminjam.id_peminjam = p.id_peminjam', 'left');
+        $this->apply_peminjaman_search_filters($filters);
+        $row = $this->db->get()->row();
+        return (int) ($row->total ?? 0);
+    }
+
+    public function count_actionable_peminjaman($role, $filters = []) {
+        if (!empty($filters['q']) && empty($filters['pencarian'])) {
+            $filters['pencarian'] = $filters['q'];
+        }
+        $this->db->select('COUNT(DISTINCT COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman))) AS total', false);
+        $this->db->from($this->table_peminjaman . ' as p');
+        $this->db->join('peminjam', 'peminjam.id_peminjam = p.id_peminjam', 'left');
+        $this->apply_peminjaman_search_filters($filters);
+        if ($role === 'kaprodi') {
+            $this->db->where('p.status', 'Menunggu ACC Kaprodi')->where('p.status_kaprodi', 'Pending');
+        } elseif ($role === 'laboran') {
+            $this->db->where_in('p.status', ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu Persetujuan']);
+            $this->db->where('p.status_kaprodi', 'Disetujui')->where('p.status_laboran', 'Pending');
+        } elseif ($role === 'kaur') {
+            $this->db->where('p.status', 'Menunggu ACC Kaur');
+            $this->db->where('p.status_kaprodi', 'Disetujui')->where('p.status_laboran', 'Disetujui')->where('p.status_kaur', 'Pending');
+        } else {
+            return 0;
+        }
+        $row = $this->db->get()->row();
+        return (int) ($row->total ?? 0);
+    }
+
+    private function apply_peminjaman_search_filters(array $filters) {
+        if (!empty($filters['status'])) {
+            if ($filters['status'] === 'Terlambat') {
+                $this->db->where_in('p.status', ['Sedang Dipinjam', 'Dipinjam']);
+                $this->db->where('p.tanggal_kembali_rencana <', date('Y-m-d'));
+            } else {
+                $this->db->where('p.status', $filters['status']);
+            }
+        } elseif (!empty($filters['status_in']) && is_array($filters['status_in'])) {
+            $this->db->where_in('p.status', $filters['status_in']);
+        }
+        if (!empty($filters['exclude_status']) && is_array($filters['exclude_status'])) {
+            $this->db->where_not_in('p.status', $filters['exclude_status']);
+        }
+
+        foreach ((array) ($filters['multi_filters'] ?? []) as $filter) {
+            $field = (string) ($filter['field'] ?? '');
+            $value = trim((string) ($filter['value'] ?? ''));
+            if ($value === '') continue;
+            if ($field === 'peminjam') {
+                $this->db->group_start()->like('peminjam.nama_peminjam', $value)->or_like('peminjam.nim_nip', $value)->group_end();
+            } elseif ($field === 'barang') {
+                $search = '%' . $value . '%';
+                $this->db->where("p.id_aset IN (SELECT a.id_aset FROM `aset` a WHERE a.nama_aset LIKE " . $this->db->escape($search) . " OR a.kode_aset LIKE " . $this->db->escape($search) . ")", null, false);
+            } elseif ($field === 'lab') {
+                $search = '%' . $value . '%';
+                $this->db->where("p.id_aset IN (SELECT a.id_aset FROM `aset` a LEFT JOIN `ruangan` r ON r.id_ruangan = a.id_ruangan WHERE r.nama_ruangan LIKE " . $this->db->escape($search) . ")", null, false);
+            } elseif (in_array($field, ['status', 'status_approval'], true)) {
+                if ($value === 'Terlambat') {
+                    $this->db->where_in('p.status', ['Sedang Dipinjam', 'Dipinjam'])->where('p.tanggal_kembali_rencana <', date('Y-m-d'));
+                } else {
+                    $this->db->like('p.status', $value);
+                }
+            } elseif (in_array($field, ['tanggal', 'masa'], true)) {
+                $date_range = scm_parse_date_range($value);
+                if ($date_range) {
+                    $this->db->where('DATE(p.tanggal_pinjam) >=', $date_range['start'])->where('DATE(p.tanggal_pinjam) <=', $date_range['end']);
+                }
+            } elseif ($field === 'keperluan') {
+                $this->db->like('p.keperluan', $value);
+            } elseif ($field === 'jumlah' && ctype_digit($value)) {
+                $this->db->where('p.jumlah_pinjam', (int) $value);
+            } elseif ($field === 'number') {
+                $this->db->group_start()->like('p.group_id', $value)->or_where('p.id_peminjaman', (int) $value)->group_end();
+            }
+        }
+
+        if (!empty($filters['pencarian']) && trim((string) $filters['pencarian']) !== '') {
+            $search = '%' . trim((string) $filters['pencarian']) . '%';
+            $this->db->group_start();
+            $this->db->like('peminjam.nama_peminjam', $search, 'both')->or_like('peminjam.nim_nip', $search, 'both')->or_like('p.keperluan', $search, 'both');
+            $this->db->or_where("p.id_aset IN (SELECT a.id_aset FROM `aset` a WHERE a.nama_aset LIKE " . $this->db->escape($search) . " OR a.kode_aset LIKE " . $this->db->escape($search) . ")", null, false);
+            $this->db->group_end();
+        }
+        if (!empty($filters['tanggal'])) {
+            $date_range = scm_parse_date_range($filters['tanggal']);
+            if ($date_range) $this->db->where('DATE(p.tanggal_pinjam) >=', $date_range['start'])->where('DATE(p.tanggal_pinjam) <=', $date_range['end']);
+        }
+        if (!empty($filters['tanggal_dari'])) $this->db->where('DATE(p.tanggal_pinjam) >=', $filters['tanggal_dari']);
+        if (!empty($filters['tanggal_sampai'])) $this->db->where('DATE(p.tanggal_pinjam) <=', $filters['tanggal_sampai']);
     }
 
     /**
@@ -386,6 +906,108 @@ class Peminjaman_model extends CI_Model {
      */
     public function get_all_peminjaman() {
         return $this->search_peminjaman([]);
+    }
+
+    /**
+     * Menambahkan ledger stok tanpa merusak data lama. Rekonsiliasi dijalankan
+     * saat kolom dibuat atau saat dump lama masih mempunyai alokasi aktif 'none'.
+     */
+    private function ensure_stock_schema() {
+        if (!$this->db->table_exists('aset') || !$this->db->table_exists($this->table_peminjaman)) return;
+
+        $needs_backfill = false;
+        if (!$this->db->field_exists('jumlah_reserved', 'aset')) {
+            $this->db->query("ALTER TABLE `aset` ADD `jumlah_reserved` int(11) NOT NULL DEFAULT 0 AFTER `jumlah_total`");
+            $needs_backfill = true;
+        }
+        if (!$this->db->field_exists('jumlah_dipinjam', 'aset')) {
+            $this->db->query("ALTER TABLE `aset` ADD `jumlah_dipinjam` int(11) NOT NULL DEFAULT 0 AFTER `jumlah_reserved`");
+            $needs_backfill = true;
+        }
+        if (!$this->db->field_exists('stock_allocation_status', $this->table_peminjaman)) {
+            $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `stock_allocation_status` varchar(20) NOT NULL DEFAULT 'none' AFTER `jumlah_pinjam`");
+            $needs_backfill = true;
+        }
+        if (!$this->db->field_exists('stock_allocated_at', $this->table_peminjaman)) {
+            $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `stock_allocated_at` datetime DEFAULT NULL AFTER `stock_allocation_status`");
+            $needs_backfill = true;
+        }
+        if (!$this->db->field_exists('stock_released_at', $this->table_peminjaman)) {
+            $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `stock_released_at` datetime DEFAULT NULL AFTER `stock_allocated_at`");
+            $needs_backfill = true;
+        }
+        if (!$this->db->field_exists('jumlah_kembali', $this->table_peminjaman)) {
+            $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `jumlah_kembali` int(11) DEFAULT NULL AFTER `stock_released_at`");
+            $needs_backfill = true;
+        }
+
+        if (!$needs_backfill) {
+            $managed_statuses = [
+                'Menunggu Persetujuan', 'Menunggu ACC Kaprodi', 'Menunggu Verifikasi Laboran',
+                'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur',
+                'Disetujui (Menunggu Finalisasi QR)', 'Disetujui (Menunggu Pengambilan)',
+                'Sedang Dipinjam', 'Dipinjam'
+            ];
+            $needs_backfill = $this->db->where('stock_allocation_status', 'none')
+                ->where_in('status', $managed_statuses)
+                ->count_all_results($this->table_peminjaman) > 0;
+        }
+
+        if (!$needs_backfill) return;
+
+        $this->db->trans_start();
+        $this->db->query("UPDATE `aset` SET `jumlah_reserved` = 0, `jumlah_dipinjam` = 0, `jumlah_tersedia` = `jumlah_total`");
+        $this->db->query("UPDATE `{$this->table_peminjaman}` SET `stock_allocation_status` = CASE
+            WHEN `status` IN ('Sedang Dipinjam', 'Dipinjam') THEN 'borrowed'
+            WHEN `status` IN ('Dikembalikan', 'Selesai') THEN 'returned'
+            WHEN `status` IN ('Ditolak', 'Kedaluwarsa / Ditolak Otomatis') THEN 'released'
+            ELSE 'none' END,
+            `jumlah_kembali` = CASE WHEN `status` IN ('Dikembalikan', 'Selesai') THEN `jumlah_pinjam` ELSE NULL END");
+
+        $borrowed = $this->db->query("SELECT id_aset, SUM(jumlah_pinjam) AS qty
+            FROM `{$this->table_peminjaman}` WHERE status IN ('Sedang Dipinjam', 'Dipinjam') GROUP BY id_aset")->result();
+        foreach ($borrowed as $row) {
+            $qty = max(0, (int) $row->qty);
+            $this->db->query("UPDATE `aset` SET `jumlah_total` = GREATEST(`jumlah_total`, ?),
+                `jumlah_dipinjam` = ?, `jumlah_tersedia` = GREATEST(`jumlah_total`, ?) - ? WHERE `id_aset` = ?",
+                [$qty, $qty, $qty, $qty, (int) $row->id_aset]);
+        }
+
+        $pending_statuses = [
+            'Menunggu Persetujuan', 'Menunggu ACC Kaprodi', 'Menunggu Verifikasi Laboran',
+            'Menunggu Pengecekan Laboran', 'Menunggu ACC Kaur',
+            'Disetujui (Menunggu Finalisasi QR)', 'Disetujui (Menunggu Pengambilan)'
+        ];
+        $pending = $this->db->where_in('status', $pending_statuses)
+            ->order_by('created_at', 'ASC')->order_by('id_peminjaman', 'ASC')
+            ->get($this->table_peminjaman)->result();
+        foreach ($pending as $row) {
+            if ($this->Aset_model->reserve_stock($row->id_aset, $row->jumlah_pinjam)) {
+                $this->db->where('id_peminjaman', $row->id_peminjaman)->update($this->table_peminjaman, [
+                    'stock_allocation_status' => 'reserved',
+                    'stock_allocated_at' => $row->created_at ?: date('Y-m-d H:i:s'),
+                ]);
+            } else {
+                // Data legacy yang melebihi stok tidak memicu rekonsiliasi
+                // berulang; sistem akan mencoba reservasi lagi saat aksi berikutnya.
+                $this->db->where('id_peminjaman', $row->id_peminjaman)->update($this->table_peminjaman, [
+                    'stock_allocation_status' => 'awaiting_stock',
+                    'stock_released_at' => null,
+                ]);
+            }
+        }
+        $this->db->trans_complete();
+    }
+
+    /**
+     * Data peminjaman yang boleh dilihat lintas role. Tidak membatasi hasil
+     * berdasarkan giliran approval; hak aksi tetap divalidasi terpisah.
+     */
+    public function get_visible_peminjaman($filters = [], $limit = null, $offset = 0) {
+        if (!empty($filters['q']) && empty($filters['pencarian'])) {
+            $filters['pencarian'] = $filters['q'];
+        }
+        return $this->search_peminjaman($filters, $limit, $offset);
     }
 
     /**
@@ -668,12 +1290,17 @@ class Peminjaman_model extends CI_Model {
         return $this->search_peminjaman($filters);
     }
 
-    public function get_pengembalian_readonly($filters = []) {
+    public function get_pengembalian_readonly($filters = [], $limit = null, $offset = 0) {
         $filters['status_in'] = ['Sedang Dipinjam', 'Dipinjam', 'Dikembalikan'];
         if (!empty($filters['q']) && empty($filters['pencarian'])) {
             $filters['pencarian'] = $filters['q'];
         }
-        return $this->search_peminjaman($filters);
+        return $this->search_peminjaman($filters, $limit, $offset);
+    }
+
+    public function count_pengembalian_readonly($filters = []) {
+        $filters['status_in'] = ['Sedang Dipinjam', 'Dipinjam', 'Dikembalikan'];
+        return $this->count_visible_peminjaman($filters);
     }
 
     public function get_qr_payload($group_id) {
@@ -685,7 +1312,7 @@ class Peminjaman_model extends CI_Model {
     }
 
     public function finalize_qr($group_id, $id_user = null) {
-        return $this->update_group_status($group_id, [
+        return $this->approve_group_with_reservation($group_id, ['Disetujui (Menunggu Finalisasi QR)'], [
             'status' => 'Disetujui (Menunggu Pengambilan)',
             'qr_locked' => 1,
             'qr_finalized_at' => date('Y-m-d H:i:s'),
@@ -921,13 +1548,27 @@ class Peminjaman_model extends CI_Model {
     }
 
     public function delete_peminjaman($id) {
-        $peminjaman = $this->get_peminjaman_by_id($id);
-        
+        $this->db->trans_begin();
+        $peminjaman = $this->db->query(
+            'SELECT * FROM `' . $this->table_peminjaman . '` WHERE id_peminjaman = ? LIMIT 1 FOR UPDATE',
+            [(int) $id]
+        )->row();
         if (!$peminjaman) {
+            $this->db->trans_rollback();
             return false;
         }
-        
-        $this->db->trans_start();
+
+        $allocation = (string) ($peminjaman->stock_allocation_status ?? 'none');
+        if ($allocation === 'reserved'
+            && !$this->Aset_model->release_reserved_stock($peminjaman->id_aset, $peminjaman->jumlah_pinjam)) {
+            $this->db->trans_rollback();
+            return false;
+        }
+        if ($allocation === 'borrowed'
+            && !$this->Aset_model->return_borrowed_stock($peminjaman->id_aset, $peminjaman->jumlah_pinjam, true)) {
+            $this->db->trans_rollback();
+            return false;
+        }
 
         if ($this->db->table_exists($this->table_peminjaman_detail)) {
             $this->db->where('id_peminjaman', $id);
@@ -936,15 +1577,13 @@ class Peminjaman_model extends CI_Model {
 
         $this->db->where('id_peminjaman', $id);
         $this->db->delete($this->table_peminjaman);
-        
-        if (in_array($peminjaman->status, ['Sedang Dipinjam', 'Dipinjam'], true)) {
-            $this->load->model('Aset_model');
-            $this->Aset_model->kembalikan_jumlah_tersedia($peminjaman->id_aset, $peminjaman->jumlah_pinjam);
+
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
         }
-        
-        $this->db->trans_complete();
-        
-        return $this->db->trans_status();
+        $this->db->trans_commit();
+        return true;
     }
 
     /**
@@ -1214,7 +1853,21 @@ class Peminjaman_model extends CI_Model {
             $this->db->where('p.status', $filters['status']);
         }
         if (!empty($filters['tanggal'])) {
-            $this->db->where('DATE(p.tanggal_pinjam)', $filters['tanggal']);
+            $date_range = scm_parse_date_range($filters['tanggal']);
+            if ($date_range) {
+                $this->db->where('DATE(p.tanggal_pinjam) >=', $date_range['start']);
+                $this->db->where('DATE(p.tanggal_pinjam) <=', $date_range['end']);
+            }
+        }
+        foreach ((array) ($filters['multi_filters'] ?? []) as $filter) {
+            if (($filter['field'] ?? '') !== 'tanggal') {
+                continue;
+            }
+            $date_range = scm_parse_date_range($filter['value'] ?? '');
+            if ($date_range) {
+                $this->db->where('DATE(p.tanggal_pinjam) >=', $date_range['start']);
+                $this->db->where('DATE(p.tanggal_pinjam) <=', $date_range['end']);
+            }
         }
         if (!empty($filters['pencarian'])) {
             $search = trim($filters['pencarian']);

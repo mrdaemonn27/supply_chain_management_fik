@@ -91,3 +91,429 @@
     .scm-dashboard .topbar .btn:not(.notif-bell) { padding-left: 10px !important; padding-right: 10px !important; font-size: .74rem; }
     .scm-dashboard main { padding-top: 20px !important; }
 }
+
+/*
+ * Kaur pages share one light, compact content system. The scope is deliberately
+ * limited to the Kaur dashboard and the light theme so other roles and the
+ * existing dark dashboard mode keep their current presentation.
+ */
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur {
+    --scm-bg: #f5f6f8 !important;
+    --scm-surface: #ffffff !important;
+    --scm-surface-strong: #f8fafc !important;
+    --scm-border: #e5e7eb !important;
+    --scm-text: #1f2937 !important;
+    --scm-muted: #667085 !important;
+    --scm-orange: #ff7900 !important;
+    --scm-orange-soft: rgba(255, 121, 0, .10) !important;
+    --scm-green: #15803d !important;
+    --scm-red: #dc3545 !important;
+    --scm-blue: #2563eb !important;
+    background: var(--scm-bg) !important;
+    color: var(--scm-text) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .dashboard-content,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main {
+    background: var(--scm-bg) !important;
+    color: var(--scm-text) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main h1,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main h2,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main h3,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main h4,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main h5,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main h6,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .fw-bold,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .fw-semibold {
+    color: var(--scm-text) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .text-muted,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .small.text-muted,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .form-text,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .mini-label {
+    color: var(--scm-muted) !important;
+}
+
+/* Page header and module surfaces */
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-page-header {
+    margin-bottom: 24px !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .panel-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .summary-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .menu-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .quick-link,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-submission-table-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .approval-table-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .bast-table-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .negotiation-request-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-loan-summary,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-loan-filter-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-loan-table-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-loan-return-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .negotiation-form {
+    color: var(--scm-text) !important;
+    background: #ffffff !important;
+    border-color: var(--scm-border) !important;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, .05) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .panel-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .negotiation-request-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .negotiation-form {
+    border-radius: 12px !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-loan-summary,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-loan-filter-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-loan-table-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .kaur-loan-return-card {
+    border-radius: 10px !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .summary-card:hover,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .menu-card:hover,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .quick-link:hover,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .negotiation-request-card:hover {
+    border-color: rgba(255, 121, 0, .35) !important;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, .08) !important;
+}
+
+/* Shared controls used by all seven Kaur modules */
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .form-control,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .form-select,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .input-group-text {
+    min-height: 42px;
+    color: #1f2937 !important;
+    background: #ffffff !important;
+    border: 1px solid #d9dee7 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main textarea.form-control {
+    min-height: 90px;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .form-control:disabled,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .form-select:disabled {
+    color: #667085 !important;
+    background: #f8fafc !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .form-control::placeholder {
+    color: #98a2b3 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .form-control:focus,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .form-select:focus {
+    border-color: var(--scm-orange) !important;
+    box-shadow: 0 0 0 3px rgba(255, 121, 0, .12) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-multi-filter,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-filter-card,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .bast-table-toolbar,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-report-toolbar {
+    color: var(--scm-text) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .btn-fik {
+    background: var(--scm-orange) !important;
+    border-color: var(--scm-orange) !important;
+    color: #ffffff !important;
+    box-shadow: 0 5px 12px rgba(255, 121, 0, .16) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .btn-fik:hover,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .btn-fik:focus {
+    background: #e86f00 !important;
+    border-color: #e86f00 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .btn-outline-secondary,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .btn-outline-dark {
+    color: #475467 !important;
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .btn-outline-secondary:hover,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .btn-outline-dark:hover {
+    color: #1f2937 !important;
+    background: #f8fafc !important;
+    border-color: #98a2b3 !important;
+}
+
+/* Unified table language */
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table {
+    --bs-table-bg: #ffffff;
+    --bs-table-color: #344054;
+    --bs-table-border-color: #e5e7eb;
+    margin-bottom: 0;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-clean,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-table,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-return-table,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-report-table {
+    color: #344054 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-clean thead th,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-table thead th,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-return-table thead th,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-report-table thead th,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-light,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-light th {
+    color: #475467 !important;
+    background: #f3f4f6 !important;
+    border-color: #e5e7eb !important;
+    font-size: .72rem;
+    font-weight: 700 !important;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table > :not(caption) > * > *,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-clean td,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-clean th {
+    border-bottom-color: #e5e7eb !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table tbody td {
+    color: #344054 !important;
+    background: #ffffff !important;
+    vertical-align: middle;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-hover > tbody > tr:hover > *,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-clean tbody tr:hover > * {
+    --bs-table-accent-bg: #fffaf5 !important;
+    color: #1f2937 !important;
+    background: #fffaf5 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-responsive {
+    border-radius: 10px;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-row-number {
+    color: #667085 !important;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Compact semantic statuses; the class still comes from existing backend data. */
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .approval-badge,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .bast-badge,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-status-badge,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .bast-summary-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 4px 10px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: normal;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-pengajuan,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-menunggu,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-status-badge.status-pending {
+    color: #2563eb !important;
+    background: #eef4ff !important;
+    border-color: #dbe7ff !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-negosiasi,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-revisi {
+    color: #a16207 !important;
+    background: #fff8e7 !important;
+    border-color: #fde7a9 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-deal,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-approval,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-disetujui,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-selesai,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-inventory,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-bast,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-Disetujui-Menunggu-Finalisasi-QR-,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-status-badge.status-approved {
+    color: #15803d !important;
+    background: #ecfdf3 !important;
+    border-color: #b7e4c7 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .status-pill.status-ditolak,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-status-badge.status-rejected {
+    color: #b42318 !important;
+    background: #fff1f1 !important;
+    border-color: #f6b8b8 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .bast-badge,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .bast-summary-badge {
+    color: #475467 !important;
+    background: #f8fafc !important;
+    border-color: #d9dee7 !important;
+}
+
+/* Negotiation cards stay dense while retaining the existing per-item form/status. */
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-request-header,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-detail-toolbar,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-item-header {
+    border-color: #e5e7eb !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-request-code,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-request-meta,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-item-name span {
+    color: #667085 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-request-code {
+    font-weight: 700;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-detail-toggle {
+    color: #344054 !important;
+    background: #f8fafc !important;
+    border-color: #e5e7eb !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-detail-toggle:hover {
+    background: #fffaf5 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-form {
+    background: #fbfcfd !important;
+    box-shadow: none !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-form input[readonly],
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .negotiation-form input:disabled {
+    background: #f2f4f7 !important;
+    color: #667085 !important;
+}
+
+/* Shared pagination treatment used by pengajuan, negosiasi, BAST, laporan and loan views. */
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-submission-pagination-footer,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-return-pagination-footer,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-pagination,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .pagination-shell {
+    border-top: 1px solid #e5e7eb !important;
+    color: #667085 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .pagination .page-link {
+    min-width: 34px;
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #475467 !important;
+    background: #ffffff !important;
+    border-color: #e5e7eb !important;
+    font-size: .78rem;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .pagination .page-link:hover {
+    color: #c65f00 !important;
+    background: #fffaf5 !important;
+    border-color: #ffc58f !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .pagination .page-item.active .page-link {
+    color: #ffffff !important;
+    background: var(--scm-orange) !important;
+    border-color: var(--scm-orange) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .pagination .page-item.disabled .page-link {
+    color: #98a2b3 !important;
+    background: #f8fafc !important;
+    border-color: #e5e7eb !important;
+}
+
+/* Modal language is shared by Approval, BAST and loan detail actions. */
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .modal-content {
+    color: #1f2937 !important;
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, .16) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .modal-header,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .modal-footer {
+    border-color: #e5e7eb !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .modal .btn-close {
+    filter: none !important;
+    opacity: .65;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .dropdown-menu {
+    color: #1f2937 !important;
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 12px 26px rgba(15, 23, 42, .10) !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .dropdown-item {
+    color: #344054 !important;
+}
+
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .dropdown-item:hover,
+html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur .dropdown-item:focus {
+    color: #1f2937 !important;
+    background: #fffaf5 !important;
+}
+
+@media (max-width: 991.98px) {
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-responsive {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+    }
+
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-page-header {
+        margin-bottom: 18px !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-submission-pagination-footer,
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-return-pagination-footer {
+        align-items: stretch !important;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-submission-pagination-footer nav,
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-return-pagination-footer nav {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .pagination {
+        margin-bottom: 0;
+    }
+
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .table-clean thead th,
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-table thead th,
+    html.scm-theme-light body.scm-dashboard.scm-dashboard-kaur main .kaur-loan-return-table thead th {
+        font-size: .68rem;
+    }
+}

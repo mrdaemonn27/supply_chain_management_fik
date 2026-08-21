@@ -106,7 +106,7 @@ class Dashboard extends CI_Controller {
         $legacy_targets = [
             'kaur/dashboard#approval-peminjaman' => 'kaur/dashboard/peminjaman',
             'kaur/dashboard#pengajuan' => 'kaur/dashboard/pengajuan',
-            'admin/dashboard#approval' => 'admin/approval',
+            'admin/dashboard#approval' => 'admin/peminjaman',
         ];
         foreach ($legacy_targets as $legacy => $replacement) {
             if (strpos($target, $legacy) !== false) {

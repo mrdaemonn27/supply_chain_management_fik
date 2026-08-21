@@ -1,0 +1,83 @@
+.approval-bulk-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .65rem;
+    margin: 0 0 1rem;
+    padding: .8rem 1rem;
+    border: 1px solid #fed7aa;
+    border-radius: .8rem;
+    background: #fff7ed;
+}
+.approval-bulk-toolbar[hidden] { display: none !important; }
+.approval-bulk-toolbar__count {
+    margin-right: auto;
+    color: #7c2d12;
+    font-size: .86rem;
+    font-weight: 700;
+}
+.approval-bulk-check {
+    width: 1.05rem;
+    height: 1.05rem;
+    border-color: #94a3b8;
+    cursor: pointer;
+}
+.approval-bulk-check:checked {
+    border-color: #ea5b1a;
+    background-color: #ea5b1a;
+}
+.approval-bulk-check:disabled {
+    cursor: not-allowed;
+    opacity: .35;
+}
+.approval-bulk-check:not(:disabled):hover,
+.approval-bulk-check:not(:disabled):focus-visible {
+    border-color: #ea5b1a;
+    box-shadow: 0 0 0 .2rem rgba(234, 91, 26, .14);
+}
+.approval-bulk-select-all {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    margin: 0;
+    white-space: nowrap;
+    font-size: .74rem;
+    font-weight: 700;
+}
+.approval-bulk-cell { width: 72px; text-align: center; }
+.loan-pagination .page-link,
+.kaur-submission-pagination .page-link,
+.kaur-return-pagination .page-link,
+.kp-pagination .kp-page-button {
+    color: #64748b !important;
+    background: #fff !important;
+    border-color: #dbe2ea !important;
+}
+.loan-pagination .page-link:hover,
+.kaur-submission-pagination .page-link:hover,
+.kaur-return-pagination .page-link:hover,
+.kp-pagination .kp-page-button:hover {
+    color: #ea5b1a !important;
+    background: #fff7ed !important;
+}
+.loan-pagination .page-item.active .page-link,
+.kaur-submission-pagination .page-item.active .page-link,
+.kaur-return-pagination .page-item.active .page-link,
+.kp-pagination .kp-page-button.is-active {
+    color: #fff !important;
+    background: #ea5b1a !important;
+    border-color: #ea5b1a !important;
+}
+.loan-pagination .page-item.disabled .page-link,
+.kaur-submission-pagination .page-item.disabled .page-link,
+.kaur-return-pagination .page-item.disabled .page-link,
+.kp-pagination .kp-page-button.disabled {
+    color: #a0a9b5 !important;
+    background: #f8fafc !important;
+    opacity: .72;
+    pointer-events: none;
+}
+@media (max-width: 575.98px) {
+    .approval-bulk-toolbar > .btn { flex: 1 1 auto; }
+    .approval-bulk-toolbar__count { flex: 1 0 100%; }
+}

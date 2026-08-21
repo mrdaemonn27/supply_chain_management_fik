@@ -272,7 +272,6 @@ $format_date = static function ($value) {
                             <option value="25">25</option>
                             <option value="50">50</option>
                             <option value="100">100</option>
-                            <option value="all">Semua</option>
                         </select>
                     </label>
                     <span class="ms-2" id="blockTotalItems">Total item: <?= count($blokir) ?></span>

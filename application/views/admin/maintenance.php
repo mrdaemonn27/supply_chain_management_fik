@@ -314,7 +314,7 @@ $maintenance_condition_class = static function ($condition) {
                         <option value="10" <?= $current_per_page === '10' ? 'selected' : '' ?>>10</option>
                         <option value="25" <?= $current_per_page === '25' ? 'selected' : '' ?>>25</option>
                         <option value="50" <?= $current_per_page === '50' ? 'selected' : '' ?>>50</option>
-                        <option value="all" <?= $current_per_page === 'all' ? 'selected' : '' ?>>Semua</option>
+                        <option value="100" <?= $current_per_page === '100' ? 'selected' : '' ?>>100</option>
                     </select>
                     <span>Total item: <?= (int) ($pagination['total'] ?? 0) ?></span>
                 </div>

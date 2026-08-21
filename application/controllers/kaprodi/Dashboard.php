@@ -78,16 +78,10 @@ class Dashboard extends CI_Controller {
         $page = max(1, (int) $this->input->get('page'));
         $requested_tab = trim((string) $this->input->get('tab', true));
         $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
-        if ($requested_per_page === 'all') {
-            $per_page = 'all';
-            $limit = null;
-            $page = 1;
-        } else {
-            $requested_limit = (int) $requested_per_page;
-            $limit = in_array($requested_limit, [10, 25, 50], true) ? $requested_limit : 10;
-            $per_page = (string) $limit;
-        }
-        $offset = $limit === null ? 0 : (($page - 1) * $limit);
+        $requested_limit = (int) $requested_per_page;
+        $limit = in_array($requested_limit, [10, 25, 50, 100], true) ? $requested_limit : 10;
+        $per_page = (string) $limit;
+        $offset = ($page - 1) * $limit;
         $id_user = $this->session->userdata('id_user');
         $has_filter = (bool) array_filter($filters, static function ($value, $key) {
             if (in_array($key, ['filter_field', 'filter_value'], true)) {

@@ -9,14 +9,14 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
 $menus = [
     ['title' => 'Master Data', 'desc' => 'Kelola barang, stok, kondisi, dan foto inventaris.', 'url' => base_url('index.php/admin/barang'), 'icon' => 'bi-boxes'],
-    ['title' => 'Peminjaman', 'desc' => 'Pantau pengajuan, finalisasi QR, dan serah barang.', 'url' => base_url('index.php/admin/peminjaman'), 'icon' => 'bi-clipboard-data'],
+    ['title' => 'Peminjaman', 'desc' => 'Pantau dan proses approval, finalisasi QR, serta serah barang.', 'url' => base_url('index.php/admin/peminjaman'), 'icon' => 'bi-clipboard-data'],
     ['title' => 'Pengembalian', 'desc' => 'Scan QR transaksi dan validasi barang yang kembali.', 'url' => base_url('index.php/admin/pengembalian'), 'icon' => 'bi-arrow-counterclockwise'],
-    ['title' => 'Approval', 'desc' => 'Cek stok fisik lalu teruskan pengajuan ke Kaur.', 'url' => base_url('index.php/admin/approval'), 'icon' => 'bi-patch-check'],
     ['title' => 'Dokumen', 'desc' => 'Unggah SOP, berita acara, bukti, atau arsip peminjaman.', 'url' => base_url('index.php/admin/dokumen'), 'icon' => 'bi-file-earmark-arrow-up'],
     ['title' => 'Ruangan', 'desc' => 'Atur data ruangan/lab dan foto ruangan.', 'url' => base_url('index.php/admin/ruangan'), 'icon' => 'bi-door-open'],
     ['title' => 'Maintenance Barang', 'desc' => 'Catat perawatan, kondisi, dan riwayat aset.', 'url' => base_url('index.php/admin/maintenance'), 'icon' => 'bi-tools'],
     ['title' => 'Distribusi Barang', 'desc' => 'Pindahkan lokasi aset dan simpan catatan distribusi.', 'url' => base_url('index.php/admin/distribusi'), 'icon' => 'bi-truck'],
     ['title' => 'Blokir Pengguna', 'desc' => 'Batasi peminjam bermasalah dan simpan histori blokir.', 'url' => base_url('index.php/admin/blokir'), 'icon' => 'bi-shield-lock'],
+    ['title' => 'Pengaturan Peminjaman', 'desc' => 'Atur batas waktu persetujuan Kaprodi.', 'url' => base_url('index.php/admin/pengaturan'), 'icon' => 'bi-gear'],
 ];
 $stat_cards = [
     ['label' => 'Total Aset', 'key' => 'total_aset', 'icon' => 'bi-boxes', 'note' => 'Jenis aset terdaftar', 'muted' => false],
@@ -34,13 +34,13 @@ $quick_actions = [
     ['label' => 'Master Data', 'url' => base_url('index.php/admin/barang'), 'icon' => 'bi-boxes'],
     ['label' => 'Peminjaman', 'url' => base_url('index.php/admin/peminjaman'), 'icon' => 'bi-clipboard-data'],
     ['label' => 'Pengembalian', 'url' => base_url('index.php/admin/pengembalian'), 'icon' => 'bi-arrow-counterclockwise'],
-    ['label' => 'Approval', 'url' => base_url('index.php/admin/approval'), 'icon' => 'bi-patch-check'],
     ['label' => 'Dokumen', 'url' => base_url('index.php/admin/dokumen'), 'icon' => 'bi-file-earmark-arrow-up'],
     ['label' => 'Ruangan', 'url' => base_url('index.php/admin/ruangan'), 'icon' => 'bi-door-open'],
     ['label' => 'Maintenance Barang', 'url' => base_url('index.php/admin/maintenance'), 'icon' => 'bi-tools'],
     ['label' => 'Distribusi Barang', 'url' => base_url('index.php/admin/distribusi'), 'icon' => 'bi-truck'],
     ['label' => 'Blokir Pengguna', 'url' => base_url('index.php/admin/blokir'), 'icon' => 'bi-shield-lock'],
     ['label' => 'Scan QR', 'url' => base_url('index.php/admin/peminjaman/scanner'), 'icon' => 'bi-qr-code-scan'],
+    ['label' => 'Pengaturan', 'url' => base_url('index.php/admin/pengaturan'), 'icon' => 'bi-gear'],
 ];
 $recent_activity = isset($overview['recent_activity']) && is_array($overview['recent_activity']) ? $overview['recent_activity'] : [];
 ?>

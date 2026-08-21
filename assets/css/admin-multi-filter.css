@@ -20,6 +20,19 @@
 .admin-multi-filter__action:hover:not(:disabled) { border-color:var(--filter-accent); color:var(--filter-accent); background:#fff7ed; }
 .admin-multi-filter__action--add { border-color:var(--filter-accent); color:var(--filter-accent); }
 .admin-multi-filter__action:disabled { opacity:.38; cursor:not-allowed; }
+.admin-multi-filter__footer { display:flex; align-items:center; flex-wrap:wrap; gap:.7rem; margin-top:1rem; }
+.admin-multi-filter__meta { margin:.7rem 0 0; color:#64748b; font-size:.78rem; }
+.admin-multi-filter__apply, .admin-multi-filter__reset { min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:.45rem; border-radius:999px; padding:.65rem 1.35rem; font-weight:700; }
+.admin-multi-filter__apply { border-color:var(--filter-accent); background:var(--filter-accent); color:#fff; }
+.admin-multi-filter__apply:hover, .admin-multi-filter__apply:focus { border-color:#ea580c; background:#ea580c; color:#fff; }
+.admin-multi-filter__reset { border-color:#9ca3af; background:#fff; color:#64748b; }
+.admin-multi-filter__reset:hover, .admin-multi-filter__reset:focus { border-color:var(--filter-accent); background:#fff7ed; color:var(--filter-accent); }
+html.scm-theme-dark .admin-multi-filter { border-color:var(--scm-theme-border); background:var(--scm-theme-surface); }
+html.scm-theme-dark .admin-multi-filter__title { color:var(--scm-theme-text); }
+html.scm-theme-dark .admin-multi-filter__field,
+html.scm-theme-dark .admin-multi-filter__value,
+html.scm-theme-dark .admin-multi-filter__action,
+html.scm-theme-dark .admin-multi-filter__reset { border-color:var(--scm-theme-border); background:var(--scm-theme-surface-soft); color:var(--scm-theme-text); }
 @media (max-width: 767.98px) {
     .admin-multi-filter__header { flex-direction:column; }
     .admin-multi-filter__live { white-space:normal; }
@@ -32,4 +45,5 @@
     .admin-multi-filter__row { grid-template-columns:1fr; }
     .admin-multi-filter__field, .admin-multi-filter__value { grid-column:auto; }
     .admin-multi-filter__actions { justify-content:flex-end; }
+    .admin-multi-filter__footer > .btn { flex:1 1 auto; }
 }

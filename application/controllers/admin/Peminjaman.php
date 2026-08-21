@@ -7,6 +7,7 @@ class Peminjaman extends CI_Controller {
         parent::__construct();
         $this->load->library('session');
         $this->load->helper('url');
+        $this->load->helper('loan_progress');
         $this->load->model('Peminjaman_model');
         $this->load->model('Aset_model');
         $this->guard_laboran();
@@ -86,6 +87,7 @@ class Peminjaman extends CI_Controller {
             'Dikembalikan',
             'Terlambat',
             'Ditolak',
+            'Kedaluwarsa / Ditolak Otomatis',
         ];
         $status = $this->input->get('status', true);
         if (!in_array($status, $allowed_status, true)) {
@@ -98,39 +100,36 @@ class Peminjaman extends CI_Controller {
             'pencarian' => $this->input->get('q', true),
             'tanggal' => $this->input->get('tanggal', true),
             'multi_filters' => $multi_filters,
+            'action_role' => 'laboran',
         ];
-        if (empty($filters['status'])) {
-            $filters['status_in'] = array_values(array_diff($allowed_status, ['Terlambat']));
-        }
 
         $page = max(1, (int) $this->input->get('page', true));
         $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
-        if ($requested_per_page === 'all') {
-            $per_page = 'all';
-            $page = 1;
-        } else {
-            $requested_limit = (int) $requested_per_page;
-            $per_page = in_array($requested_limit, [10, 25, 50], true) ? $requested_limit : 10;
-        }
-        $rows = $this->Peminjaman_model->search_peminjaman($filters);
-        $total_rows = count($rows);
-        $total_pages = $per_page === 'all' ? 1 : max(1, (int) ceil($total_rows / $per_page));
+        $requested_limit = (int) $requested_per_page;
+        $per_page = in_array($requested_limit, [10, 25, 50, 100], true) ? $requested_limit : 10;
+        $total_rows = $this->Peminjaman_model->count_visible_peminjaman($filters);
+        $total_pages = max(1, (int) ceil($total_rows / $per_page));
         $page = min($page, $total_pages);
-        $visible_rows = $per_page === 'all' ? $rows : array_slice($rows, ($page - 1) * $per_page, $per_page);
+        $visible_rows = $this->Peminjaman_model->get_visible_peminjaman(
+            $filters,
+            $per_page,
+            ($page - 1) * $per_page
+        );
 
         $data['title'] = 'Data Peminjaman';
         $data['filters'] = $filters;
         $data['filter_rows'] = $filter_rows;
-        $data['filter_suggestions'] = $this->build_filter_suggestions($rows);
+        $data['filter_suggestions'] = $this->build_filter_suggestions($visible_rows);
         $data['status_options'] = array_merge([''], $allowed_status);
         $data['peminjaman'] = $visible_rows;
+        $data['approval_actionable'] = $this->Peminjaman_model->count_actionable_peminjaman('laboran', $filters);
         $data['pagination'] = [
             'page' => $page,
             'per_page' => $per_page,
             'total' => $total_rows,
             'total_pages' => $total_pages,
         ];
-        $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
+        $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null, 20);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);
         $this->load->view('admin/peminjaman', $data);
     }
@@ -226,15 +225,6 @@ class Peminjaman extends CI_Controller {
         // Terapkan jumlah yang diedit laboran (tidak boleh melebihi jumlah pinjam asli)
         $items = $this->apply_edited_jumlah($items);
 
-        foreach ($items as $item) {
-            $aset = $this->Aset_model->get_aset_by_id_for_update($item->id_aset);
-            if (!$aset || $item->jumlah_pinjam > $aset->jumlah_tersedia) {
-                $this->db->trans_rollback();
-                $this->session->set_flashdata('error', 'Stok ' . ($item->nama_aset ?? 'barang') . ' tidak cukup saat serah terima.');
-                redirect('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
-            }
-        }
-
         $evidence = $this->upload_multiple_evidence('foto_serah');
         if ($evidence === false) {
             $this->db->trans_rollback();
@@ -242,12 +232,16 @@ class Peminjaman extends CI_Controller {
         }
 
         foreach ($items as $item) {
-            if (!$this->Aset_model->update_jumlah_tersedia($item->id_aset, $item->jumlah_pinjam)) {
+            // Availability sudah berkurang saat pengajuan. Pada serah terima,
+            // alokasi hanya dipindahkan dari reserved ke borrowed.
+            if (!$this->Peminjaman_model->convert_reservation_to_borrowed($item->id_peminjaman, $item->jumlah_pinjam)) {
                 $this->db->trans_rollback();
-                $this->session->set_flashdata('error', 'Stok berubah saat proses serah terima. Silakan periksa kembali transaksi.');
+                $this->session->set_flashdata('error', 'Reservasi stok tidak valid atau sudah berubah. Silakan periksa kembali transaksi.');
                 redirect('admin/peminjaman/serah_terima/' . rawurlencode($group_id));
             }
-            $this->Aset_model->increment_total_peminjaman($item->id_aset);
+            if ((int) $item->jumlah_pinjam > 0) {
+                $this->Aset_model->increment_total_peminjaman($item->id_aset);
+            }
         }
         $this->Peminjaman_model->update_group_status($group_id, [
             'status' => 'Sedang Dipinjam',
@@ -379,9 +373,12 @@ class Peminjaman extends CI_Controller {
         }
 
         foreach ($items as $item) {
-            if (!empty($item->id_aset) && !empty($item->jumlah_pinjam)) {
-                if ($kondisi_kembali === 'Baik') {
-                    $this->Aset_model->kembalikan_jumlah_tersedia($item->id_aset, $item->jumlah_pinjam);
+            if (!empty($item->id_aset)) {
+                $make_available = $kondisi_kembali === 'Baik';
+                if (!$this->Peminjaman_model->return_stock_allocation($item->id_peminjaman, $item->jumlah_pinjam, $make_available)) {
+                    $this->db->trans_rollback();
+                    $this->session->set_flashdata('error', 'Alokasi stok pengembalian tidak valid atau sudah diproses.');
+                    redirect($redirect_to);
                 }
                 if ($kondisi_kembali) {
                     $this->db->where('id_aset', $item->id_aset)->update('aset', [

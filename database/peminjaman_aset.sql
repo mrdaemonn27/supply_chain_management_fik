@@ -35,6 +35,8 @@ CREATE TABLE `aset` (
   `deskripsi` text DEFAULT NULL,
   `gambar` varchar(255) DEFAULT NULL,
   `jumlah_total` int(11) NOT NULL DEFAULT 0,
+  `jumlah_reserved` int(11) NOT NULL DEFAULT 0,
+  `jumlah_dipinjam` int(11) NOT NULL DEFAULT 0,
   `jumlah_tersedia` int(11) NOT NULL DEFAULT 0,
   `kondisi` enum('Baik','Rusak Ringan','Rusak Berat') DEFAULT 'Baik',
   `foto` varchar(255) DEFAULT NULL,
@@ -243,11 +245,19 @@ CREATE TABLE `peminjaman` (
   `id_peminjam` int(11) NOT NULL,
   `id_user` int(11) DEFAULT NULL,
   `jumlah_pinjam` int(11) NOT NULL,
+  `stock_allocation_status` varchar(20) NOT NULL DEFAULT 'none',
+  `stock_allocated_at` datetime DEFAULT NULL,
+  `stock_released_at` datetime DEFAULT NULL,
+  `jumlah_kembali` int(11) DEFAULT NULL,
   `tanggal_pinjam` date NOT NULL,
   `tanggal_kembali_rencana` date NOT NULL,
   `tanggal_kembali_actual` date DEFAULT NULL,
   `keperluan` text DEFAULT NULL,
-  `status` enum('Menunggu Persetujuan','Dipinjam','Dikembalikan','Terlambat','Ditolak') DEFAULT 'Menunggu Persetujuan',
+  `status` varchar(80) NOT NULL DEFAULT 'Menunggu ACC Kaprodi',
+  `status_kaprodi` varchar(20) NOT NULL DEFAULT 'Pending',
+  `kaprodi_approval_limit_days` int(11) DEFAULT NULL,
+  `kaprodi_deadline_at` datetime DEFAULT NULL,
+  `kaprodi_expired_at` datetime DEFAULT NULL,
   `status_laboran` enum('Pending','Disetujui','Ditolak') NOT NULL DEFAULT 'Pending',
   `catatan_laboran` text DEFAULT NULL,
   `tgl_approve_laboran` datetime DEFAULT NULL,
@@ -546,6 +556,23 @@ CREATE TABLE `dokumen_internal` (
 
 INSERT INTO `dokumen_internal` (`id_dokumen`, `judul`, `kategori`, `deskripsi`, `nama_file`, `original_name`, `mime_type`, `file_size`, `is_active`, `uploaded_by`, `created_at`, `updated_at`) VALUES
 (1, 'SOP & Tata Tertib Studio', 'SOP', 'Dokumen SOP peminjaman, penggunaan, pengembalian, dan instruksi kerja ringkas aset studio/laboratorium.', 'sop_tata_tertib_studio.pdf', 'SOP_Tata_Tertib_Studio.pdf', 'application/pdf', 3447, 1, NULL, '2026-07-09 00:00:00', NULL);
+
+-- --------------------------------------------------------
+
+-- Table structure for table `peminjaman_settings`
+
+CREATE TABLE `peminjaman_settings` (
+  `id_setting` tinyint(3) unsigned NOT NULL DEFAULT 1,
+  `kaprodi_approval_days` int(11) NOT NULL DEFAULT 4,
+  `updated_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_setting`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `peminjaman_settings` (`id_setting`, `kaprodi_approval_days`, `updated_by`, `created_at`, `updated_at`) VALUES
+(1, 4, NULL, current_timestamp(), current_timestamp());
+
 -- Indexes for dumped tables
 --
 
@@ -592,6 +619,7 @@ ALTER TABLE `peminjaman`
   ADD KEY `idx_peminjaman_status` (`status`),
   ADD KEY `idx_status_kemahasiswaan` (`status_laboran`),
   ADD KEY `idx_status_pembina` (`status_kaur`),
+  ADD KEY `idx_kaprodi_expiry` (`status`, `status_kaprodi`, `kaprodi_deadline_at`),
   ADD KEY `idx_group_id` (`group_id`);
 
 --
