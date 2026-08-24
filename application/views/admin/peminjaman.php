@@ -9,7 +9,7 @@ $compact_pagination_pages = static function ($current, $last) {
     $last = max(1, (int) $last);
     if ($last <= 7) return range(1, $last);
     if ($current <= 3) return array_merge(range(1, 5), ['ellipsis-after', $last]);
-    if ($current >= $last - 2) return array_merge([$last - 4, $last - 3, $last - 2, $last - 1, $last]);
+    if ($current >= $last - 2) return array_merge([1, 'ellipsis-before'], range($last - 4, $last));
     return array_merge([1, 'ellipsis-before'], range($current - 2, $current + 2), ['ellipsis-after', $last]);
 };
 $filter_rows = isset($filter_rows) && is_array($filter_rows) ? array_values($filter_rows) : [];
@@ -17,6 +17,9 @@ if (empty($filter_rows)) $filter_rows = [['field' => 'peminjam', 'value' => '']]
 $filter_fields = ['peminjam' => 'Peminjam / NIM', 'barang' => 'Nama barang / kode', 'status' => 'Status', 'tanggal' => 'Tanggal pinjam', 'keperluan' => 'Keperluan'];
 $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions) ? $filter_suggestions : [];
 $approval_actionable = (int) ($approval_actionable ?? 0);
+$approval_page_actionable = count(array_filter((array) ($peminjaman ?? []), static function ($p) { return scm_loan_can_act($p, 'laboran'); }));
+$loan_sort = (string) ($filters['sort_by'] ?? '');
+$loan_sort_dir = (string) ($filters['sort_dir'] ?? 'desc');
 $export_params = [
     'status' => $filters['status'] ?? '',
     'q' => $filters['pencarian'] ?? '',
@@ -39,6 +42,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= base_url('assets/css/loan-progress.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-progress.css'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/approval-bulk-select.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/approval-bulk-select.css'); ?>">
     <style>
         body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
@@ -103,11 +107,11 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
             vertical-align: middle;
         }
         .loan-table th:first-child, .loan-table td:first-child { min-width:70px; width:70px; }
-        .loan-table th:nth-child(2), .loan-table td:nth-child(2) { min-width:220px; }
-        .loan-table th:nth-child(3), .loan-table td:nth-child(3) { min-width:340px; text-align:left; }
-        .loan-table th:nth-child(4), .loan-table td:nth-child(4) { min-width:175px; text-align:left; }
-        .loan-table th:nth-child(5), .loan-table td:nth-child(5) { min-width:270px; }
-        .loan-table th:nth-child(6), .loan-table td:nth-child(6) { min-width:210px; }
+        .loan-table th:nth-child(3), .loan-table td:nth-child(3) { min-width:220px; }
+        .loan-table th:nth-child(4), .loan-table td:nth-child(4) { min-width:340px; text-align:left; }
+        .loan-table th:nth-child(5), .loan-table td:nth-child(5) { min-width:175px; text-align:left; }
+        .loan-table th:nth-child(6), .loan-table td:nth-child(6) { min-width:270px; }
+        .loan-table th:nth-child(7), .loan-table td:nth-child(7) { min-width:210px; }
         .loan-list-summary { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; padding:1rem; border-bottom:1px solid var(--loan-border); }
         .loan-list-summary h2 { margin:0; font-size:1rem; font-weight:700; }
         .loan-list-summary p { margin:.2rem 0 0; color:var(--loan-muted); font-size:.76rem; }
@@ -275,6 +279,8 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         <section class="panel-card p-3 p-lg-4 mb-4">
             <form id="adminFilters" method="get" action="<?= base_url('index.php/admin/peminjaman') ?>" data-max-filters="4">
                 <input type="hidden" name="per_page" value="<?= html_escape($current_per_page) ?>">
+                <input type="hidden" name="sort_by" value="<?= html_escape($loan_sort) ?>">
+                <input type="hidden" name="sort_dir" value="<?= html_escape($loan_sort_dir) ?>">
                 <div class="admin-filter-heading"><h2><i class="bi bi-funnel me-2 text-fik-orange"></i>Filter pencarian</h2></div>
                 <div id="adminFilterRows" class="admin-filter-list">
                     <?php foreach($filter_rows as $index => $filter_row): ?>
@@ -289,17 +295,32 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
             </form>
         </section>
 
-        <section class="panel-card p-0 loan-table-card">
+        <section class="panel-card p-0 loan-table-card" data-bulk-approval>
             <div class="loan-list-summary">
                 <div><h2>Seluruh Peminjaman</h2><p>Data tetap terlihat sampai proses selesai; aksi hanya aktif pada tahap Laboran.</p></div>
-                <div class="d-flex flex-wrap gap-2"><span class="badge rounded-pill text-bg-warning px-3 py-2"><?= $approval_actionable ?> perlu tindakan</span><span class="badge rounded-pill text-bg-light border px-3 py-2"><?= (int) ($pagination['total'] ?? 0) ?> total</span></div>
+                <div class="d-flex flex-wrap gap-2"><span class="badge rounded-pill text-bg-warning px-3 py-2"><span data-bulk-actionable-count><?= $approval_actionable ?></span> perlu tindakan</span><span class="badge rounded-pill text-bg-light border px-3 py-2"><?= (int) ($pagination['total'] ?? 0) ?> total</span></div>
             </div>
+            <?php if(!empty($peminjaman)): ?>
+            <form id="laboranBulkForm" method="post" action="<?= base_url('index.php/admin/approval/bulk') ?>" class="approval-bulk-toolbar m-3" data-bulk-form data-bulk-toolbar hidden>
+                <input type="hidden" name="bulk_note" value="">
+                <span class="approval-bulk-toolbar__count" data-bulk-count>0 data terpilih</span>
+                <button type="submit" name="action" value="approve" class="btn btn-sm btn-success rounded-pill px-3" data-bulk-approve-action><i class="bi bi-check2-circle me-1"></i>Setujui Terpilih</button>
+                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#laboranBulkRejectModal"><i class="bi bi-x-circle me-1"></i>Tolak Terpilih</button>
+                <button type="submit" name="action" value="reject" data-bulk-reject-action hidden></button>
+            </form>
+            <?php endif; ?>
             <div class="table-responsive">
                 <table class="table table-hover loan-table">
-                    <thead><tr><th>No</th><th>Peminjam</th><th>Barang</th><th>Masa Pinjam</th><th>Progress Peminjaman</th><th class="text-end pe-3">Aksi</th></tr></thead>
+                    <thead><tr>
+                        <th class="approval-bulk-cell"><label class="approval-bulk-select-all" title="Pilih semua data yang dapat diproses pada halaman ini"><input type="checkbox" class="form-check-input approval-bulk-check" data-bulk-select-all <?= $approval_page_actionable > 0 ? '' : 'disabled' ?>><span>Pilih</span></label></th>
+                        <?php foreach (['number' => 'No', 'peminjam' => 'Peminjam', 'barang' => 'Barang', 'masa' => 'Masa Pinjam', 'status' => 'Progress Peminjaman'] as $sort_key => $sort_label): ?>
+                        <th aria-sort="<?= scm_sort_aria($sort_key, $loan_sort, $loan_sort_dir) ?>"><a class="scm-sort-control <?= $loan_sort === $sort_key ? 'is-active' : '' ?>" href="<?= scm_sort_url($sort_key, $loan_sort, $loan_sort_dir) ?>"><?= html_escape($sort_label) ?><i class="bi <?= scm_sort_icon_class($sort_key, $loan_sort, $loan_sort_dir) ?>" aria-hidden="true"></i></a></th>
+                        <?php endforeach; ?>
+                        <th class="text-end pe-3">Aksi</th>
+                    </tr></thead>
                     <tbody>
                     <?php if(empty($peminjaman)): ?>
-                        <tr><td colspan="6" class="text-center text-muted py-5">Belum ada data peminjaman.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-5">Belum ada data peminjaman.</td></tr>
                     <?php else: foreach($peminjaman as $index => $p): ?>
                         <?php
                             $loan_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
@@ -309,16 +330,17 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                             $can_laboran_act = scm_loan_can_act($p, 'laboran');
                             $status = (string) ($p->status ?? '');
                         ?>
-                        <tr>
+                        <tr data-loan-id="<?= (int) $p->id_peminjaman ?>">
+                            <td class="approval-bulk-cell"><input type="checkbox" class="form-check-input approval-bulk-check" name="loan_ids[]" value="<?= (int) $p->id_peminjaman ?>" form="laboranBulkForm" data-bulk-row aria-label="Pilih peminjaman <?= (int) $p->id_peminjaman ?>" <?= $can_laboran_act ? '' : 'disabled title="Belum berada pada tahap Laboran"' ?>></td>
                             <td class="fw-semibold text-muted"><?= (((int) ($pagination['page'] ?? 1) - 1) * max(1, (int) ($pagination['per_page'] ?? 10))) + $index + 1 ?></td>
                             <td><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="fw-semibold"><?= (int)($p->total_jenis ?? 1) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?><?= html_escape($d->nama_aset) ?> (<?= (int)$d->jumlah_pinjam ?>), <?php endforeach; else: ?>- <?php endif; ?></div></td>
                             <td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><div><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></div><div class="small text-muted">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></div></span></td>
-                            <td><?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?><button type="button" class="loan-approval-detail-btn mt-2" data-bs-toggle="modal" data-bs-target="#approvalDetail<?= (int) $p->id_peminjaman ?>">Lihat Detail <i class="bi bi-arrow-right" aria-hidden="true"></i></button></td>
+                            <td data-bulk-status><?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?><button type="button" class="loan-approval-detail-btn mt-2" data-bs-toggle="modal" data-bs-target="#approvalDetail<?= (int) $p->id_peminjaman ?>">Lihat Detail <i class="bi bi-arrow-right" aria-hidden="true"></i></button></td>
                             <td class="text-end pe-3">
                                 <div class="d-flex flex-wrap justify-content-end gap-2">
                                     <?php if ($can_laboran_act): ?>
-                                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" data-bs-toggle="modal" data-bs-target="#processModal<?= (int) $p->id_peminjaman ?>"><i class="bi bi-sliders me-1"></i>Proses</button>
+                                        <button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" data-bulk-action data-bs-toggle="modal" data-bs-target="#processModal<?= (int) $p->id_peminjaman ?>"><i class="bi bi-sliders me-1"></i>Proses</button>
                                     <?php elseif ($status === 'Disetujui (Menunggu Finalisasi QR)'): ?>
                                         <a class="btn btn-sm btn-fik rounded-pill px-3" href="<?= base_url('index.php/admin/peminjaman/finalkan_qr/'.$p->id_peminjaman) ?>" onclick="return confirm('Finalkan QR dan kunci data transaksi ini?')"><i class="bi bi-qr-code me-1"></i>Finalkan QR</a>
                                     <?php elseif ($status === 'Disetujui (Menunggu Pengambilan)'): ?>
@@ -340,6 +362,8 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                     'q' => $filters['pencarian'] ?? '',
                     'tanggal' => $filters['tanggal'] ?? '',
                     'per_page' => $current_per_page,
+                    'sort_by' => $loan_sort,
+                    'sort_dir' => $loan_sort_dir,
                 ];
                 foreach ($filter_rows as $filter_row) {
                     $base_query['filter_field'][] = $filter_row['field'] ?? 'peminjam';
@@ -354,8 +378,6 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                         <select id="loanPageSize" class="form-select form-select-sm" aria-label="Jumlah data peminjaman per halaman">
                             <option value="10" <?= $current_per_page === '10' ? 'selected' : '' ?>>10</option>
                             <option value="25" <?= $current_per_page === '25' ? 'selected' : '' ?>>25</option>
-                            <option value="50" <?= $current_per_page === '50' ? 'selected' : '' ?>>50</option>
-                            <option value="100" <?= $current_per_page === '100' ? 'selected' : '' ?>>100</option>
                         </select>
                         <span>Total item: <?= (int) ($pagination['total'] ?? 0) ?></span>
                     </div>
@@ -374,15 +396,18 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                                 <?php endif; ?>
                             <?php endforeach; ?>
 
-                            <?php $start_page = max(1, $page - 2); $end_page = min($total_pages, $start_page + 4); $start_page = max(1, $end_page - 4); for($i = $start_page; $i <= $end_page; $i++): $page_query = http_build_query(array_merge($base_query, ['page' => $i])); ?>
-                                <li class="page-item <?= $page === $i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman'.($page_query ? '?'.$page_query : '')) ?>"><?= $i ?></a></li>
-                            <?php endfor; ?>
-
                             <?php $next_query = http_build_query(array_merge($base_query, ['page' => min($total_pages, $page + 1)])); ?>
                             <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman'.($next_query ? '?'.$next_query : '')) ?>">Next</a></li>
                         </ul>
                     </nav>
                 </div>
+            <div class="modal fade" id="laboranBulkRejectModal" tabindex="-1" aria-labelledby="laboranBulkRejectTitle" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+                    <div class="modal-header"><h2 class="modal-title h5 fw-bold" id="laboranBulkRejectTitle">Tolak Peminjaman Terpilih</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+                    <div class="modal-body"><label for="laboranBulkRejectReason" class="form-label fw-semibold">Alasan penolakan</label><textarea id="laboranBulkRejectReason" class="form-control" rows="4" placeholder="Alasan berlaku untuk seluruh data terpilih." data-bulk-reject-reason></textarea><div class="form-text">Reservasi stok yang berhasil ditolak akan dilepas.</div></div>
+                    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button type="button" class="btn btn-danger rounded-pill px-4" data-bulk-reject-submit>Tolak Terpilih</button></div>
+                </div></div>
+            </div>
         </section>
         <?php foreach(($peminjaman ?? []) as $p): ?>
             <?php $can_laboran_act = scm_loan_can_act($p, 'laboran'); $loan_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $loan_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $return_evidence_url = scm_upload_url($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); $return_evidence_exists = scm_upload_exists($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); ?>
@@ -431,6 +456,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         <?php endforeach; ?>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= base_url('assets/js/approval-bulk-select.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/approval-bulk-select.js'); ?>"></script>
     <script>
         (() => {
             const form = document.getElementById('adminFilters');
@@ -522,7 +548,8 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         window.setInterval(() => {
             const activeElement = document.activeElement;
             const isEditing = activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(activeElement.tagName);
-            if (!document.hidden && !document.querySelector('.modal.show') && !isEditing) window.location.reload();
+            const bulkActive = document.querySelector('.is-bulk-loading, [data-bulk-row]:checked');
+            if (!document.hidden && !document.querySelector('.modal.show') && !isEditing && !bulkActive) window.location.reload();
         }, 60000);
     </script>
 </body>

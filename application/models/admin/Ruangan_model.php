@@ -11,9 +11,27 @@ class Ruangan_model extends CI_Model {
      * 1. READ: Ambil semua data ruangan
      * Menampilkan semua ruangan dari database, diurutkan berdasarkan data terbaru (DESC)
      */
-    public function get_all() {
-        $this->db->order_by($this->pk, 'DESC');
+    private function apply_filters($filters = []) {
+        foreach ($filters as $filter) {
+            $field = (string) ($filter['field'] ?? '');
+            $value = trim((string) ($filter['value'] ?? ''));
+            if ($value === '') continue;
+            if ($field === 'nama') $this->db->like('nama_ruangan', $value);
+            if ($field === 'deskripsi') $this->db->like('deskripsi', $value);
+        }
+    }
+
+    public function get_all($limit = null, $offset = 0, $filters = [], $sort = 'index', $direction = 'desc') {
+        $sort_columns = ['index' => $this->pk, 'name' => 'nama_ruangan', 'description' => 'deskripsi'];
+        $this->apply_filters($filters);
+        $this->db->order_by($sort_columns[$sort] ?? $this->pk, strtolower($direction) === 'asc' ? 'ASC' : 'DESC');
+        if ($limit !== null) $this->db->limit((int) $limit, (int) $offset);
         return $this->db->get($this->table)->result_array();
+    }
+
+    public function count_all($filters = []) {
+        $this->apply_filters($filters);
+        return (int) $this->db->count_all_results($this->table);
     }
 
     /**

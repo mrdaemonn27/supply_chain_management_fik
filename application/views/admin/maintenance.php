@@ -10,7 +10,7 @@ $compact_pagination_pages = static function ($current, $last) {
     $last = max(1, (int) $last);
     if ($last <= 7) return range(1, $last);
     if ($current <= 3) return array_merge(range(1, 5), ['ellipsis-after', $last]);
-    if ($current >= $last - 2) return array_merge([$last - 4, $last - 3, $last - 2, $last - 1, $last]);
+    if ($current >= $last - 2) return array_merge([1, 'ellipsis-before'], range($last - 4, $last));
     return array_merge([1, 'ellipsis-before'], range($current - 2, $current + 2), ['ellipsis-after', $last]);
 };
 $maintenance_condition_class = static function ($condition) {

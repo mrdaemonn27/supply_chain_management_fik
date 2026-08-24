@@ -6,7 +6,7 @@ class Dokumen extends CI_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->library(['session', 'upload']);
-        $this->load->helper(['url', 'download']);
+        $this->load->helper(['url', 'download', 'scm_pagination']);
         $this->load->model('Dokumen_model');
         $this->load->model('Peminjaman_model');
         $this->guard_laboran();
@@ -25,8 +25,25 @@ class Dokumen extends CI_Controller {
     }
 
     public function index() {
+        $allowed = ['dokumen', 'jenis', 'relasi', 'tanggal'];
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
+        $criteria = [];
+        foreach (array_slice($fields, 0, 4) as $index => $field) {
+            if (!in_array($field, $allowed, true)) continue;
+            $criteria[] = ['field' => $field, 'value' => trim((string) ($values[$index] ?? ''))];
+        }
+        if (!$criteria) $criteria = [['field' => 'dokumen', 'value' => '']];
+        $filters = ['criteria' => array_values(array_filter($criteria, static function ($row) { return $row['value'] !== ''; }))];
+        $per_page = scm_read_per_page($this->input->get('per_page', true));
+        $page = max(1, (int) $this->input->get('page', true));
+        $total = $this->Dokumen_model->count_all($filters);
+        $total_pages = max(1, (int) ceil($total / $per_page));
+        $page = min($page, $total_pages);
         $data['title'] = 'Dokumen Laboran';
-        $data['dokumen'] = $this->Dokumen_model->get_all();
+        $data['dokumen'] = $this->Dokumen_model->get_all($per_page, ($page - 1) * $per_page, $filters);
+        $data['filter_rows'] = $criteria;
+        $data['pagination'] = ['page' => $page, 'per_page' => $per_page, 'total' => $total, 'total_pages' => $total_pages];
         $data['peminjaman'] = $this->Peminjaman_model->get_peminjaman_filtered(['limit' => 50]);
         $this->load->view('admin/dokumen', $data);
     }

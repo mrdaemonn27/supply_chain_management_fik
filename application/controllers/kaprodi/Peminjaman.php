@@ -5,23 +5,31 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 class Peminjaman extends CI_Controller {
     public function __construct() {
         parent::__construct();
-        $this->load->helper('loan_progress');
+        $this->load->helper(['loan_progress', 'scm_ajax', 'scm_pagination', 'scm_sort']);
         $this->load->model('Peminjaman_model');
         $this->guard_kaprodi();
     }
 
     private function guard_kaprodi() {
         if (!$this->session->userdata('logged_in')) {
+            if (scm_is_ajax()) {
+                scm_json_abort(['success' => false, 'message' => 'Sesi Anda berakhir. Silakan login kembali.', 'redirect' => site_url('auth')], 401);
+            }
             redirect('auth');
         }
         if (strtolower((string) $this->session->userdata('role')) !== 'kaprodi') {
+            if (scm_is_ajax()) {
+                scm_json_abort(['success' => false, 'message' => 'Anda tidak memiliki izin untuk memproses approval Kaprodi.'], 403);
+            }
             $this->session->set_flashdata('error', 'Akses approval peminjaman khusus Kaprodi.');
             redirect('dashboard');
         }
     }
 
     public function index() {
-        $filters = ['multi_filters' => $this->read_filters(), 'action_role' => 'kaprodi'];
+        $approval_sort = in_array($this->input->get('sort_by', true), ['number', 'peminjam', 'barang', 'lab', 'masa', 'status'], true) ? $this->input->get('sort_by', true) : '';
+        $approval_dir = strtolower((string) $this->input->get('sort_dir', true)) === 'asc' ? 'asc' : 'desc';
+        $filters = ['multi_filters' => $this->read_filters(), 'action_role' => 'kaprodi', 'sort_by' => $approval_sort, 'sort_dir' => $approval_dir];
         $per_page = $this->read_per_page();
         $page = max(1, (int) $this->input->get('page'));
         $total = $this->Peminjaman_model->count_visible_peminjaman($filters);
@@ -29,7 +37,10 @@ class Peminjaman extends CI_Controller {
         if ($page > $total_pages) $page = $total_pages;
 
         $return_page = max(1, (int) $this->input->get('return_page'));
-        $return_total = $this->Peminjaman_model->count_pengembalian_readonly();
+        $return_sort = in_array($this->input->get('return_sort', true), ['peminjam', 'barang', 'masa', 'status'], true) ? $this->input->get('return_sort', true) : 'masa';
+        $return_dir = strtolower((string) $this->input->get('return_dir', true)) === 'asc' ? 'asc' : 'desc';
+        $return_filters = ['sort_by' => $return_sort, 'sort_dir' => $return_dir];
+        $return_total = $this->Peminjaman_model->count_pengembalian_readonly($return_filters);
         $return_total_pages = max(1, (int) ceil($return_total / $per_page));
         if ($return_page > $return_total_pages) $return_page = $return_total_pages;
         $data = [
@@ -42,10 +53,14 @@ class Peminjaman extends CI_Controller {
             'page' => $page,
             'per_page' => $per_page,
             'total_pages' => $total_pages,
-            'pengembalian' => $this->Peminjaman_model->get_pengembalian_readonly([], $per_page, ($return_page - 1) * $per_page),
+            'approval_sort' => $approval_sort,
+            'approval_dir' => $approval_dir,
+            'pengembalian' => $this->Peminjaman_model->get_pengembalian_readonly($return_filters, $per_page, ($return_page - 1) * $per_page),
             'return_total' => $return_total,
             'return_page' => $return_page,
             'return_total_pages' => $return_total_pages,
+            'return_sort' => $return_sort,
+            'return_dir' => $return_dir,
             'notifikasi' => $this->Peminjaman_model->get_notifikasi('kaprodi', null, 20),
             'unread_notifikasi' => $this->Peminjaman_model->count_notifikasi_unread('kaprodi', null),
         ];
@@ -67,7 +82,7 @@ class Peminjaman extends CI_Controller {
 
     private function read_per_page() {
         $value = (int) $this->input->get('per_page');
-        return in_array($value, [10, 25, 50, 100], true) ? $value : 10;
+        return in_array($value, [10, 25], true) ? $value : 10;
     }
 
     public function setujui($id_peminjaman) {
@@ -125,7 +140,12 @@ class Peminjaman extends CI_Controller {
     }
 
     public function bulk() {
+        $ajax = scm_is_ajax();
         if (strtoupper((string) $this->input->method()) !== 'POST') {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Metode request tidak diizinkan.'], 405);
+                return;
+            }
             redirect('kaprodi/peminjaman');
         }
 
@@ -133,20 +153,31 @@ class Peminjaman extends CI_Controller {
         $ids = $this->bulk_ids();
         $catatan = trim((string) $this->input->post('bulk_note', true));
         if (!in_array($action, ['approve', 'reject'], true) || empty($ids)) {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Pilih minimal satu pengajuan yang dapat diproses.'], 422);
+                return;
+            }
             $this->session->set_flashdata('error', 'Pilih minimal satu pengajuan yang dapat diproses.');
             redirect('kaprodi/peminjaman');
         }
         if ($action === 'reject' && $catatan === '') {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Alasan penolakan terpilih wajib diisi.'], 422);
+                return;
+            }
             $this->session->set_flashdata('error', 'Alasan penolakan terpilih wajib diisi.');
             redirect('kaprodi/peminjaman');
         }
 
         $processed = 0;
         $skipped = 0;
+        $processed_ids = [];
+        $skipped_ids = [];
         foreach ($ids as $id) {
             $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id);
             if (!$peminjaman || !scm_loan_can_act($peminjaman, 'kaprodi')) {
                 $skipped++;
+                $skipped_ids[] = $id;
                 continue;
             }
             $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
@@ -177,12 +208,33 @@ class Peminjaman extends CI_Controller {
                         site_url('peminjaman/riwayat'));
                 }
             }
-            if ($ok) $processed++; else $skipped++;
+            if ($ok) {
+                $processed++;
+                $processed_ids[] = $id;
+            } else {
+                $skipped++;
+                $skipped_ids[] = $id;
+            }
         }
 
         $label = $action === 'approve' ? 'disetujui' : 'ditolak';
         $message = $processed . ' pengajuan berhasil ' . $label . '.';
         if ($skipped > 0) $message .= ' ' . $skipped . ' dilewati karena statusnya berubah atau bukan kewenangan Kaprodi.';
+        if ($ajax) {
+            scm_json_response([
+                'success' => $processed > 0,
+                'partial' => $processed > 0 && $skipped > 0,
+                'message' => $message,
+                'action' => $action,
+                'status' => $action === 'approve' ? 'Menunggu Verifikasi Laboran' : 'Ditolak',
+                'processed' => $processed,
+                'skipped' => $skipped,
+                'processed_ids' => $processed_ids,
+                'skipped_ids' => $skipped_ids,
+                'actionable_remaining' => $this->Peminjaman_model->count_actionable_peminjaman('kaprodi'),
+            ], $processed > 0 ? 200 : 409);
+            return;
+        }
         $this->session->set_flashdata($processed > 0 ? 'success' : 'error', $message);
         redirect('kaprodi/peminjaman');
     }
@@ -193,6 +245,6 @@ class Peminjaman extends CI_Controller {
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static function ($id) {
             return $id > 0;
         })));
-        return array_slice($ids, 0, 100);
+        return array_slice($ids, 0, 25);
     }
 }

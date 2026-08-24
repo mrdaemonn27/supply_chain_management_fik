@@ -6,7 +6,7 @@ class Peminjaman extends CI_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->library('session');
-        $this->load->helper('url');
+        $this->load->helper(['url', 'scm_ajax', 'scm_sort']);
         $this->load->helper('loan_progress');
         $this->load->model('Peminjaman_model');
         $this->load->model('Aset_model');
@@ -102,11 +102,14 @@ class Peminjaman extends CI_Controller {
             'multi_filters' => $multi_filters,
             'action_role' => 'laboran',
         ];
+        $allowed_sort = ['number', 'peminjam', 'barang', 'masa', 'status'];
+        $filters['sort_by'] = in_array($this->input->get('sort_by', true), $allowed_sort, true) ? $this->input->get('sort_by', true) : '';
+        $filters['sort_dir'] = strtolower((string) $this->input->get('sort_dir', true)) === 'asc' ? 'asc' : 'desc';
 
         $page = max(1, (int) $this->input->get('page', true));
         $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
         $requested_limit = (int) $requested_per_page;
-        $per_page = in_array($requested_limit, [10, 25, 50, 100], true) ? $requested_limit : 10;
+        $per_page = in_array($requested_limit, [10, 25], true) ? $requested_limit : 10;
         $total_rows = $this->Peminjaman_model->count_visible_peminjaman($filters);
         $total_pages = max(1, (int) ceil($total_rows / $per_page));
         $page = min($page, $total_pages);

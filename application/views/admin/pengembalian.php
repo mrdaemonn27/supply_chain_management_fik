@@ -10,13 +10,16 @@ $compact_pagination_pages = static function ($current, $last) {
     $last = max(1, (int) $last);
     if ($last <= 7) return range(1, $last);
     if ($current <= 3) return array_merge(range(1, 5), ['ellipsis-after', $last]);
-    if ($current >= $last - 2) return array_merge([$last - 4, $last - 3, $last - 2, $last - 1, $last]);
+    if ($current >= $last - 2) return array_merge([1, 'ellipsis-before'], range($last - 4, $last));
     return array_merge([1, 'ellipsis-before'], range($current - 2, $current + 2), ['ellipsis-after', $last]);
 };
 $filter_rows = isset($filter_rows) && is_array($filter_rows) ? array_values($filter_rows) : [];
 if (empty($filter_rows)) $filter_rows = [['field' => 'peminjam', 'value' => '']];
 $filter_fields = ['peminjam' => 'Peminjam / NIM', 'barang' => 'Nama barang / kode', 'status' => 'Status', 'tanggal' => 'Tanggal pinjam', 'keperluan' => 'Keperluan'];
 $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions) ? $filter_suggestions : [];
+$return_page_actionable = count((array) ($peminjaman ?? []));
+$return_sort = (string) ($filters['sort_by'] ?? '');
+$return_sort_dir = (string) ($filters['sort_dir'] ?? 'desc');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -27,6 +30,7 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= base_url('assets/css/approval-bulk-select.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/approval-bulk-select.css'); ?>">
     <style>
         body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
@@ -116,6 +120,8 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
         <section class="panel-card p-3 p-lg-4 mb-4">
             <form id="adminFilters" method="get" action="<?= base_url('index.php/admin/pengembalian') ?>" data-max-filters="4">
                 <input type="hidden" name="per_page" value="<?= html_escape($current_per_page) ?>">
+                <input type="hidden" name="sort_by" value="<?= html_escape($return_sort) ?>">
+                <input type="hidden" name="sort_dir" value="<?= html_escape($return_sort_dir) ?>">
                 <div class="admin-filter-heading"><h2><i class="bi bi-funnel me-2 text-warning"></i>Filter pencarian</h2></div>
                 <div id="adminFilterRows" class="admin-filter-list">
                     <?php foreach($filter_rows as $index => $filter_row): ?>
@@ -130,26 +136,40 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
             </form>
         </section>
 
-        <section class="panel-card p-0 overflow-hidden">
+        <section class="panel-card p-0 overflow-hidden" data-bulk-approval data-bulk-noun="pengembalian" data-bulk-success-label="ditandai kembali" data-bulk-confirm="Tandai seluruh data terpilih sudah kembali dengan kondisi Baik?">
+            <?php if(!empty($peminjaman)): ?>
+            <form id="laboranReturnBulkForm" method="post" action="<?= base_url('index.php/admin/pengembalian/bulk') ?>" class="approval-bulk-toolbar m-3" data-bulk-form data-bulk-toolbar hidden>
+                <span class="approval-bulk-toolbar__count" data-bulk-count>0 data terpilih</span>
+                <button type="submit" name="action" value="return_good" class="btn btn-sm btn-success rounded-pill px-3" data-bulk-approve-action><i class="bi bi-arrow-counterclockwise me-1"></i>Terima Kondisi Baik</button>
+                <span class="small text-muted">Rusak/Hilang tetap diproses satu per satu karena wajib catatan dan evidence.</span>
+            </form>
+            <?php endif; ?>
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
-                    <thead><tr><th class="ps-3">No</th><th>Peminjam</th><th>Barang</th><th>Jadwal</th><th>Status</th><th class="text-end pe-3">Aksi</th></tr></thead>
+                    <thead><tr>
+                        <th class="approval-bulk-cell"><label class="approval-bulk-select-all" title="Pilih semua pengembalian pada halaman ini"><input type="checkbox" class="form-check-input approval-bulk-check" data-bulk-select-all <?= $return_page_actionable > 0 ? '' : 'disabled' ?>><span>Pilih</span></label></th>
+                        <?php foreach (['number' => 'No', 'peminjam' => 'Peminjam', 'barang' => 'Barang', 'masa' => 'Jadwal', 'status' => 'Status'] as $sort_key => $sort_label): ?>
+                        <th aria-sort="<?= scm_sort_aria($sort_key, $return_sort, $return_sort_dir) ?>"><a class="scm-sort-control <?= $return_sort === $sort_key ? 'is-active' : '' ?>" href="<?= scm_sort_url($sort_key, $return_sort, $return_sort_dir) ?>"><?= html_escape($sort_label) ?><i class="bi <?= scm_sort_icon_class($sort_key, $return_sort, $return_sort_dir) ?>" aria-hidden="true"></i></a></th>
+                        <?php endforeach; ?>
+                        <th class="text-end pe-3">Aksi</th>
+                    </tr></thead>
                     <tbody>
                     <?php if(empty($peminjaman)): ?>
-                        <tr><td colspan="6" class="text-center text-muted py-5">Belum ada transaksi aktif untuk pengembalian.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-5">Belum ada transaksi aktif untuk pengembalian.</td></tr>
                     <?php else: foreach($peminjaman as $index => $p): ?>
                         <?php $is_late = !empty($p->tanggal_kembali_rencana) && strtotime($p->tanggal_kembali_rencana) < strtotime(date('Y-m-d')); ?>
-                        <tr>
+                        <tr data-loan-id="<?= (int) $p->id_peminjaman ?>">
+                            <td class="approval-bulk-cell"><input type="checkbox" class="form-check-input approval-bulk-check" name="loan_ids[]" value="<?= (int) $p->id_peminjaman ?>" form="laboranReturnBulkForm" data-bulk-row aria-label="Pilih pengembalian <?= (int) $p->id_peminjaman ?>"></td>
                             <td class="ps-3 fw-semibold text-muted"><?= (($pagination['page'] ?? 1) - 1) * max(1, (int) ($pagination['per_page'] ?? count($peminjaman))) + $index + 1 ?></td>
                             <td class="ps-3"><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="fw-semibold"><?= (int)($p->total_jenis ?? 1) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?><?= html_escape($d->nama_aset) ?> (<?= (int)$d->jumlah_pinjam ?>), <?php endforeach; else: ?>- <?php endif; ?></div></td>
                             <td><div><?= html_escape($p->tanggal_pinjam ?? '-') ?></div><div class="small <?= $is_late ? 'text-danger fw-semibold' : 'text-muted' ?>">s.d. <?= html_escape($p->tanggal_kembali_rencana ?? '-') ?><?= $is_late ? ' - Terlambat' : '' ?></div></td>
-                            <td><span class="soft-badge <?= $is_late ? 'status-Terlambat' : $status_class($p->status ?? '') ?>"><?= $is_late ? 'Terlambat' : html_escape($p->status ?? '-') ?></span><?php if (!empty($p->evidence_serah)): ?><div class="small mt-1"><?php foreach ($p->evidence_serah as $evidence): ?><a class="d-block" href="<?= base_url($evidence->nama_file) ?>" target="_blank" rel="noopener"><i class="bi bi-image me-1"></i><?= html_escape($evidence->original_name ?: 'Evidence serah terima') ?></a><?php endforeach; ?></div><?php endif; ?></td>
+                            <td data-bulk-status><span class="soft-badge <?= $is_late ? 'status-Terlambat' : $status_class($p->status ?? '') ?>"><?= $is_late ? 'Terlambat' : html_escape($p->status ?? '-') ?></span><?php if (!empty($p->evidence_serah)): ?><div class="small mt-1"><?php foreach ($p->evidence_serah as $evidence): ?><a class="d-block" href="<?= base_url($evidence->nama_file) ?>" target="_blank" rel="noopener"><i class="bi bi-image me-1"></i><?= html_escape($evidence->original_name ?: 'Evidence serah terima') ?></a><?php endforeach; ?></div><?php endif; ?></td>
                             <td class="text-end pe-3">
                                 <div class="d-inline-flex flex-wrap justify-content-end gap-2">
-                                    <button class="btn btn-sm btn-outline-primary rounded-pill" data-bs-toggle="modal" data-bs-target="#evidenceModal<?= (int)$p->id_peminjaman ?>" title="Tambah dokumentasi kondisi serah terima"><i class="bi bi-camera me-1"></i> Foto</button>
-                                    <button class="btn btn-sm btn-outline-success rounded-pill" data-bs-toggle="modal" data-bs-target="#returnModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-arrow-counterclockwise me-1"></i> Terima</button>
-                                    <button class="btn btn-sm btn-outline-danger rounded-pill" data-bs-toggle="modal" data-bs-target="#blockModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-shield-lock me-1"></i> Blokir</button>
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill" data-bulk-action data-bs-toggle="modal" data-bs-target="#evidenceModal<?= (int)$p->id_peminjaman ?>" title="Tambah dokumentasi kondisi serah terima"><i class="bi bi-camera me-1"></i> Foto</button>
+                                    <button class="btn btn-sm btn-outline-success rounded-pill" data-bulk-action data-bs-toggle="modal" data-bs-target="#returnModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-arrow-counterclockwise me-1"></i> Terima</button>
+                                    <button class="btn btn-sm btn-outline-danger rounded-pill" data-bulk-action data-bs-toggle="modal" data-bs-target="#blockModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-shield-lock me-1"></i> Blokir</button>
                                 </div>
                             </td>
                         </tr>
@@ -163,6 +183,8 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
                     'q' => $filters['pencarian'] ?? '',
                     'tanggal' => $filters['tanggal'] ?? '',
                     'per_page' => $current_per_page,
+                    'sort_by' => $return_sort,
+                    'sort_dir' => $return_sort_dir,
                 ];
                 foreach ($filter_rows as $filter_row) {
                     $base_query['filter_field'][] = $filter_row['field'] ?? 'peminjam';
@@ -177,8 +199,6 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
                         <select id="returnPageSize" class="form-select form-select-sm" aria-label="Jumlah data pengembalian per halaman">
                             <option value="10" <?= $current_per_page === '10' ? 'selected' : '' ?>>10</option>
                             <option value="25" <?= $current_per_page === '25' ? 'selected' : '' ?>>25</option>
-                            <option value="50" <?= $current_per_page === '50' ? 'selected' : '' ?>>50</option>
-                            <option value="100" <?= $current_per_page === '100' ? 'selected' : '' ?>>100</option>
                         </select>
                         <span>Total item: <?= (int) ($pagination['total'] ?? 0) ?></span>
                     </div>
@@ -280,6 +300,7 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
     <?php endforeach; endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= base_url('assets/js/approval-bulk-select.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/approval-bulk-select.js'); ?>"></script>
     <script>
         (() => {
             const form = document.getElementById('adminFilters');
@@ -393,7 +414,8 @@ $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions
         window.setInterval(() => {
             const activeElement = document.activeElement;
             const isEditing = activeElement && ['INPUT', 'SELECT', 'TEXTAREA'].includes(activeElement.tagName);
-            if (!document.hidden && !document.querySelector('.modal.show') && !isEditing) window.location.reload();
+            const bulkActive = document.querySelector('.is-bulk-loading, [data-bulk-row]:checked');
+            if (!document.hidden && !document.querySelector('.modal.show') && !isEditing && !bulkActive) window.location.reload();
         }, 60000);
     </script>
 </body>

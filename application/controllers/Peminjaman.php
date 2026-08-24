@@ -23,7 +23,7 @@ class Peminjaman extends CI_Controller {
         }
         
         // 2. Load Model yang menangani query ke tabel aset & peminjaman
-        $this->load->helper('loan_progress');
+        $this->load->helper(['loan_progress', 'scm_pagination', 'scm_sort']);
         $this->load->model('Peminjaman_model');
         // DITAMBAHKAN: Load Aset_model untuk mengambil fungsi get_aset_by_ruangan
         $this->load->model('Aset_model'); 
@@ -64,19 +64,25 @@ class Peminjaman extends CI_Controller {
      * URL: http://localhost/supply_chain_management_fik/index.php/peminjaman
      */
     public function index() {
-        // DITAMBAHKAN: Tangkap parameter id_ruangan dari URL
-        $id_ruangan = $this->input->get('id_ruangan');
+        $id_ruangan = $this->input->get('id_ruangan', true);
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
+        $filters = [];
+        foreach (array_slice($fields, 0, 4) as $index => $field) {
+            $value = trim((string) ($values[$index] ?? ''));
+            if ($value !== '') $filters[] = ['field' => (string) $field, 'value' => $value];
+        }
+        $per_page = scm_read_per_page($this->input->get('per_page', true));
+        $total = $this->Peminjaman_model->count_katalog_barang($filters, $id_ruangan);
+        $total_pages = max(1, (int) ceil($total / $per_page));
+        $page = min(max(1, (int) $this->input->get('page', true)), $total_pages);
+        $data['barang'] = $this->Peminjaman_model->get_katalog_barang($filters, $per_page, ($page - 1) * $per_page, $id_ruangan);
+        $data['filter_rows'] = $filters;
+        $data['pagination'] = compact('page', 'per_page', 'total', 'total_pages');
         
         if ($id_ruangan) {
-            // Jika user mengklik "Masuk Ruangan" (terdapat id_ruangan), filter datanya
-            $data['barang'] = $this->Aset_model->get_aset_by_ruangan($id_ruangan);
-            
-            // Opsional: Ambil detail data ruangan untuk judul di halaman view nanti
             $data['ruangan_aktif'] = $this->db->get_where('ruangan', ['id_ruangan' => $id_ruangan])->row();
         } else {
-            // Jika diakses dari navbar "Total Barang" (tanpa parameter), tampilkan semua barang 
-            // Tetap menggunakan fungsi asli agar tidak merusak fungsi yang sudah ada
-            $data['barang'] = $this->Peminjaman_model->get_katalog_barang();
             $data['ruangan_aktif'] = null;
         }
         
@@ -221,13 +227,38 @@ class Peminjaman extends CI_Controller {
         $nim_nip = $this->session->userdata('username');
         $peminjam = $this->Peminjaman_model->get_peminjam_by_nim_nip($nim_nip);
         
+        $filter_fields = (array) $this->input->get('filter_field', true);
+        $filter_values = (array) $this->input->get('filter_value', true);
+        $filter_rows = [];
+        foreach ($filter_fields as $index => $field) {
+            if (count($filter_rows) >= 4 || !in_array($field, ['all', 'barang', 'kode', 'status', 'tanggal'], true)) continue;
+            $filter_rows[] = ['field' => $field, 'value' => trim((string) ($filter_values[$index] ?? ''))];
+        }
+        if (empty($filter_rows)) $filter_rows = [['field' => 'all', 'value' => '']];
+        $history_sort = in_array($this->input->get('sort_by', true), ['tanggal', 'barang', 'masa', 'status', 'qr'], true) ? $this->input->get('sort_by', true) : '';
+        $history_dir = strtolower((string) $this->input->get('sort_dir', true)) === 'asc' ? 'asc' : 'desc';
+        $filters = [
+            'criteria' => array_values(array_filter($filter_rows, static function ($row) { return $row['value'] !== ''; })),
+            'sort_by' => $history_sort,
+            'sort_dir' => $history_dir,
+        ];
+        $per_page = scm_read_per_page($this->input->get('per_page', true));
+        $page = max(1, (int) $this->input->get('page', true));
+
         if ($peminjam) {
-            // Jika sudah pernah meminjam / terdaftar di tabel peminjam
-            $data['riwayat'] = $this->Peminjaman_model->get_peminjaman_by_peminjam($peminjam->id_peminjam);
+            $total = $this->Peminjaman_model->count_peminjaman_by_peminjam($peminjam->id_peminjam, $filters);
+            $total_pages = max(1, (int) ceil($total / $per_page));
+            $page = min($page, $total_pages);
+            $data['riwayat'] = $this->Peminjaman_model->get_peminjaman_by_peminjam($peminjam->id_peminjam, $filters, $per_page, ($page - 1) * $per_page);
         } else {
-            // Jika sama sekali belum pernah minjam (tabel masih kosong untuk user ini)
+            $total = 0;
+            $total_pages = 1;
             $data['riwayat'] = [];
         }
+        $data['filter_rows'] = $filter_rows;
+        $data['history_sort'] = $history_sort;
+        $data['history_dir'] = $history_dir;
+        $data['pagination'] = ['page' => $page, 'per_page' => $per_page, 'total' => $total, 'total_pages' => $total_pages];
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi(null, $this->session->userdata('id_user'));
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread(null, $this->session->userdata('id_user'));
         

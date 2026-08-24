@@ -45,6 +45,11 @@
     font-weight: 700;
 }
 .approval-bulk-cell { width: 72px; text-align: center; }
+.approval-bulk-feedback { font-size: .8rem; }
+.is-bulk-loading .approval-bulk-toolbar { opacity: .72; }
+.approval-row-processed { opacity: .72; }
+.approval-row-processed td { background: rgba(25, 135, 84, .035) !important; }
+.approval-bulk-result { display: inline-flex; width: auto !important; min-width: 0 !important; }
 .loan-pagination .page-link,
 .kaur-submission-pagination .page-link,
 .kaur-return-pagination .page-link,

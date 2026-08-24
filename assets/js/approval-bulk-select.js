@@ -1,31 +1,62 @@
 (function () {
     'use strict';
 
+    var REQUEST_TIMEOUT = 20000;
+    var BATCH_SIZE = 10;
+
     function init(root) {
         var form = root.querySelector('[data-bulk-form]');
         var toolbar = root.querySelector('[data-bulk-toolbar]');
         var selectAll = root.querySelector('[data-bulk-select-all]');
-        var checks = Array.from(root.querySelectorAll('[data-bulk-row]:not(:disabled)'));
         var count = root.querySelector('[data-bulk-count]');
         var note = form ? form.querySelector('[name="bulk_note"]') : null;
         var rejectReason = root.querySelector('[data-bulk-reject-reason]');
         var rejectTrigger = root.querySelector('[data-bulk-reject-submit]');
         var rejectAction = form ? form.querySelector('[data-bulk-reject-action]') : null;
         var approveAction = form ? form.querySelector('[data-bulk-approve-action]') : null;
-        if (!form || !toolbar || !selectAll || !checks.length) return;
+        var feedback = root.querySelector('[data-bulk-feedback]');
+        var noun = root.dataset.bulkNoun || 'pengajuan';
+        var successLabel = root.dataset.bulkSuccessLabel || '';
+        var confirmMessage = root.dataset.bulkConfirm || '';
+        var busy = false;
+        if (!form || !toolbar || !selectAll) return;
+
+        if (!feedback) {
+            feedback = document.createElement('div');
+            feedback.setAttribute('data-bulk-feedback', '');
+            feedback.setAttribute('role', 'status');
+            feedback.setAttribute('aria-live', 'polite');
+            feedback.hidden = true;
+            form.before(feedback);
+        }
+
+        function checks() {
+            return Array.from(root.querySelectorAll('[data-bulk-row]'));
+        }
+
+        function availableChecks() {
+            return checks().filter(function (check) { return !check.disabled; });
+        }
 
         function visibleChecks() {
-            return checks.filter(function (check) {
+            return availableChecks().filter(function (check) {
                 var row = check.closest('tr');
-                return !row || !row.hidden;
+                return !row || (!row.hidden && !row.classList.contains('d-none'));
             });
         }
 
         function selectedChecks() {
-            return checks.filter(function (check) { return check.checked; });
+            return checks().filter(function (check) {
+                return check.checked && check.dataset.bulkPermanentDisabled !== '1' && check.closest('tr')?.dataset.bulkProcessed !== '1';
+            });
         }
 
         function sync() {
+            if (busy) {
+                toolbar.hidden = false;
+                selectAll.disabled = true;
+                return;
+            }
             var visible = visibleChecks();
             var selectedVisible = visible.filter(function (check) { return check.checked; });
             var selected = selectedChecks().length;
@@ -33,22 +64,165 @@
             if (count) count.textContent = selected + ' data terpilih';
             selectAll.checked = visible.length > 0 && selectedVisible.length === visible.length;
             selectAll.indeterminate = selectedVisible.length > 0 && selectedVisible.length < visible.length;
-            selectAll.disabled = visible.length === 0;
+            selectAll.disabled = busy || visible.length === 0;
         }
 
+        function showFeedback(message, type) {
+            feedback.className = 'approval-bulk-feedback alert alert-' + type + ' mx-3 mb-3';
+            feedback.textContent = message;
+            feedback.hidden = false;
+        }
+
+        function setBusy(state) {
+            busy = state;
+            toolbar.setAttribute('aria-busy', state ? 'true' : 'false');
+            form.querySelectorAll('button').forEach(function (button) { button.disabled = state; });
+            if (rejectTrigger) rejectTrigger.disabled = state;
+            checks().forEach(function (check) { check.disabled = state || check.dataset.bulkPermanentDisabled === '1' || check.closest('tr')?.dataset.bulkProcessed === '1'; });
+            root.classList.toggle('is-bulk-loading', state);
+            if (count && state) count.textContent = 'Request sedang diproses…';
+            if (!state) {
+                checks().forEach(function (check) {
+                    var row = check.closest('tr');
+                    check.disabled = check.dataset.bulkPermanentDisabled === '1' || Boolean(row && row.dataset.bulkProcessed === '1');
+                });
+            }
+            sync();
+        }
+
+        function updateActionableCount(value) {
+            if (!Number.isFinite(Number(value))) return;
+            document.querySelectorAll('[data-bulk-actionable-count]').forEach(function (element) {
+                element.textContent = String(Math.max(0, Number(value)));
+            });
+        }
+
+        function applyProcessed(payload) {
+            var processed = new Set((payload.processed_ids || []).map(String));
+            checks().forEach(function (check) {
+                var row = check.closest('tr');
+                check.checked = false;
+                if (!processed.has(String(check.value)) || !row) return;
+                row.dataset.bulkProcessed = '1';
+                row.classList.add('approval-row-processed');
+                check.disabled = true;
+                var statusCell = row.querySelector('[data-bulk-status]');
+                if (statusCell) {
+                    var status = document.createElement('span');
+                status.className = 'soft-badge approval-bulk-result ' + (payload.action === 'reject' ? 'text-bg-danger' : 'text-bg-success');
+                    status.textContent = payload.status || (payload.action === 'reject' ? 'Ditolak' : 'Disetujui');
+                    statusCell.replaceChildren(status);
+                }
+                row.querySelectorAll('[data-bulk-action]').forEach(function (button) { button.disabled = true; });
+            });
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+            updateActionableCount(payload.actionable_remaining);
+        }
+
+        async function requestBatch(action, ids, noteValue) {
+            var body = new FormData(form);
+            body.delete('loan_ids[]');
+            ids.forEach(function (id) { body.append('loan_ids[]', id); });
+            body.set('action', action);
+            body.set('bulk_note', noteValue || '');
+            var controller = new AbortController();
+            var timer = window.setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT);
+
+            try {
+                var response = await fetch(form.action, {
+                    method: 'POST',
+                    body: body,
+                    credentials: 'same-origin',
+                    cache: 'no-store',
+                    signal: controller.signal,
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                var contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) throw new Error('Respons server bukan JSON.');
+                return { response: response, payload: await response.json() };
+            } finally {
+                window.clearTimeout(timer);
+            }
+        }
+
+        async function submitAjax(action) {
+            if (busy) return;
+            var selected = selectedChecks();
+            if (!selected.length) {
+                showFeedback('Pilih minimal satu ' + noun + ' yang dapat diproses.', 'warning');
+                return;
+            }
+            if (action !== 'reject') {
+                var message = confirmMessage || ('Setujui semua ' + noun + ' yang dipilih?');
+                if (!window.confirm(message)) return;
+            }
+
+            var ids = selected.map(function (check) { return check.value; });
+            var noteValue = note ? note.value : '';
+            var processedTotal = 0;
+            var skippedTotal = 0;
+            feedback.hidden = true;
+            setBusy(true);
+
+            try {
+                for (var offset = 0; offset < ids.length; offset += BATCH_SIZE) {
+                    var batch = ids.slice(offset, offset + BATCH_SIZE);
+                    var lastNumber = Math.min(offset + batch.length, ids.length);
+                    if (count) count.textContent = 'Memproses ' + (offset + 1) + '–' + lastNumber + ' dari ' + ids.length + ' data…';
+
+                    var result = await requestBatch(action, batch, noteValue);
+                    var response = result.response;
+                    var payload = result.payload || {};
+                    if (response.status === 401 || response.status === 403) {
+                        throw Object.assign(new Error(payload.message || 'Sesi atau izin tidak valid.'), { payload: payload });
+                    }
+                    if (!response.ok && response.status !== 409) {
+                        throw Object.assign(new Error(payload.message || 'Bulk action gagal diproses.'), { payload: payload });
+                    }
+
+                    processedTotal += Number(payload.processed || 0);
+                    skippedTotal += Number(payload.skipped || 0);
+                    applyProcessed(payload);
+                }
+
+                var actionLabel = successLabel || (action === 'reject' ? 'ditolak' : 'disetujui');
+                var message = processedTotal + ' ' + noun + ' berhasil ' + actionLabel + '.';
+                if (skippedTotal > 0) message += ' ' + skippedTotal + ' dilewati karena status atau izin sudah berubah.';
+                showFeedback(message, skippedTotal > 0 ? 'warning' : 'success');
+                if (note) note.value = '';
+                if (rejectReason) rejectReason.value = '';
+                var modalElement = rejectReason ? rejectReason.closest('.modal') : null;
+                if (modalElement && window.bootstrap) bootstrap.Modal.getInstance(modalElement)?.hide();
+            } catch (error) {
+                var payload = error.payload || {};
+                var message = error.name === 'AbortError'
+                    ? 'Request melewati batas waktu. Status data mungkin sudah berubah; periksa kembali sebelum mengulang.'
+                    : (payload.message || error.message || 'Server gagal memproses request.');
+                if (processedTotal > 0) message = processedTotal + ' data sudah berhasil diproses sebelum proses terhenti. ' + message;
+                showFeedback(message, payload.partial ? 'warning' : 'danger');
+                if (payload.redirect) window.setTimeout(function () { window.location.assign(payload.redirect); }, 1200);
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        checks().forEach(function (check) { check.dataset.bulkPermanentDisabled = check.disabled ? '1' : '0'; });
         selectAll.addEventListener('change', function () {
             visibleChecks().forEach(function (check) { check.checked = selectAll.checked; });
             sync();
         });
-        checks.forEach(function (check) { check.addEventListener('change', sync); });
+        root.addEventListener('change', function (event) {
+            if (event.target.matches('[data-bulk-row]')) sync();
+        });
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            var submitter = event.submitter;
+            var action = submitter && (submitter.value || submitter.dataset.bulkAction);
+            if (action) submitAjax(action);
+        });
 
-        if (approveAction) {
-            approveAction.addEventListener('click', function (event) {
-                if (!window.confirm('Setujui semua pengajuan yang dipilih?')) event.preventDefault();
-                if (note) note.value = '';
-            });
-        }
-
+        if (approveAction) approveAction.dataset.bulkAction = 'approve';
         if (rejectTrigger && rejectReason && rejectAction) {
             rejectTrigger.addEventListener('click', function () {
                 var value = rejectReason.value.trim();
@@ -64,7 +238,6 @@
             rejectReason.addEventListener('input', function () { rejectReason.setCustomValidity(''); });
         }
 
-        new MutationObserver(sync).observe(root, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
         sync();
     }
 

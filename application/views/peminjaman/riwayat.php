@@ -4,6 +4,13 @@ $session_role = strtolower((string) $this->session->userdata('role'));
 $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
+$history_pagination = isset($pagination) && is_array($pagination) ? $pagination : ['page' => 1, 'per_page' => 10, 'total' => count($riwayat ?? []), 'total_pages' => 1];
+$history_page = (int) $history_pagination['page'];
+$history_total_pages = (int) $history_pagination['total_pages'];
+$history_total = (int) $history_pagination['total'];
+$history_per_page = (int) $history_pagination['per_page'];
+$history_query = $_GET;
+$history_query['per_page'] = $history_per_page;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -137,7 +144,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         <div class="history-search" data-aos="fade-up">
             <?php
                 $multi_filter_id = 'historyMultiFilter';
-                $multi_filter_mode = 'client';
+                $multi_filter_mode = 'server';
                 $multi_filter_fields = [
                     'all' => ['label' => 'Semua riwayat', 'placeholder' => 'Cari nama barang, status, kode aset, atau tanggal...'],
                     'barang' => ['label' => 'Nama barang', 'placeholder' => 'Cari nama barang...'],
@@ -145,9 +152,11 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     'status' => ['label' => 'Status', 'placeholder' => 'Cari status peminjaman...'],
                     'tanggal' => ['label' => 'Tanggal', 'placeholder' => 'Pilih tanggal atau rentang tanggal', 'type' => 'date'],
                 ];
-                $multi_filter_rows = [['field' => 'all', 'value' => '']];
+                $multi_filter_rows = $filter_rows ?? [['field' => 'all', 'value' => '']];
+                $multi_filter_action = current_url();
+                $multi_filter_hidden = ['per_page' => $history_per_page, 'page' => 1, 'sort_by' => $history_sort ?? '', 'sort_dir' => $history_dir ?? 'desc'];
                 $multi_filter_meta_id = 'historySearchCount';
-                $multi_filter_meta = number_format(count($riwayat ?? []), 0, ',', '.') . ' total riwayat';
+                $multi_filter_meta = number_format($history_total, 0, ',', '.') . ' total riwayat';
                 include APPPATH . 'views/admin/_multi_filter.php';
                 unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
             ?>
@@ -158,10 +167,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         <div class="scm-pagination-top history-list-summary" aria-label="Pengaturan jumlah riwayat">
             <div class="scm-pagination-top__summary">
                 <label for="historyPageSize">Tampilkan:</label>
-                <select id="historyPageSize" class="form-select form-select-sm" aria-label="Jumlah riwayat per halaman">
-                    <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+                <select id="historyPageSize" class="form-select form-select-sm" aria-label="Jumlah riwayat per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.assign(u.toString());">
+                    <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $history_per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                 </select>
-                <span>Total item: <span id="historyTotalItems"><?= number_format(count($riwayat), 0, ',', '.') ?></span></span>
+                <span>Total item: <span id="historyTotalItems"><?= number_format($history_total, 0, ',', '.') ?></span></span>
             </div>
         </div>
         <?php endif; ?>
@@ -169,11 +178,9 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             <table class="table table-custom mb-0">
                 <thead>
                     <tr>
-                        <th>Tgl Pengajuan</th>
-                        <th>Nama Barang</th>
-                        <th>Masa Pinjam</th>
-                        <th>Status Approval</th>
-                        <th class="text-center">Status QR</th>
+                        <?php foreach (['tanggal' => 'Tgl Pengajuan', 'barang' => 'Nama Barang', 'masa' => 'Masa Pinjam', 'status' => 'Status Approval', 'qr' => 'Status QR'] as $sort_key => $sort_label): ?>
+                        <th class="<?= $sort_key === 'qr' ? 'text-center' : '' ?>" aria-sort="<?= scm_sort_aria($sort_key, $history_sort ?? '', $history_dir ?? 'desc') ?>"><a class="scm-sort-control <?= ($history_sort ?? '') === $sort_key ? 'is-active' : '' ?>" href="<?= scm_sort_url($sort_key, $history_sort ?? '', $history_dir ?? 'desc') ?>"><?= html_escape($sort_label) ?><i class="bi <?= scm_sort_icon_class($sort_key, $history_sort ?? '', $history_dir ?? 'desc') ?>" aria-hidden="true"></i></a></th>
+                        <?php endforeach; ?>
                     </tr>
                 </thead>
                 <tbody>
@@ -222,16 +229,23 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                             </td>
                         </tr>
                         <?php endforeach; ?>
-                        <tr class="history-empty-filter"><td colspan="5" class="text-center text-muted py-5"><i class="bi bi-search d-block fs-2 mb-2"></i>Tidak ada riwayat yang cocok.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
         </div>
         <?php if(!empty($riwayat)): ?>
-        <div id="historyPaginationWrap" class="history-pagination d-none" aria-live="polite">
-            <p id="historyPageInfo" class="history-pagination__info"></p>
+        <div id="historyPaginationWrap" class="history-pagination" aria-live="polite">
+            <?php $history_first = $history_total ? (($history_page - 1) * $history_per_page) + 1 : 0; $history_last = min($history_total, $history_page * $history_per_page); ?>
+            <p id="historyPageInfo" class="history-pagination__info">Menampilkan <?= number_format($history_first, 0, ',', '.') ?>–<?= number_format($history_last, 0, ',', '.') ?> dari <?= number_format($history_total, 0, ',', '.') ?> data</p>
             <nav id="historyPaginationNav" aria-label="Navigasi halaman riwayat peminjaman">
-                <ul id="historyPagination" class="pagination pagination-sm mb-0"></ul>
+                <ul id="historyPagination" class="pagination pagination-sm mb-0">
+                    <?php $history_query['page'] = max(1, $history_page - 1); ?><li class="page-item <?= $history_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($history_query) ?>" aria-label="Halaman sebelumnya">Previous</a></li>
+                    <?php foreach (scm_pagination_tokens($history_page, $history_total_pages) as $token): ?>
+                        <?php if (is_string($token)): ?><li class="page-item disabled" aria-hidden="true"><span class="page-link">&hellip;</span></li>
+                        <?php else: $history_query['page'] = $token; ?><li class="page-item <?= $token === $history_page ? 'active' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($history_query) ?>" <?= $token === $history_page ? 'aria-current="page"' : '' ?>><?= $token ?></a></li><?php endif; ?>
+                    <?php endforeach; ?>
+                    <?php $history_query['page'] = min($history_total_pages, $history_page + 1); ?><li class="page-item <?= $history_page >= $history_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($history_query) ?>" aria-label="Halaman berikutnya">Next</a></li>
+                </ul>
             </nav>
         </div>
         <?php endif; ?>
@@ -289,7 +303,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         AOS.init({ once: true, offset: 20 });
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
         const historyFilterRoot = document.getElementById('historyMultiFilter');
-        if (historyFilterRoot) {
+        if (historyFilterRoot?.dataset.mode === 'client') {
             const rows = Array.from(document.querySelectorAll('[data-history-row]'));
             const emptyRow = document.querySelector('.history-empty-filter');
             const counter = document.getElementById('historySearchCount');

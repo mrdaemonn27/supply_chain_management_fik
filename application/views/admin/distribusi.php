@@ -1,6 +1,14 @@
 <?php
 defined('BASEPATH') OR exit('No direct script access allowed');
 
+$distribution_pagination = $pagination ?? ['page' => 1, 'per_page' => 10, 'total' => count($distribusi ?? []), 'total_pages' => 1];
+$distribution_page = (int) $distribution_pagination['page'];
+$distribution_per_page = (int) $distribution_pagination['per_page'];
+$distribution_total = (int) $distribution_pagination['total'];
+$distribution_total_pages = (int) $distribution_pagination['total_pages'];
+$distribution_query = $_GET;
+$distribution_query['per_page'] = $distribution_per_page;
+
 $formatDistributionDate = static function ($value) {
     $timestamp = strtotime((string) $value);
     return $timestamp ? date('d M Y', $timestamp) : (string) $value;
@@ -30,6 +38,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     <style>
         body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
@@ -136,7 +145,10 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
 
     <?php
     $multi_filter_id = 'distributionMultiFilter';
-    $multi_filter_mode = 'client';
+    $multi_filter_mode = 'server';
+    $multi_filter_rows = $filter_rows ?? [['field' => 'aset', 'value' => '']];
+    $multi_filter_action = current_url();
+    $multi_filter_hidden = ['per_page' => $distribution_per_page, 'page' => 1];
     $multi_filter_fields = [
         'aset' => ['label' => 'Aset / kode', 'placeholder' => 'Cari nama aset atau kode'],
         'asal' => ['label' => 'Ruangan asal', 'placeholder' => 'Cari ruangan asal'],
@@ -179,7 +191,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                     $searchText = strtolower(implode(' ', [$assetName, $assetCode, $origin, $destination, (string) ($d->nama_petugas ?? ''), (string) ($d->keterangan ?? '')]));
                     ?>
                     <tr class="distribution-data-row" data-filter-aset="<?= html_escape($assetName . ' ' . $assetCode) ?>" data-filter-asal="<?= html_escape($origin) ?>" data-filter-tujuan="<?= html_escape($destination) ?>" data-filter-jumlah="<?= (int) $d->jumlah ?>" data-filter-tanggal="<?= html_escape($dateValue) ?>" data-filter-petugas="<?= html_escape($d->nama_petugas ?? '-') ?>">
-                        <td class="distribution-index-column"><span class="distribution-index"><?= $distribution_index + 1 ?></span></td>
+                        <td class="distribution-index-column"><span class="distribution-index"><?= (($distribution_page - 1) * $distribution_per_page) + $distribution_index + 1 ?></span></td>
                         <td class="ps-3"><div class="asset-name"><?= html_escape($assetName) ?></div><div class="asset-meta"><?= html_escape($assetCode) ?></div></td>
                         <td><div class="distribution-route"><span><?= html_escape($origin) ?></span><i class="bi bi-arrow-right" aria-hidden="true"></i><span class="route-destination"><?= html_escape($destination) ?></span></div><?php if (trim((string) ($d->keterangan ?? '')) !== ''): ?><div class="distribution-note" title="<?= html_escape($d->keterangan) ?>"><?= html_escape($d->keterangan) ?></div><?php endif; ?></td>
                         <td class="distribution-quantity"><?= (int) $d->jumlah ?></td>
@@ -187,24 +199,24 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                         <td class="distribution-staff pe-3"><?= html_escape($d->nama_petugas ?: 'Laboran') ?></td>
                     </tr>
                 <?php endforeach; endif; ?>
-                    <tr id="distributionFilteredEmpty" hidden><td colspan="6" class="distribution-empty text-center"><i class="bi bi-search"></i><div class="fw-semibold text-dark">Tidak ada distribusi yang sesuai</div><div class="small mt-1">Coba ubah kata kunci atau filter yang dipilih.</div></td></tr>
                 </tbody>
             </table>
         </div>
         <div class="distribution-pagination">
             <div class="distribution-pagination-left">
                 <span>Tampilkan:</span>
-                <select id="distributionPageSize" class="form-select form-select-sm" aria-label="Jumlah distribusi per halaman">
-                    <option value="10" selected>10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
+                <select id="distributionPageSize" class="form-select form-select-sm" aria-label="Jumlah distribusi per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.assign(u.toString());">
+                    <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $distribution_per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                 </select>
-                <span id="distributionTotal" class="distribution-pagination-total">Total item: 0</span>
+                <span id="distributionTotal" class="distribution-pagination-total">Total item: <?= number_format($distribution_total, 0, ',', '.') ?></span>
             </div>
-            <div id="distributionPageInfo" class="distribution-page-info">Halaman: 1 dari 1</div>
+            <div id="distributionPageInfo" class="distribution-page-info">Halaman: <?= $distribution_page ?> dari <?= $distribution_total_pages ?></div>
             <nav aria-label="Pagination distribusi">
-                <ul id="distributionPagination" class="pagination pagination-sm"></ul>
+                <ul id="distributionPagination" class="pagination pagination-sm">
+                    <?php $distribution_query['page'] = max(1, $distribution_page - 1); ?><li class="page-item <?= $distribution_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($distribution_query) ?>">Previous</a></li>
+                    <?php foreach (scm_pagination_tokens($distribution_page, $distribution_total_pages) as $token): ?><?php if (is_string($token)): ?><li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li><?php else: $distribution_query['page'] = $token; ?><li class="page-item <?= $token === $distribution_page ? 'active' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($distribution_query) ?>"><?= $token ?></a></li><?php endif; ?><?php endforeach; ?>
+                    <?php $distribution_query['page'] = min($distribution_total_pages, $distribution_page + 1); ?><li class="page-item <?= $distribution_page >= $distribution_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($distribution_query) ?>">Next</a></li>
+                </ul>
             </nav>
         </div>
     </section>
@@ -238,7 +250,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const rows = Array.from(document.querySelectorAll('.distribution-data-row'));
     let currentPage = 1;
 
-    if (!filterRoot || !pageSizeSelect || !total || !pageInfo || !pagination) return;
+    if (!filterRoot || filterRoot.dataset.mode !== 'client' || !pageSizeSelect || !total || !pageInfo || !pagination) return;
 
     const getPageSize = function () {
         return pageSizeSelect.value === 'all' ? Math.max(rows.length, 1) : Math.max(parseInt(pageSizeSelect.value, 10) || 10, 1);

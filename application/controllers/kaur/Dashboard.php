@@ -205,7 +205,8 @@ class Dashboard extends CI_Controller {
         if (in_array($active_module, ['pengajuan', 'negosiasi', 'approval', 'peminjaman', 'bast', 'laporan'], true)) {
             $requested_per_page = strtolower(trim((string) $this->input->get('per_page', true)));
             $requested_limit = (int) $requested_per_page;
-            $limit = in_array($requested_limit, [10, 25, 50, 100], true) ? $requested_limit : 10;
+            $allowed_page_sizes = $active_module === 'peminjaman' ? [10, 25] : [10, 25, 50, 100];
+            $limit = in_array($requested_limit, $allowed_page_sizes, true) ? $requested_limit : 10;
             $per_page = (string) $limit;
         }
         $offset = ($page - 1) * $limit;
@@ -250,14 +251,20 @@ class Dashboard extends CI_Controller {
         $laporan_limit = $active_module === 'laporan' ? $limit : 20;
         $laporan_offset = $active_module === 'laporan' ? $offset : 0;
         $data['laporan_negosiasi'] = $is_loan_page ? [] : $this->Kaur_model->get_laporan_negosiasi_deal($filters, $laporan_limit, $laporan_offset);
-        $bast_source_limit = $active_module === 'bast' ? null : 12;
-        $data['bast_ready'] = $is_loan_page ? [] : $this->Kaur_model->get_bast_ready_pengajuan($bast_source_limit);
-        $data['bast_list'] = $is_loan_page ? [] : $this->Kaur_model->get_bast_list($bast_source_limit);
+        $bast_source_limit = 12;
+        $data['bast_ready'] = $is_loan_page || $active_module === 'bast' ? [] : $this->Kaur_model->get_bast_ready_pengajuan($bast_source_limit);
+        $data['bast_list'] = $is_loan_page || $active_module === 'bast' ? [] : $this->Kaur_model->get_bast_list($bast_source_limit);
         if ($active_module === 'bast') {
-            $data['bast_rows'] = $this->filter_bast_rows(
-                $this->merge_bast_rows($data['bast_ready'], $data['bast_list']),
-                $multi_filter_rows
-            );
+            $data['total_rows_bast'] = $this->Kaur_model->count_bast_rows($multi_filter_rows);
+            $data['total_pages_bast'] = max(1, (int) ceil($data['total_rows_bast'] / $limit));
+            if ($page > $data['total_pages_bast']) {
+                $page = $data['total_pages_bast'];
+                $offset = ($page - 1) * $limit;
+                $data['page'] = $page;
+            }
+            $data['bast_rows'] = $this->Kaur_model->get_bast_rows($multi_filter_rows, $limit, $offset);
+            $data['bast_pending_count'] = $this->Kaur_model->count_pending_bast_rows();
+            $data['bast_server_paginated'] = true;
         }
         $loan_filters = $filters;
         if ($active_module === 'peminjaman') {
@@ -284,10 +291,32 @@ class Dashboard extends CI_Controller {
         $data['peminjaman_visible_kaur'] = $active_module === 'peminjaman'
             ? $this->Peminjaman_model->get_visible_peminjaman($loan_query_filters, $limit, $offset)
             : [];
-        $return_filters = $loan_filters;
-        unset($return_filters['multi_filters']);
+        $return_fields = (array) $this->input->get('return_filter_field', true);
+        $return_values = (array) $this->input->get('return_filter_value', true);
+        $return_filter_rows = [];
+        $allowed_return_fields = ['all', 'peminjam', 'barang', 'masa', 'status'];
+        foreach (array_slice($return_fields, 0, 4) as $index => $field) {
+            $value = trim((string) ($return_values[$index] ?? ''));
+            if ($value !== '' && in_array($field, $allowed_return_fields, true)) {
+                $return_filter_rows[] = ['field' => $field, 'value' => $value];
+            }
+        }
+        $return_per_page = in_array((int) $this->input->get('return_per_page', true), [10, 25], true) ? (int) $this->input->get('return_per_page', true) : 10;
+        $return_page = max(1, (int) $this->input->get('return_page', true));
+        $return_sort = in_array($this->input->get('return_sort', true), ['peminjam', 'barang', 'masa', 'status'], true) ? $this->input->get('return_sort', true) : 'masa';
+        $return_dir = strtolower((string) $this->input->get('return_dir', true)) === 'asc' ? 'ASC' : 'DESC';
+        $return_sort_map = ['peminjam' => 'nama_peminjam', 'barang' => 'barang', 'masa' => 'tanggal_pinjam', 'status' => 'status'];
+        $return_filters = ['multi_filters' => $return_filter_rows, 'sort_by' => $return_sort_map[$return_sort], 'sort_dir' => $return_dir];
+        $data['return_total_rows'] = $active_module === 'peminjaman' ? $this->Peminjaman_model->count_pengembalian_readonly($return_filters) : 0;
+        $data['return_total_pages'] = max(1, (int) ceil($data['return_total_rows'] / $return_per_page));
+        $return_page = min($return_page, $data['return_total_pages']);
+        $data['return_page'] = $return_page;
+        $data['return_per_page'] = $return_per_page;
+        $data['return_filter_rows'] = $return_filter_rows;
+        $data['return_sort'] = $return_sort;
+        $data['return_dir'] = strtolower($return_dir);
         $data['pengembalian_readonly'] = $active_module === 'peminjaman'
-            ? $this->Peminjaman_model->get_pengembalian_readonly($return_filters, 10, 0)
+            ? $this->Peminjaman_model->get_pengembalian_readonly($return_filters, $return_per_page, ($return_page - 1) * $return_per_page)
             : [];
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('kaur', null, 20);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('kaur', null);

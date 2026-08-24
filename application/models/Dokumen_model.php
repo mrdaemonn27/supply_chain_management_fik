@@ -31,14 +31,38 @@ class Dokumen_model extends CI_Model {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
     }
 
-    public function get_all($limit = 100) {
-        $this->db->select('dokumen_laboran.*, peminjam.nama_peminjam, peminjam.nim_nip, peminjaman.tanggal_pinjam');
+    private function build_list_query(array $filters = [], $select = true) {
+        if ($select) {
+            $this->db->select('dokumen_laboran.*, peminjam.nama_peminjam, peminjam.nim_nip, peminjaman.tanggal_pinjam');
+        }
         $this->db->from($this->table);
         $this->db->join('peminjaman', 'peminjaman.id_peminjaman = dokumen_laboran.id_peminjaman', 'left');
         $this->db->join('peminjam', 'peminjam.id_peminjam = peminjaman.id_peminjam', 'left');
+        foreach ((array) ($filters['criteria'] ?? []) as $criterion) {
+            $field = (string) ($criterion['field'] ?? 'dokumen');
+            $value = trim((string) ($criterion['value'] ?? ''));
+            if ($value === '') continue;
+            if ($field === 'jenis') { $this->db->like('dokumen_laboran.jenis', $value); continue; }
+            if ($field === 'tanggal') { $this->db->where('DATE(dokumen_laboran.created_at)', $value); continue; }
+            if ($field === 'relasi') {
+                $this->db->group_start()->like('peminjam.nama_peminjam', $value)->or_like('peminjam.nim_nip', $value)->group_end();
+                continue;
+            }
+            $this->db->group_start()->like('dokumen_laboran.judul', $value)->or_like('dokumen_laboran.original_name', $value)->or_like('dokumen_laboran.nama_file', $value)->or_like('dokumen_laboran.keterangan', $value)->group_end();
+        }
+    }
+
+    public function get_all($limit = 100, $offset = 0, $filters = []) {
+        $this->build_list_query((array) $filters);
         $this->db->order_by('dokumen_laboran.created_at', 'DESC');
-        $this->db->limit($limit);
+        $this->db->order_by('dokumen_laboran.id_dokumen', 'DESC');
+        $this->db->limit(max(1, (int) $limit), max(0, (int) $offset));
         return $this->db->get()->result();
+    }
+
+    public function count_all($filters = []) {
+        $this->build_list_query((array) $filters, false);
+        return (int) $this->db->count_all_results();
     }
 
     public function insert($data) {

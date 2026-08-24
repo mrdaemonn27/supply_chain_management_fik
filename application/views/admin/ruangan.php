@@ -5,6 +5,22 @@
  * @var array  $ruangan_list
  * @var array  $ruangan_detail
  */
+$room_pagination = $pagination ?? ['page' => 1, 'per_page' => 10, 'total' => count($ruangan_list ?? []), 'total_pages' => 1];
+$room_page = (int) $room_pagination['page'];
+$room_per_page = (int) $room_pagination['per_page'];
+$room_total = (int) $room_pagination['total'];
+$room_total_pages = (int) $room_pagination['total_pages'];
+$room_sort = $sort ?? 'index';
+$room_direction = $direction ?? 'desc';
+$room_query = $_GET;
+$room_query['per_page'] = $room_per_page;
+$room_sort_url = static function ($key) use ($room_query, $room_sort, $room_direction) {
+    $query = $room_query;
+    $query['sort'] = $key;
+    $query['dir'] = $room_sort === $key && $room_direction === 'asc' ? 'desc' : 'asc';
+    $query['page'] = 1;
+    return current_url() . '?' . http_build_query($query);
+};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -15,6 +31,7 @@
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
@@ -160,7 +177,10 @@
             <div class="card-body p-0">
                 <div class="p-3 pb-0"><?php
                     $multi_filter_id = 'ruanganMultiFilter';
-                    $multi_filter_mode = 'client';
+                    $multi_filter_mode = 'server';
+                    $multi_filter_rows = $filter_rows ?? [['field' => 'nama', 'value' => '']];
+                    $multi_filter_action = current_url();
+                    $multi_filter_hidden = ['per_page' => $room_per_page, 'sort' => $room_sort, 'dir' => $room_direction, 'page' => 1];
                     $multi_filter_fields = [
                         'nama' => ['label' => 'Nama ruangan', 'placeholder' => 'Cari nama ruangan atau laboratorium'],
                         'deskripsi' => ['label' => 'Deskripsi', 'placeholder' => 'Cari deskripsi ruangan'],
@@ -171,10 +191,10 @@
                     <table class="table table-hover align-middle mb-0">
                         <thead class="table-light">
                             <tr>
-                                <th class="p-3 text-center" width="5%"><button type="button" class="room-sort-button" data-room-sort="index">No <i class="bi bi-arrow-down-up"></i></button></th>
+                                <th class="p-3 text-center" width="5%" aria-sort="<?= $room_sort === 'index' ? ($room_direction === 'asc' ? 'ascending' : 'descending') : 'none' ?>"><a href="<?= $room_sort_url('index') ?>" class="room-sort-button scm-sort-control <?= $room_sort === 'index' ? 'is-active' : '' ?>" data-room-sort="index">No <i class="bi <?= $room_sort === 'index' ? ($room_direction === 'asc' ? 'bi-sort-up-alt' : 'bi-sort-down') : 'bi-arrow-down-up' ?>"></i></a></th>
                                 <th width="15%" class="text-center">Gambar</th>
-                                <th width="25%"><button type="button" class="room-sort-button" data-room-sort="name">Nama Ruangan <i class="bi bi-arrow-down-up"></i></button></th>
-                                <th width="40%"><button type="button" class="room-sort-button" data-room-sort="description">Deskripsi <i class="bi bi-arrow-down-up"></i></button></th>
+                                <th width="25%" aria-sort="<?= $room_sort === 'name' ? ($room_direction === 'asc' ? 'ascending' : 'descending') : 'none' ?>"><a href="<?= $room_sort_url('name') ?>" class="room-sort-button scm-sort-control <?= $room_sort === 'name' ? 'is-active' : '' ?>" data-room-sort="name">Nama Ruangan <i class="bi <?= $room_sort === 'name' ? ($room_direction === 'asc' ? 'bi-sort-up-alt' : 'bi-sort-down') : 'bi-arrow-down-up' ?>"></i></a></th>
+                                <th width="40%" aria-sort="<?= $room_sort === 'description' ? ($room_direction === 'asc' ? 'ascending' : 'descending') : 'none' ?>"><a href="<?= $room_sort_url('description') ?>" class="room-sort-button scm-sort-control <?= $room_sort === 'description' ? 'is-active' : '' ?>" data-room-sort="description">Deskripsi <i class="bi <?= $room_sort === 'description' ? ($room_direction === 'asc' ? 'bi-sort-up-alt' : 'bi-sort-down') : 'bi-arrow-down-up' ?>"></i></a></th>
                                 <th width="15%" class="text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -184,7 +204,7 @@
                                 <td colspan="5" class="text-center py-4 text-muted">Belum ada data ruangan.</td>
                             </tr>
                             <?php else: ?>
-                                <?php $no=1; foreach($ruangan_list as $r): ?>
+                                <?php $no=(($room_page - 1) * $room_per_page) + 1; foreach($ruangan_list as $r): ?>
                                 <tr
                                     class="ruangan-data-row"
                                     data-search="<?= html_escape(($r['nama_ruangan'] ?? '') . ' ' . ($r['deskripsi'] ?? '')) ?>"
@@ -218,24 +238,25 @@
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
-                                <tr id="ruanganFilterEmpty" class="room-filter-empty" hidden>
-                                    <td colspan="5">Tidak ada ruangan yang sesuai dengan pencarian.</td>
-                                </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="loan-pagination-footer" id="ruanganPaginationFooter" data-total="<?= count($ruangan_list) ?>">
+            <div class="loan-pagination-footer" id="ruanganPaginationFooter" data-total="<?= $room_total ?>">
                 <div class="loan-pagination-summary">
                     <label for="ruanganPageSize">Tampilkan:</label>
-                    <select id="ruanganPageSize" class="form-select form-select-sm" aria-label="Jumlah data ruangan per halaman">
-                        <option value="10" selected>10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+                    <select id="ruanganPageSize" class="form-select form-select-sm" aria-label="Jumlah data ruangan per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.assign(u.toString());">
+                        <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $room_per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                     </select>
-                    <span>Total item: <span id="ruanganTotalItems"><?= count($ruangan_list) ?></span></span>
+                    <span>Total item: <span id="ruanganTotalItems"><?= number_format($room_total, 0, ',', '.') ?></span></span>
                 </div>
-                <div class="loan-pagination-status" id="ruanganPageStatus">Halaman: 1 dari 1</div>
-                <nav aria-label="Pagination ruangan"><ul class="pagination pagination-sm loan-pagination" id="ruanganPageNav"></ul></nav>
+                <div class="loan-pagination-status" id="ruanganPageStatus">Halaman: <?= $room_page ?> dari <?= $room_total_pages ?></div>
+                <nav aria-label="Pagination ruangan"><ul class="pagination pagination-sm loan-pagination" id="ruanganPageNav">
+                    <?php $room_query['page'] = max(1, $room_page - 1); ?><li class="page-item <?= $room_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($room_query) ?>">Previous</a></li>
+                    <?php foreach (scm_pagination_tokens($room_page, $room_total_pages) as $token): ?><?php if (is_string($token)): ?><li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li><?php else: $room_query['page'] = $token; ?><li class="page-item <?= $token === $room_page ? 'active' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($room_query) ?>"><?= $token ?></a></li><?php endif; ?><?php endforeach; ?>
+                    <?php $room_query['page'] = min($room_total_pages, $room_page + 1); ?><li class="page-item <?= $room_page >= $room_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($room_query) ?>">Next</a></li>
+                </ul></nav>
             </div>
         </div>
 
@@ -467,6 +488,7 @@
             const empty = document.getElementById('ruanganFilterEmpty');
             const body = rows.length ? rows[0].parentElement : null;
             const sortButtons = Array.from(document.querySelectorAll('[data-room-sort]'));
+            if (!filterRoot || filterRoot.dataset.mode !== 'client') return;
             if (!rows.length || !select || !status || !nav) return;
 
             rows.forEach((row, index) => { row.dataset.originalIndex = String(index); });

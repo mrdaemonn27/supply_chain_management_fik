@@ -47,7 +47,7 @@
         var root;
         var fields;
 
-        if (!input || !input.matches('.admin-multi-filter__value, .admin-filter-value, .kaprodi-filter-value, .kaur-filter-value')) return false;
+        if (!input || !input.matches('.admin-multi-filter__value, .admin-filter-value, .kaprodi-filter-value, .kp-multi-filter-value, .kaur-filter-value')) return false;
         row = input.closest('.admin-multi-filter__row, .admin-filter-row, [data-filter-row]');
         if (!row) return false;
 
@@ -58,7 +58,7 @@
             return !!(select && fields[select.value] && fields[select.value].type === 'date');
         }
 
-        select = row.querySelector('.admin-filter-field, .kaprodi-filter-field, .kaur-filter-field');
+        select = row.querySelector('.admin-filter-field, .kaprodi-filter-field, .kp-multi-filter-field, .kaur-filter-field');
         if (!select) return false;
         if (select.selectedOptions && select.selectedOptions[0] && select.selectedOptions[0].dataset.inputType) {
             return select.selectedOptions[0].dataset.inputType === 'date';
@@ -306,7 +306,7 @@
 
     function scan() {
         scheduled = false;
-        document.querySelectorAll('.admin-multi-filter__value, .admin-filter-value, .kaprodi-filter-value, .kaur-filter-value').forEach(function (input) {
+        document.querySelectorAll('.admin-multi-filter__value, .admin-filter-value, .kaprodi-filter-value, .kp-multi-filter-value, .kaur-filter-value').forEach(function (input) {
             if (isDateFilter(input)) enhance(input);
             else teardown(input);
         });

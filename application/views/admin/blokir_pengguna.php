@@ -3,8 +3,14 @@ $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $blokir = isset($blokir) && is_array($blokir) ? $blokir : [];
 $peminjam_options = isset($peminjam_options) && is_array($peminjam_options) ? $peminjam_options : [];
-$filters = isset($filters) && is_array($filters) ? $filters : [];
-$selected_status = trim((string) ($filters['status'] ?? ''));
+$block_pagination = $pagination ?? ['page' => 1, 'per_page' => 10, 'total' => count($blokir), 'total_pages' => 1];
+$block_page = (int) $block_pagination['page'];
+$block_per_page = (int) $block_pagination['per_page'];
+$block_total = (int) $block_pagination['total'];
+$block_total_pages = (int) $block_pagination['total_pages'];
+$block_query = $_GET;
+$block_query['per_page'] = $block_per_page;
+$selected_status = '';
 
 $status_options = [];
 foreach ($blokir as $row) {
@@ -36,6 +42,7 @@ $format_date = static function ($value) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     <style>
         :root {
             --blokir-orange: #ea5b1a;
@@ -189,7 +196,10 @@ $format_date = static function ($value) {
 
         <?php
         $multi_filter_id = 'blockMultiFilter';
-        $multi_filter_mode = 'client';
+        $multi_filter_mode = 'server';
+        $multi_filter_rows = $filter_rows ?? [['field' => 'pengguna', 'value' => '']];
+        $multi_filter_action = current_url();
+        $multi_filter_hidden = ['per_page' => $block_per_page, 'page' => 1];
         $multi_filter_fields = [
             'pengguna' => ['label' => 'Pengguna / NIM', 'placeholder' => 'Cari nama pengguna atau NIM/NIP'],
             'periode' => ['label' => 'Periode', 'placeholder' => 'Pilih tanggal blokir atau batas blokir', 'type' => 'date'],
@@ -233,7 +243,7 @@ $format_date = static function ($value) {
                             $date_value = trim((string) ($b->tanggal_blokir ?? ''));
                         ?>
                             <tr class="blokir-data-row" data-filter-pengguna="<?= html_escape(($b->nama_peminjam ?? '') . ' ' . ($b->nim_nip ?? '')) ?>" data-filter-periode="<?= html_escape(($b->tanggal_blokir ?? '') . ' ' . ($b->batas_blokir ?? '')) ?>" data-filter-alasan="<?= html_escape(($b->alasan ?? '') . ' ' . ($b->catatan_buka ?? '')) ?>" data-filter-status="<?= html_escape($block_status) ?>">
-                                <td class="blokir-index-column"><span class="blokir-index"><?= $block_index + 1 ?></span></td>
+                                <td class="blokir-index-column"><span class="blokir-index"><?= (($block_page - 1) * $block_per_page) + $block_index + 1 ?></span></td>
                                 <td>
                                     <div class="blokir-user-name"><?= html_escape($b->nama_peminjam ?: '-') ?></div>
                                     <div class="blokir-meta"><?= html_escape($b->nim_nip ?? '-') ?></div>
@@ -256,29 +266,25 @@ $format_date = static function ($value) {
                                 </td>
                             </tr>
                         <?php endforeach; endif; ?>
-                        <tr id="blockFilteredEmpty" hidden><td colspan="6" class="blokir-empty">
-                            <span class="blokir-empty-icon"><i class="bi bi-search fs-5"></i></span>
-                            <strong>Tidak ada data yang sesuai</strong>
-                            <span>Ubah kata kunci atau filter untuk melihat data lainnya.</span>
-                        </td></tr>
                     </tbody>
                 </table>
             </div>
             <div class="blokir-footer" id="blockPaginationFooter">
                 <div class="blokir-footer-meta">
                     <label class="blokir-page-size" for="blockPageSize">Tampilkan:
-                        <select id="blockPageSize" aria-label="Jumlah data per halaman">
-                            <option value="10">10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
+                        <select id="blockPageSize" aria-label="Jumlah data per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.assign(u.toString());">
+                            <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $block_per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                         </select>
                     </label>
-                    <span class="ms-2" id="blockTotalItems">Total item: <?= count($blokir) ?></span>
+                    <span class="ms-2" id="blockTotalItems">Total item: <?= number_format($block_total, 0, ',', '.') ?></span>
                 </div>
-                <div class="blokir-page-info" id="blockPageInfo">Halaman: 1 dari 1</div>
+                <div class="blokir-page-info" id="blockPageInfo">Halaman: <?= $block_page ?> dari <?= $block_total_pages ?></div>
                 <nav aria-label="Pagination blokir pengguna">
-                    <ul class="pagination blokir-pagination" id="blockPagination"></ul>
+                    <ul class="pagination blokir-pagination" id="blockPagination">
+                        <?php $block_query['page'] = max(1, $block_page - 1); ?><li class="page-item <?= $block_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($block_query) ?>">Previous</a></li>
+                        <?php foreach (scm_pagination_tokens($block_page, $block_total_pages) as $token): ?><?php if (is_string($token)): ?><li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li><?php else: $block_query['page'] = $token; ?><li class="page-item <?= $token === $block_page ? 'active' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($block_query) ?>"><?= $token ?></a></li><?php endif; ?><?php endforeach; ?>
+                        <?php $block_query['page'] = min($block_total_pages, $block_page + 1); ?><li class="page-item <?= $block_page >= $block_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($block_query) ?>">Next</a></li>
+                    </ul>
                 </nav>
             </div>
         </section>
@@ -352,6 +358,8 @@ $format_date = static function ($value) {
             var filteredEmpty = document.getElementById('blockFilteredEmpty');
             var filterRoot = document.getElementById('blockMultiFilter');
             var currentPage = 1;
+
+            if (!filterRoot || filterRoot.dataset.mode !== 'client') return;
 
             function getPageSize() {
                 if (!pageSizeSelect || pageSizeSelect.value === 'all') {

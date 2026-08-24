@@ -7,6 +7,8 @@ $multi_filter_action = $multi_filter_action ?? '';
 $multi_filter_hidden = $multi_filter_hidden ?? [];
 $multi_filter_meta_id = $multi_filter_meta_id ?? '';
 $multi_filter_meta = $multi_filter_meta ?? '';
+$multi_filter_field_name = $multi_filter_field_name ?? 'filter_field[]';
+$multi_filter_value_name = $multi_filter_value_name ?? 'filter_value[]';
 $multi_filter_json = [];
 foreach ($multi_filter_fields as $field_key => $field_config) {
     $field_config = is_array($field_config) ? $field_config : ['label' => $field_config];
@@ -16,17 +18,17 @@ foreach ($multi_filter_fields as $field_key => $field_config) {
         'type' => $field_config['type'] ?? 'search',
     ];
 }
-$render_filter_row = static function ($row) use ($multi_filter_fields) {
+$render_filter_row = static function ($row) use ($multi_filter_fields, $multi_filter_field_name, $multi_filter_value_name) {
     $selected_field = (string) ($row['field'] ?? array_key_first($multi_filter_fields));
     $selected_value = (string) ($row['value'] ?? '');
 ?>
     <div class="admin-multi-filter__row">
-        <select class="form-select admin-multi-filter__field" name="filter_field[]" aria-label="Pilih kriteria pencarian">
+        <select class="form-select admin-multi-filter__field" name="<?= html_escape($multi_filter_field_name) ?>" aria-label="Pilih kriteria pencarian">
             <?php foreach ($multi_filter_fields as $field_key => $field_config): $label = is_array($field_config) ? ($field_config['label'] ?? $field_key) : $field_config; ?>
                 <option value="<?= html_escape($field_key) ?>" <?= $selected_field === (string) $field_key ? 'selected' : '' ?>><?= html_escape($label) ?></option>
             <?php endforeach; ?>
         </select>
-        <input class="form-control admin-multi-filter__value" name="filter_value[]" value="<?= html_escape($selected_value) ?>" autocomplete="off">
+        <input class="form-control admin-multi-filter__value" name="<?= html_escape($multi_filter_value_name) ?>" value="<?= html_escape($selected_value) ?>" autocomplete="off">
         <div class="admin-multi-filter__actions">
             <button type="button" class="admin-multi-filter__action" data-filter-remove aria-label="Hapus kriteria"><i class="bi bi-dash"></i></button>
             <button type="button" class="admin-multi-filter__action admin-multi-filter__action--add" data-filter-add aria-label="Tambah kriteria"><i class="bi bi-plus"></i></button>

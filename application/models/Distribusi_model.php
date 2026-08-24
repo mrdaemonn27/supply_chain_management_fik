@@ -32,17 +32,46 @@ class Distribusi_model extends CI_Model {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
     }
 
-    public function get_all($limit = 100) {
-        $this->db->select('distribusi_barang.*, aset.nama_aset, aset.kode_aset, asal.nama_ruangan AS ruangan_asal, tujuan.nama_ruangan AS ruangan_tujuan, users.nama_lengkap AS nama_petugas');
+    private function build_list_query($filters = [], $select = '*') {
+        $this->db->select($select);
         $this->db->from($this->table);
         $this->db->join('aset', 'aset.id_aset = distribusi_barang.id_aset', 'left');
         $this->db->join('ruangan asal', 'asal.id_ruangan = distribusi_barang.id_ruangan_asal', 'left');
         $this->db->join('ruangan tujuan', 'tujuan.id_ruangan = distribusi_barang.id_ruangan_tujuan', 'left');
         $this->db->join('users', 'users.id_user = distribusi_barang.created_by', 'left');
+
+        foreach ($filters as $filter) {
+            $field = (string) ($filter['field'] ?? '');
+            $value = trim((string) ($filter['value'] ?? ''));
+            if ($value === '') continue;
+
+            if ($field === 'aset') {
+                $this->db->group_start()->like('aset.nama_aset', $value)->or_like('aset.kode_aset', $value)->group_end();
+            } elseif ($field === 'asal') {
+                $this->db->like('asal.nama_ruangan', $value);
+            } elseif ($field === 'tujuan') {
+                $this->db->like('tujuan.nama_ruangan', $value);
+            } elseif ($field === 'jumlah' && is_numeric($value)) {
+                $this->db->where('distribusi_barang.jumlah', (int) $value);
+            } elseif ($field === 'tanggal') {
+                $this->db->where('distribusi_barang.tanggal_distribusi', $value);
+            } elseif ($field === 'petugas') {
+                $this->db->like('users.nama_lengkap', $value);
+            }
+        }
+    }
+
+    public function get_all($limit = 10, $offset = 0, $filters = []) {
+        $this->build_list_query($filters, 'distribusi_barang.*, aset.nama_aset, aset.kode_aset, asal.nama_ruangan AS ruangan_asal, tujuan.nama_ruangan AS ruangan_tujuan, users.nama_lengkap AS nama_petugas');
         $this->db->order_by('distribusi_barang.tanggal_distribusi', 'DESC');
         $this->db->order_by('distribusi_barang.id_distribusi', 'DESC');
-        $this->db->limit($limit);
+        $this->db->limit((int) $limit, (int) $offset);
         return $this->db->get()->result();
+    }
+
+    public function count_all($filters = []) {
+        $this->build_list_query($filters, 'distribusi_barang.id_distribusi');
+        return (int) $this->db->count_all_results();
     }
 
     public function insert($data) {

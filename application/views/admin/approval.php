@@ -18,6 +18,7 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     <link rel="stylesheet" href="<?= base_url('assets/css/loan-progress.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-progress.css'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/approval-bulk-select.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/approval-bulk-select.css'); ?>">
     <style>
@@ -158,7 +159,7 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
                     <p class="small text-muted mb-0 mt-1">Semua pengajuan terlihat; aksi Laboran hanya aktif pada tahap verifikasi.</p>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span class="badge rounded-pill text-bg-warning text-dark px-3 py-2"><?= $approval_actionable ?> perlu aksi</span>
+                    <span class="badge rounded-pill text-bg-warning text-dark px-3 py-2"><span data-bulk-actionable-count><?= $approval_actionable ?></span> perlu aksi</span>
                     <span class="badge rounded-pill text-bg-light border px-3 py-2"><?= $approval_total ?> total</span>
                     <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" type="button" onclick="window.location.reload()"><i class="bi bi-arrow-clockwise me-1"></i> Refresh</button>
                 </div>
@@ -203,7 +204,7 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
                     <table class="table table-hover approval-table mb-0">
                         <thead>
                             <tr>
-                                <th class="approval-bulk-cell"><label class="approval-bulk-select-all" title="Pilih semua data yang dapat diproses pada halaman ini"><input type="checkbox" class="form-check-input approval-bulk-check" data-bulk-select-all <?= $approval_page_actionable > 0 ? '' : 'disabled' ?>> <span>Select All</span></label></th>
+                                <th class="approval-bulk-cell"><label class="approval-bulk-select-all" title="Pilih semua data yang dapat diproses pada halaman ini"><input type="checkbox" class="form-check-input approval-bulk-check" data-bulk-select-all <?= $approval_page_actionable > 0 ? '' : 'disabled' ?>><span>Pilih</span></label></th>
                                 <th class="ps-3">No</th>
                                 <th>Peminjam</th>
                                 <th>Barang Diajukan</th>
@@ -220,7 +221,7 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
                                 foreach (($p->detail_barang ?? []) as $filter_item) { $approval_items[] = ($filter_item->nama_aset ?? '') . ' ' . ($filter_item->kode_aset ?? ''); $approval_quantities[] = (string) ($filter_item->jumlah_pinjam ?? 0); }
                                 $can_laboran_act = scm_loan_can_act($p, 'laboran');
                             ?>
-                                <tr class="approval-data-row" data-filter-peminjam="<?= html_escape(($p->nama_peminjam ?? '') . ' ' . ($p->nim_nip ?? '')) ?>" data-filter-barang="<?= html_escape(implode(' ', $approval_items)) ?>" data-filter-jumlah="<?= html_escape(implode(' ', $approval_quantities)) ?>" data-filter-masa="<?= html_escape(($p->tanggal_pinjam ?? '') . ' ' . ($p->tanggal_kembali_rencana ?? '')) ?>" data-filter-keperluan="<?= html_escape($p->keperluan ?? '') ?>" data-filter-status="<?= html_escape(($p->status ?? '') . ' ' . ($p->status_laboran ?? '')) ?>">
+                                <tr class="approval-data-row" data-loan-id="<?= (int) $p->id_peminjaman ?>" data-filter-peminjam="<?= html_escape(($p->nama_peminjam ?? '') . ' ' . ($p->nim_nip ?? '')) ?>" data-filter-barang="<?= html_escape(implode(' ', $approval_items)) ?>" data-filter-jumlah="<?= html_escape(implode(' ', $approval_quantities)) ?>" data-filter-masa="<?= html_escape(($p->tanggal_pinjam ?? '') . ' ' . ($p->tanggal_kembali_rencana ?? '')) ?>" data-filter-keperluan="<?= html_escape($p->keperluan ?? '') ?>" data-filter-status="<?= html_escape(($p->status ?? '') . ' ' . ($p->status_laboran ?? '')) ?>">
                                     <td class="approval-bulk-cell"><input type="checkbox" class="form-check-input approval-bulk-check" name="loan_ids[]" value="<?= (int) $p->id_peminjaman ?>" form="laboranBulkForm" data-bulk-row aria-label="Pilih pengajuan <?= (int) $p->id_peminjaman ?>" <?= $can_laboran_act ? '' : 'disabled title="Belum berada pada tahap Laboran"' ?>></td>
                                     <td class="ps-3 fw-semibold text-muted"><?= (($page - 1) * $per_page) + $index + 1 ?></td>
                                     <td>
@@ -253,11 +254,11 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
                                     <td>
                                         <div class="small" style="max-width: 260px; white-space: normal;"><?= nl2br(html_escape($p->keperluan ?? '-')) ?></div>
                                     </td>
-                                    <td>
+                                    <td data-bulk-status>
                                         <?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?>
                                     </td>
                                     <td class="text-end pe-3 action-cell">
-                                        <div class="d-flex flex-wrap justify-content-end align-items-center gap-2"><?php if(!empty($p->foto_bukti)): ?><button type="button" class="btn btn-sm btn-outline-secondary approval-evidence-btn" data-bs-toggle="modal" data-bs-target="#evidenceModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button><?php endif; ?><button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" <?= $can_laboran_act ? 'data-bs-toggle="modal" data-bs-target="#processModal'.(int)$p->id_peminjaman.'"' : 'disabled title="Aksi tersedia saat memasuki tahap Laboran"'; ?>><i class="bi bi-sliders me-1"></i> Proses</button></div>
+                                        <div class="d-flex flex-wrap justify-content-end align-items-center gap-2"><?php if(!empty($p->foto_bukti)): ?><button type="button" class="btn btn-sm btn-outline-secondary approval-evidence-btn" data-bs-toggle="modal" data-bs-target="#evidenceModal<?= (int)$p->id_peminjaman ?>"><i class="bi bi-image" aria-hidden="true"></i><span>Bukti kondisi</span></button><?php endif; ?><button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" data-bulk-action <?= $can_laboran_act ? 'data-bs-toggle="modal" data-bs-target="#processModal'.(int)$p->id_peminjaman.'"' : 'disabled title="Aksi tersedia saat memasuki tahap Laboran"'; ?>><i class="bi bi-sliders me-1"></i> Proses</button></div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -275,7 +276,7 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
                     <div class="loan-pagination-summary">
                         <label for="approvalPageSize">Tampilkan:</label>
                         <select id="approvalPageSize" class="form-select form-select-sm" aria-label="Jumlah data approval per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.href=u.toString();">
-                            <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
+                            <?php foreach ([10, 25] as $size): ?><option value="<?= $size ?>" <?= $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                         </select>
                         <span id="approvalTotalItems">Total item: <?= $approval_total ?></span>
                     </div>
@@ -284,9 +285,9 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
                     <nav aria-label="Pagination approval"><ul class="pagination pagination-sm loan-pagination" id="approvalPageNav">
                         <?php $approval_query = $_GET; $approval_query['per_page'] = $per_page; ?>
                         <?php $approval_query['page'] = max(1, $page - 1); ?><li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($approval_query) ?>">Previous</a></li>
-                        <?php $start_page = max(1, $page - 2); $end_page = min($total_pages, $start_page + 4); $start_page = max(1, $end_page - 4); for ($i = $start_page; $i <= $end_page; $i++): $approval_query['page'] = $i; ?>
-                            <li class="page-item <?= $i === $page ? 'active' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($approval_query) ?>"><?= $i ?></a></li>
-                        <?php endfor; $approval_query['page'] = min($total_pages, $page + 1); ?>
+                        <?php foreach (scm_pagination_tokens($page, $total_pages) as $token): ?>
+                            <?php if (is_string($token)): ?><li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li><?php else: $approval_query['page'] = $token; ?><li class="page-item <?= $token === $page ? 'active' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($approval_query) ?>"><?= $token ?></a></li><?php endif; ?>
+                        <?php endforeach; $approval_query['page'] = min($total_pages, $page + 1); ?>
                         <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($approval_query) ?>">Next</a></li>
                     </ul></nav>
                 </div>
@@ -326,65 +327,6 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
     <script src="<?= base_url('assets/js/approval-bulk-select.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/approval-bulk-select.js'); ?>"></script>
     <script>
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
-<<<<<<< HEAD
-        (function () {
-            const rows = Array.from(document.querySelectorAll('.approval-data-row'));
-            const select = document.getElementById('approvalPageSize');
-            const filterRoot = document.getElementById('approvalMultiFilter');
-            const status = document.getElementById('approvalPageStatus');
-            const nav = document.getElementById('approvalPageNav');
-            const totalItems = document.getElementById('approvalTotalItems');
-            if (!rows.length || !select || !status || !nav) return;
-            let page = 1;
-            const pageSize = () => select.value === 'all' ? Math.max(rows.length, 1) : Number(select.value) || 10;
-            const compactPageTokens = (totalPages, currentPage) => {
-                if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
-                if (currentPage <= 3) return [1, 2, 3, 4, 5, 'ellipsis', totalPages];
-                if (currentPage >= totalPages - 2) return [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-                return [1, 'ellipsis', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis', totalPages];
-            };
-            const button = (label, target, disabled, active) => {
-                const li = document.createElement('li');
-                li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
-                const a = document.createElement('a');
-                a.className = 'page-link'; a.href = '#'; a.textContent = label;
-                a.setAttribute('aria-label', label);
-                if (!disabled) a.addEventListener('click', function (event) { event.preventDefault(); page = target; render(); });
-                li.appendChild(a); nav.appendChild(li);
-            };
-            function render() {
-                const filtered = rows.filter(row => !filterRoot || AdminMultiFilter.matches(row, AdminMultiFilter.getCriteria(filterRoot)));
-                const size = select.value === 'all' ? Math.max(filtered.length, 1) : Number(select.value) || 10;
-                const totalPages = Math.max(1, Math.ceil(filtered.length / size));
-                page = Math.min(page, totalPages);
-                const visible = new Set(filtered.slice((page - 1) * size, page * size));
-                rows.forEach(row => { row.hidden = !visible.has(row); });
-                status.textContent = 'Halaman: ' + page + ' dari ' + totalPages;
-                if (totalItems) totalItems.textContent = 'Total item: ' + filtered.length;
-                nav.innerHTML = '';
-                button('Previous', Math.max(1, page - 1), page === 1, false);
-                compactPageTokens(totalPages, page).forEach((token) => {
-                    if (typeof token === 'string') {
-                        const item = document.createElement('li');
-                        item.className = 'page-item disabled';
-                        item.setAttribute('aria-hidden', 'true');
-                        const separator = document.createElement('span');
-                        separator.className = 'page-link';
-                        separator.textContent = '...';
-                        item.appendChild(separator);
-                        nav.appendChild(item);
-                    } else {
-                        button(String(token), token, false, token === page);
-                    }
-                });
-                button('Next', Math.min(totalPages, page + 1), page === totalPages, false);
-            }
-            select.addEventListener('change', function () { page = 1; render(); });
-            filterRoot?.addEventListener('admin-multi-filter-change', function () { page = 1; render(); });
-            render();
-        }());
-=======
->>>>>>> origin/main
     </script>
 </body>
 </html>

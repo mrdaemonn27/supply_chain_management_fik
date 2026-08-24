@@ -11,6 +11,13 @@ $formatDocumentDate = static function ($value) {
     $timestamp = strtotime((string) $value);
     return $timestamp ? date('d M Y · H:i', $timestamp) : (string) $value;
 };
+$document_pagination = $pagination ?? ['page' => 1, 'per_page' => 10, 'total' => count($dokumen ?? []), 'total_pages' => 1];
+$document_page = (int) $document_pagination['page'];
+$document_per_page = (int) $document_pagination['per_page'];
+$document_total = (int) $document_pagination['total'];
+$document_total_pages = (int) $document_pagination['total_pages'];
+$document_query = $_GET;
+$document_query['per_page'] = $document_per_page;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -21,6 +28,7 @@ $formatDocumentDate = static function ($value) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     <style>
         body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
@@ -120,7 +128,10 @@ $formatDocumentDate = static function ($value) {
 
     <?php
     $multi_filter_id = 'documentMultiFilter';
-    $multi_filter_mode = 'client';
+    $multi_filter_mode = 'server';
+    $multi_filter_rows = $filter_rows ?? [['field' => 'dokumen', 'value' => '']];
+    $multi_filter_action = current_url();
+    $multi_filter_hidden = ['per_page' => $document_per_page, 'page' => 1];
     $multi_filter_fields = [
         'dokumen' => ['label' => 'Dokumen', 'placeholder' => 'Cari judul, nama file, atau keterangan'],
         'jenis' => ['label' => 'Jenis', 'placeholder' => 'Cari jenis dokumen'],
@@ -159,7 +170,7 @@ $formatDocumentDate = static function ($value) {
                     ]));
                     ?>
                     <tr class="document-data-row" data-filter-dokumen="<?= html_escape($document_search) ?>" data-filter-jenis="<?= html_escape($d->jenis) ?>" data-filter-relasi="<?= html_escape($has_relation ? ('dikaitkan ' . ($d->nama_peminjam ?? '') . ' ' . ($d->nim_nip ?? '')) : 'tidak dikaitkan') ?>" data-filter-tanggal="<?= html_escape(substr((string) ($d->created_at ?? ''), 0, 10)) ?>">
-                        <td class="document-index-column"><span class="document-index"><?= $document_index + 1 ?></span></td>
+                        <td class="document-index-column"><span class="document-index"><?= (($document_page - 1) * $document_per_page) + $document_index + 1 ?></span></td>
                         <td class="ps-3">
                             <div class="fw-semibold"><?= html_escape($d->judul) ?></div>
                             <span class="document-file-name" title="<?= html_escape($d->original_name ?: $d->nama_file) ?>"><?= html_escape($d->original_name ?: $d->nama_file) ?></span>
@@ -189,7 +200,6 @@ $formatDocumentDate = static function ($value) {
                         </td>
                     </tr>
                 <?php endforeach; ?>
-                    <tr id="documentFilteredEmpty" hidden><td colspan="6" class="text-center text-muted py-5">Tidak ada dokumen yang sesuai.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
@@ -197,16 +207,17 @@ $formatDocumentDate = static function ($value) {
         <div class="document-pagination" id="documentPaginationFooter">
             <div class="d-flex align-items-center gap-2">
                 <span>Tampilkan:</span>
-                <select id="documentPageSize" class="form-select form-select-sm" aria-label="Jumlah dokumen per halaman">
-                    <option value="10" selected>10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="all">Semua</option>
+                <select id="documentPageSize" class="form-select form-select-sm" aria-label="Jumlah dokumen per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.assign(u.toString());">
+                    <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $document_per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                 </select>
-                <span id="documentTotalItems">Total item: 0</span>
+                <span id="documentTotalItems">Total item: <?= number_format($document_total, 0, ',', '.') ?></span>
             </div>
-            <div id="documentPageInfo">Halaman: 1 dari 1</div>
-            <nav aria-label="Pagination dokumen"><ul id="documentPaginationNav" class="pagination pagination-sm"></ul></nav>
+            <div id="documentPageInfo">Halaman: <?= $document_page ?> dari <?= $document_total_pages ?></div>
+            <nav aria-label="Pagination dokumen"><ul id="documentPaginationNav" class="pagination pagination-sm">
+                <?php $document_query['page'] = max(1, $document_page - 1); ?><li class="page-item <?= $document_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($document_query) ?>">Previous</a></li>
+                <?php foreach (scm_pagination_tokens($document_page, $document_total_pages) as $token): ?><?php if (is_string($token)): ?><li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li><?php else: $document_query['page'] = $token; ?><li class="page-item <?= $token === $document_page ? 'active' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($document_query) ?>"><?= $token ?></a></li><?php endif; ?><?php endforeach; ?>
+                <?php $document_query['page'] = min($document_total_pages, $document_page + 1); ?><li class="page-item <?= $document_page >= $document_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($document_query) ?>">Next</a></li>
+            </ul></nav>
         </div>
     </div>
 </main>
@@ -388,7 +399,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const pagination = document.getElementById('documentPaginationNav');
     let currentPage = 1;
 
-    if (!filterRoot || !footer || !pageSizeSelect || !pageInfo || !pagination) return;
+    if (!filterRoot || filterRoot.dataset.mode !== 'client' || !footer || !pageSizeSelect || !pageInfo || !pagination) return;
 
     const compactPageTokens = function (pageCount, page) {
         if (pageCount <= 7) return Array.from({ length: pageCount }, function (_, index) { return index + 1; });

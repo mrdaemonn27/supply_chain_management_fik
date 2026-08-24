@@ -6,6 +6,13 @@ $session_role = strtolower((string) $this->session->userdata('role'));
 $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
+$catalog_pagination = $pagination ?? ['page' => 1, 'per_page' => 10, 'total' => count($barang ?? []), 'total_pages' => 1];
+$catalog_page = (int) $catalog_pagination['page'];
+$catalog_per_page = (int) $catalog_pagination['per_page'];
+$catalog_total = (int) $catalog_pagination['total'];
+$catalog_total_pages = (int) $catalog_pagination['total_pages'];
+$catalog_query = $_GET;
+$catalog_query['per_page'] = $catalog_per_page;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -353,15 +360,15 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 <button type="button" class="btn btn-sm btn-doc-mini" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
                     <i class="bi bi-file-earmark-pdf me-1"></i> SOP & Instruksi Kerja
                 </button>
-                <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-box-seam me-1"></i> Total: <span id="catalogHeaderTotal"><?= count($barang) ?></span> Aset</span>
+                <span class="badge bg-light text-dark border px-3 py-2"><i class="bi bi-box-seam me-1"></i> Total: <span id="catalogHeaderTotal"><?= number_format($catalog_total, 0, ',', '.') ?></span> Aset</span>
             </div>
         </div>
 
-        <?php if (!empty($barang)): ?>
+        <?php if (isset($catalog_total)): ?>
         <div class="catalog-toolbar">
             <?php
                 $multi_filter_id = 'catalogMultiFilter';
-                $multi_filter_mode = 'client';
+                $multi_filter_mode = 'server';
                 $multi_filter_fields = [
                     'all' => ['label' => 'Semua data alat', 'placeholder' => 'Cari nama alat, kode aset, ruangan, kondisi, atau stok...'],
                     'nama' => ['label' => 'Nama alat', 'placeholder' => 'Cari nama alat...'],
@@ -370,9 +377,11 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     'kondisi' => ['label' => 'Kondisi', 'placeholder' => 'Cari kondisi alat...'],
                     'stok' => ['label' => 'Stok tersedia', 'placeholder' => 'Cari jumlah stok...'],
                 ];
-                $multi_filter_rows = [['field' => 'all', 'value' => '']];
+                $multi_filter_rows = $filter_rows ?? [['field' => 'all', 'value' => '']];
+                $multi_filter_action = current_url();
+                $multi_filter_hidden = ['id_ruangan' => $this->input->get('id_ruangan', true), 'per_page' => $catalog_per_page, 'page' => 1];
                 $multi_filter_meta_id = 'catalogFilterMeta';
-                $multi_filter_meta = number_format(count($barang), 0, ',', '.') . ' aset tersedia';
+                $multi_filter_meta = number_format($catalog_total, 0, ',', '.') . ' aset tersedia';
                 include APPPATH . 'views/admin/_multi_filter.php';
                 unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
             ?>
@@ -486,21 +495,22 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             <?php endif; ?>
         </div>
 
-        <?php if (!empty($barang)): ?>
+        <?php if (isset($catalog_total)): ?>
         <div class="catalog-pagination-footer">
             <div class="catalog-pagination-summary">
                 <label for="catalogPageSize">Tampilkan:</label>
-                <select id="catalogPageSize" class="form-select form-select-sm" aria-label="Jumlah aset per halaman">
-                    <option value="10" selected>10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
+                <select id="catalogPageSize" class="form-select form-select-sm" aria-label="Jumlah aset per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.assign(u.toString());">
+                    <?php foreach ([10,25,50,100] as $size): ?><option value="<?= $size ?>" <?= $catalog_per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                 </select>
-                <span>Total item: <span id="catalogTotalItems"><?= count($barang) ?></span></span>
+                <span>Total item: <span id="catalogTotalItems"><?= number_format($catalog_total, 0, ',', '.') ?></span></span>
             </div>
-            <div id="catalogPageStatus" class="catalog-pagination-status">Halaman: 1 dari 1</div>
+            <div id="catalogPageStatus" class="catalog-pagination-status">Halaman: <?= $catalog_page ?> dari <?= $catalog_total_pages ?></div>
             <nav class="catalog-page-nav" aria-label="Paging katalog alat studio">
-                <ul id="catalogPageNav" class="pagination pagination-sm catalog-pagination"></ul>
+                <ul id="catalogPageNav" class="pagination pagination-sm catalog-pagination">
+                    <?php $catalog_query['page'] = max(1, $catalog_page - 1); ?><li class="page-item <?= $catalog_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($catalog_query) ?>">Previous</a></li>
+                    <?php foreach (scm_pagination_tokens($catalog_page, $catalog_total_pages) as $token): ?><?php if (is_string($token)): ?><li class="page-item disabled"><span class="page-link">...</span></li><?php else: $catalog_query['page'] = $token; ?><li class="page-item <?= $token === $catalog_page ? 'active' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($catalog_query) ?>"><?= $token ?></a></li><?php endif; ?><?php endforeach; ?>
+                    <?php $catalog_query['page'] = min($catalog_total_pages, $catalog_page + 1); ?><li class="page-item <?= $catalog_page >= $catalog_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($catalog_query) ?>">Next</a></li>
+                </ul>
             </nav>
         </div>
         <?php endif; ?>
@@ -615,7 +625,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             const catalogPageNav = document.getElementById('catalogPageNav');
             const catalogEmptyResult = document.getElementById('catalogEmptyResult');
 
-            if (catalogGrid && catalogItems.length && catalogFilterRoot && catalogPageSize && catalogPageNav) {
+            if (catalogGrid && catalogItems.length && catalogFilterRoot?.dataset.mode === 'client' && catalogPageSize && catalogPageNav) {
                 let catalogPage = 1;
 
                 function filteredCatalogItems() {

@@ -8,7 +8,7 @@ $master_compact_pages = static function ($current, $last) {
     $last = max(1, (int) $last);
     if ($last <= 7) return range(1, $last);
     if ($current <= 3) return array_merge(range(1, 5), ['ellipsis-after', $last]);
-    if ($current >= $last - 2) return array_merge([$last - 4, $last - 3, $last - 2, $last - 1, $last]);
+    if ($current >= $last - 2) return array_merge([1, 'ellipsis-before'], range($last - 4, $last));
     return array_merge([1, 'ellipsis-before'], range($current - 2, $current + 2), ['ellipsis-after', $last]);
 };
 $master_base_query = ['filter_field' => array_column($master_filters['criteria'] ?? [], 'field'), 'filter_value' => array_column($master_filters['criteria'] ?? [], 'value'), 'per_page' => $master_pagination['per_page'] ?? 10];

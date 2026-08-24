@@ -6,7 +6,7 @@ class Blokir extends CI_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->library('session');
-        $this->load->helper('url');
+        $this->load->helper(['url', 'scm_pagination']);
         $this->load->model('Peminjaman_model');
         $this->load->model('User_model');
         $this->guard_laboran();
@@ -25,12 +25,23 @@ class Blokir extends CI_Controller {
     }
 
     public function index() {
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
         $filters = [];
+        foreach (array_slice($fields, 0, 4) as $index => $field) {
+            $value = trim((string) ($values[$index] ?? ''));
+            if ($value !== '') $filters[] = ['field' => (string) $field, 'value' => $value];
+        }
+        $per_page = scm_read_per_page($this->input->get('per_page', true));
+        $total = $this->Peminjaman_model->count_blokir_pengguna($filters);
+        $total_pages = max(1, (int) ceil($total / $per_page));
+        $page = min(max(1, (int) $this->input->get('page', true)), $total_pages);
 
         $data['title'] = 'Blokir Pengguna';
-        $data['filters'] = $filters;
-        $data['blokir'] = $this->Peminjaman_model->get_blokir_pengguna($filters);
-        $data['peminjam_options'] = $this->Peminjaman_model->get_all_peminjam();
+        $data['filter_rows'] = $filters;
+        $data['blokir'] = $this->Peminjaman_model->get_blokir_pengguna($filters, $per_page, ($page - 1) * $per_page);
+        $data['pagination'] = compact('page', 'per_page', 'total', 'total_pages');
+        $data['peminjam_options'] = $this->Peminjaman_model->get_all_peminjam(200);
         $data['notifikasi'] = $this->Peminjaman_model->get_notifikasi('laboran', null);
         $data['unread_notifikasi'] = $this->Peminjaman_model->count_notifikasi_unread('laboran', null);
         $this->load->view('admin/blokir_pengguna', $data);

@@ -54,7 +54,7 @@ $sidebar_items = [
         .scm-admin-sidebar-link i { width: auto; flex-basis: auto; }
     }
 </style>
-<?php if (in_array($current_admin_section, ['barang', 'peminjaman', 'pengembalian', 'approval', 'dokumen', 'ruangan', 'maintenance', 'distribusi', 'blokir', 'pengaturan'], true)): ?>
+<?php if (in_array($current_admin_section, ['barang', 'peminjaman', 'pengembalian', 'dokumen', 'ruangan', 'maintenance', 'distribusi', 'blokir', 'pengaturan'], true)): ?>
 <style id="scm-laboran-light-header">
     /* Keep the Laboran feature headers aligned with the light Kaur/Kaprodi shell. */
     body.scm-admin-shell > .topbar,

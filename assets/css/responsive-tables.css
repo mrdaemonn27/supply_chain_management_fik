@@ -1,0 +1,506 @@
+/*
+ * Shared responsive table system.
+ *
+ * Desktop tables fit their container through semantic column sizing, compact
+ * controls and controlled wrapping. At tablet/mobile widths a row becomes a
+ * labelled card, so no value needs to be hidden or squeezed into a tiny cell.
+ * Classes and data-labels are added by responsive-tables.js.
+ */
+
+.scm-table-shell {
+    width: 100%;
+    max-width: 100%;
+}
+
+.scm-responsive-table {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+}
+
+.scm-responsive-table th,
+.scm-responsive-table td {
+    box-sizing: border-box;
+    vertical-align: middle;
+}
+
+/* One visual language for table headers and real, keyboard-accessible sorting. */
+.scm-responsive-table thead th {
+    padding-block: .78rem !important;
+    border-bottom: 1px solid var(--scm-theme-border, var(--scm-border, #e4e7eb)) !important;
+    color: var(--scm-theme-text, var(--scm-text, #344054)) !important;
+    background: var(--scm-theme-surface-soft, var(--scm-surface-strong, #f7f8fa)) !important;
+    font-size: .7rem !important;
+    font-weight: 700 !important;
+    line-height: 1.25;
+    letter-spacing: .035em !important;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.scm-responsive-table thead tr {
+    height: 3.75rem;
+}
+
+.scm-sort-control {
+    display: inline-flex;
+    max-width: 100%;
+    align-items: center;
+    gap: .36rem;
+    padding: .18rem .08rem;
+    border: 0;
+    border-radius: .3rem;
+    color: inherit !important;
+    background: transparent;
+    font: inherit;
+    font-weight: inherit;
+    letter-spacing: inherit;
+    line-height: 1.25;
+    text-align: inherit;
+    text-decoration: none !important;
+    text-transform: inherit;
+    white-space: normal;
+    cursor: pointer;
+}
+
+.scm-sort-control i {
+    flex: 0 0 auto;
+    margin-inline: 0 !important;
+    color: var(--scm-theme-muted, var(--scm-muted, #8a94a2)) !important;
+    font-size: .72rem;
+}
+
+.scm-sort-control:hover,
+.scm-sort-control:focus-visible,
+.scm-sort-control.is-active {
+    color: var(--scm-orange, #ea5b1a) !important;
+}
+
+.scm-sort-control.is-active i { color: currentColor !important; }
+.scm-sort-control:focus-visible { outline: 2px solid rgba(234, 91, 26, .28); outline-offset: 2px; }
+
+.scm-responsive-table td,
+.scm-responsive-table td p,
+.scm-responsive-table td a:not(.btn),
+.scm-responsive-table td span:not(.badge):not(.soft-badge):not(.status-pill) {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.scm-responsive-table td img,
+.scm-responsive-table td video,
+.scm-responsive-table td canvas,
+.scm-responsive-table td svg {
+    max-width: 100%;
+}
+
+.scm-responsive-table .scm-cell-long[title] {
+    cursor: help;
+}
+
+@media (min-width: 1200px) {
+    .scm-table-shell,
+    .scm-table-shell.table-responsive,
+    .scm-table-shell[class*="table-wrap"],
+    .scm-table-shell[class*="table-container"] {
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+    }
+
+    .scm-responsive-table {
+        min-width: 0 !important;
+        table-layout: fixed !important;
+    }
+
+    .scm-responsive-table th,
+    .scm-responsive-table td {
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        padding: clamp(.45rem, .52vw, .72rem) clamp(.42rem, .55vw, .75rem) !important;
+        font-size: clamp(.68rem, .15vw + .65rem, .8rem);
+        line-height: 1.4;
+        white-space: normal !important;
+    }
+
+    .scm-responsive-table thead th {
+        height: 3.75rem !important;
+        padding-block: .72rem !important;
+        line-height: 1.25;
+        overflow-wrap: normal;
+        word-break: normal;
+        hyphens: auto;
+    }
+
+    .scm-responsive-table thead .scm-sort-control {
+        width: 100%;
+        min-height: 2rem;
+        padding-block: .25rem;
+        white-space: nowrap;
+    }
+
+    .scm-responsive-table.scm-table-dense th,
+    .scm-responsive-table.scm-table-dense td {
+        padding-inline: clamp(.34rem, .4vw, .58rem) !important;
+        font-size: clamp(.65rem, .13vw + .63rem, .75rem);
+    }
+
+    .scm-responsive-table.scm-table-extra-dense th,
+    .scm-responsive-table.scm-table-extra-dense td {
+        padding-inline: clamp(.28rem, .32vw, .48rem) !important;
+        font-size: clamp(.62rem, .11vw + .61rem, .71rem);
+    }
+
+    .scm-responsive-table .scm-col-index {
+        width: clamp(2.9rem, 4vw, 3.75rem) !important;
+        text-align: center !important;
+    }
+
+    .scm-responsive-table .scm-col-select {
+        width: clamp(5rem, 5.6vw, 5.6rem) !important;
+        text-align: center !important;
+    }
+
+    .scm-responsive-table .scm-col-media {
+        width: clamp(4.75rem, 6.5vw, 6.5rem) !important;
+        text-align: center !important;
+    }
+
+    .scm-responsive-table .scm-col-number {
+        width: clamp(5.75rem, 7vw, 7rem) !important;
+        text-align: center !important;
+    }
+
+    .scm-responsive-table .scm-col-code {
+        width: clamp(8rem, 9.5vw, 9.5rem) !important;
+    }
+
+    .scm-responsive-table .scm-col-date {
+        width: clamp(6.6rem, 9vw, 9rem) !important;
+        text-align: center !important;
+    }
+
+    .scm-responsive-table .scm-col-status {
+        width: clamp(8rem, 10vw, 10rem) !important;
+        text-align: center !important;
+    }
+
+    .scm-responsive-table .scm-col-progress {
+        width: clamp(9rem, 13vw, 12rem) !important;
+    }
+
+    .scm-responsive-table .scm-col-action {
+        width: clamp(6.75rem, 10vw, 9.5rem) !important;
+        text-align: center !important;
+    }
+
+    .scm-responsive-table thead .scm-col-index .scm-sort-control,
+    .scm-responsive-table thead .scm-col-select .scm-sort-control,
+    .scm-responsive-table thead .scm-col-date .scm-sort-control,
+    .scm-responsive-table thead .scm-col-status .scm-sort-control,
+    .scm-responsive-table thead .scm-col-progress .scm-sort-control,
+    .scm-responsive-table thead .scm-col-action .scm-sort-control {
+        justify-content: center;
+        text-align: center;
+    }
+
+    .scm-responsive-table thead .scm-col-number .scm-sort-control {
+        justify-content: flex-end;
+        text-align: right;
+    }
+
+    .scm-responsive-table thead th.scm-col-index,
+    .scm-responsive-table thead th.scm-col-select,
+    .scm-responsive-table thead th.scm-col-date,
+    .scm-responsive-table thead th.scm-col-status,
+    .scm-responsive-table thead th.scm-col-progress,
+    .scm-responsive-table thead th.scm-col-action {
+        text-align: center !important;
+    }
+
+    .scm-responsive-table thead th.scm-col-number {
+        text-align: right !important;
+    }
+
+    .scm-responsive-table thead th.scm-col-index,
+    .scm-responsive-table thead th.scm-col-select,
+    .scm-responsive-table thead th.scm-col-number,
+    .scm-responsive-table thead th.scm-col-code,
+    .scm-responsive-table thead th.scm-col-date,
+    .scm-responsive-table thead th.scm-col-status,
+    .scm-responsive-table thead th.scm-col-progress,
+    .scm-responsive-table thead th.scm-col-action {
+        white-space: nowrap !important;
+    }
+
+    .scm-responsive-table .scm-col-select .approval-bulk-select-all {
+        display: inline-flex;
+        width: 100%;
+        min-width: 0;
+        align-items: center;
+        justify-content: center;
+        gap: .42rem;
+        white-space: nowrap;
+    }
+
+    .scm-responsive-table tbody td.scm-col-select {
+        text-align: center !important;
+    }
+
+    .scm-responsive-table .btn,
+    .scm-responsive-table button,
+    .scm-responsive-table [role="button"] {
+        min-width: 0 !important;
+        max-width: 100%;
+        min-height: 30px;
+        padding: .32rem .55rem !important;
+        font-size: clamp(.63rem, .1vw + .62rem, .72rem) !important;
+        line-height: 1.25;
+        white-space: normal !important;
+    }
+
+    .scm-responsive-table .scm-col-action > form,
+    .scm-responsive-table .scm-col-action > div,
+    .scm-responsive-table .scm-col-action .action-grid,
+    .scm-responsive-table .scm-col-action .btn-group {
+        display: flex !important;
+        width: 100%;
+        min-width: 0 !important;
+        max-width: 100%;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: .35rem !important;
+    }
+
+    .scm-responsive-table .scm-col-action .btn,
+    .scm-responsive-table .scm-col-action button,
+    .scm-responsive-table .scm-col-action [role="button"] {
+        flex: 0 1 auto;
+    }
+
+    .scm-responsive-table .soft-badge,
+    .scm-responsive-table .status-pill,
+    .scm-responsive-table [class*="status-badge"],
+    .scm-responsive-table [class*="status-pill"],
+    .scm-responsive-table [class*="kind-badge"],
+    .scm-responsive-table [class*="jenis-badge"] {
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 26px;
+        padding: .3rem .48rem !important;
+        line-height: 1.25;
+        white-space: normal !important;
+    }
+
+    .scm-responsive-table .loan-progress,
+    .scm-responsive-table .approval-progress,
+    .scm-responsive-table [class*="progress-wrap"] {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .scm-responsive-table .asset-list,
+    .scm-responsive-table .asset-quantity-list,
+    .scm-responsive-table [class*="item-list"],
+    .scm-responsive-table [class*="asset-list"] {
+        width: 100%;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .scm-responsive-table input,
+    .scm-responsive-table select,
+    .scm-responsive-table textarea,
+    .scm-responsive-table .input-group {
+        min-width: 0 !important;
+        max-width: 100%;
+    }
+
+    .scm-responsive-table td > * {
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+}
+
+@media (max-width: 1199.98px) {
+    .scm-table-shell,
+    .scm-table-shell.table-responsive,
+    .scm-table-shell[class*="table-wrap"],
+    .scm-table-shell[class*="table-container"] {
+        overflow: visible !important;
+        border: 0 !important;
+        background: transparent;
+    }
+
+    .scm-responsive-table,
+    .scm-responsive-table tbody,
+    .scm-responsive-table tr,
+    .scm-responsive-table td {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .scm-responsive-table {
+        table-layout: auto !important;
+        border: 0 !important;
+        background: transparent !important;
+    }
+
+    .scm-responsive-table thead {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        overflow: hidden !important;
+        clip: rect(0 0 0 0) !important;
+        clip-path: inset(50%) !important;
+        white-space: nowrap !important;
+    }
+
+    .scm-responsive-table tbody tr {
+        margin-bottom: .85rem;
+        overflow: hidden;
+        border: 1px solid var(--scm-theme-border, var(--scm-border, #dee2e6));
+        border-radius: 10px;
+        background: var(--scm-theme-surface, var(--scm-surface, #fff));
+        box-shadow: 0 5px 14px rgba(15, 23, 42, .045);
+    }
+
+    /* Keep client-side filtering authoritative despite the card display rule. */
+    .scm-responsive-table tbody tr.d-none,
+    .scm-responsive-table tbody tr[hidden],
+    .scm-responsive-table tbody tr[style*="display: none"],
+    .scm-responsive-table tbody tr.history-empty-filter:not([style*="table-row"]):not([style*="display: block"]) {
+        display: none !important;
+    }
+
+    .scm-responsive-table tbody td {
+        display: grid !important;
+        grid-template-columns: minmax(7.25rem, 34%) minmax(0, 1fr);
+        align-items: start;
+        gap: .75rem;
+        padding: .62rem .75rem !important;
+        border: 0 !important;
+        border-bottom: 1px solid var(--scm-theme-border, var(--scm-border, #e9ecef)) !important;
+        background: transparent !important;
+        font-size: clamp(.72rem, 2.2vw, .82rem);
+        line-height: 1.45;
+        text-align: left !important;
+        white-space: normal !important;
+        overflow-wrap: anywhere;
+    }
+
+    .scm-responsive-table tbody td:last-child {
+        border-bottom: 0 !important;
+    }
+
+    .scm-responsive-table tbody td::before {
+        content: attr(data-label);
+        color: var(--scm-theme-muted, var(--scm-muted, #667085));
+        font-size: .67rem;
+        font-weight: 700;
+        line-height: 1.35;
+        letter-spacing: .035em;
+        text-transform: uppercase;
+        overflow-wrap: normal;
+    }
+
+    .scm-responsive-table tbody td[data-label=""]::before {
+        content: none;
+    }
+
+    .scm-responsive-table tbody tr.scm-empty-row {
+        box-shadow: none;
+    }
+
+    .scm-responsive-table tbody tr.scm-empty-row td {
+        display: block !important;
+        padding: 1.5rem .9rem !important;
+        text-align: center !important;
+    }
+
+    .scm-responsive-table tbody tr.scm-empty-row td::before {
+        content: none;
+    }
+
+    .scm-responsive-table td > *,
+    .scm-responsive-table td form,
+    .scm-responsive-table td .input-group,
+    .scm-responsive-table td .loan-progress,
+    .scm-responsive-table td .approval-progress,
+    .scm-responsive-table td .soft-badge,
+    .scm-responsive-table td .status-pill,
+    .scm-responsive-table td [class*="status-badge"] {
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .scm-responsive-table td .soft-badge,
+    .scm-responsive-table td .status-pill,
+    .scm-responsive-table td [class*="status-badge"] {
+        width: fit-content !important;
+        height: auto !important;
+        white-space: normal !important;
+    }
+
+    .scm-responsive-table .scm-col-action > form,
+    .scm-responsive-table .scm-col-action > div,
+    .scm-responsive-table .scm-col-action .action-grid,
+    .scm-responsive-table .scm-col-action .btn-group {
+        display: flex !important;
+        width: 100%;
+        min-width: 0 !important;
+        align-items: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        gap: .4rem !important;
+    }
+
+    .scm-responsive-table .scm-col-action .btn,
+    .scm-responsive-table .scm-col-action button,
+    .scm-responsive-table .scm-col-action [role="button"] {
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: 100%;
+        min-height: 32px;
+        padding: .36rem .62rem !important;
+        font-size: .69rem !important;
+        white-space: normal !important;
+    }
+
+    .scm-responsive-table td input,
+    .scm-responsive-table td select,
+    .scm-responsive-table td textarea {
+        width: 100%;
+        min-width: 0 !important;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .scm-responsive-table tbody td {
+        grid-template-columns: minmax(6.35rem, 37%) minmax(0, 1fr);
+        gap: .6rem;
+        padding: .58rem .68rem !important;
+    }
+}
+
+@media print {
+    .scm-responsive-table {
+        display: table !important;
+        width: 100% !important;
+        table-layout: auto !important;
+    }
+
+    .scm-responsive-table thead { display: table-header-group !important; position: static !important; width: auto !important; height: auto !important; clip: auto !important; clip-path: none !important; }
+    .scm-responsive-table tbody { display: table-row-group !important; }
+    .scm-responsive-table tr { display: table-row !important; }
+    .scm-responsive-table th,
+    .scm-responsive-table td { display: table-cell !important; width: auto !important; min-width: 0 !important; }
+    .scm-responsive-table td::before { content: none !important; }
+}

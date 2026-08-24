@@ -6,19 +6,24 @@ class Peminjaman extends CI_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->library('session');
-        $this->load->helper('url');
-        $this->load->helper('loan_progress');
+        $this->load->helper(['url', 'loan_progress', 'scm_ajax']);
         $this->load->model('Peminjaman_model');
         $this->guard_kaur();
     }
 
     private function guard_kaur() {
         if (!$this->session->userdata('logged_in')) {
+            if (scm_is_ajax()) {
+                scm_json_abort(['success' => false, 'message' => 'Sesi Anda berakhir. Silakan login kembali.', 'redirect' => site_url('auth')], 401);
+            }
             $this->session->set_flashdata('error', 'Silakan login terlebih dahulu.');
             redirect('auth');
         }
 
         if (strtolower((string) $this->session->userdata('role')) !== 'kaur') {
+            if (scm_is_ajax()) {
+                scm_json_abort(['success' => false, 'message' => 'Anda tidak memiliki izin untuk memproses approval Kaur.'], 403);
+            }
             $this->session->set_flashdata('error', 'Akses ditolak. Approval ini khusus Kaur Laboratorium.');
             redirect('dashboard');
         }
@@ -144,26 +149,44 @@ class Peminjaman extends CI_Controller {
     }
 
     public function bulk() {
-        if (strtoupper((string) $this->input->method()) !== 'POST') redirect('kaur/dashboard/peminjaman');
+        $ajax = scm_is_ajax();
+        if (strtoupper((string) $this->input->method()) !== 'POST') {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Metode request tidak diizinkan.'], 405);
+                return;
+            }
+            redirect('kaur/dashboard/peminjaman');
+        }
 
         $action = strtolower(trim((string) $this->input->post('action', true)));
         $ids = $this->bulk_ids();
         $catatan = trim((string) $this->input->post('bulk_note', true));
         if (!in_array($action, ['approve', 'reject'], true) || empty($ids)) {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Pilih minimal satu pengajuan yang dapat diproses.'], 422);
+                return;
+            }
             $this->session->set_flashdata('error', 'Pilih minimal satu pengajuan yang dapat diproses.');
             redirect('kaur/dashboard/peminjaman');
         }
         if ($action === 'reject' && $catatan === '') {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Alasan penolakan terpilih wajib diisi.'], 422);
+                return;
+            }
             $this->session->set_flashdata('error', 'Alasan penolakan terpilih wajib diisi.');
             redirect('kaur/dashboard/peminjaman');
         }
 
         $processed = 0;
         $skipped = 0;
+        $processed_ids = [];
+        $skipped_ids = [];
         foreach ($ids as $id) {
             $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id);
             if (!$peminjaman || !scm_loan_can_act($peminjaman, 'kaur')) {
                 $skipped++;
+                $skipped_ids[] = $id;
                 continue;
             }
             $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
@@ -202,12 +225,33 @@ class Peminjaman extends CI_Controller {
                         site_url('peminjaman/riwayat'));
                 }
             }
-            if ($ok) $processed++; else $skipped++;
+            if ($ok) {
+                $processed++;
+                $processed_ids[] = $id;
+            } else {
+                $skipped++;
+                $skipped_ids[] = $id;
+            }
         }
 
         $label = $action === 'approve' ? 'disetujui' : 'ditolak';
         $message = $processed . ' pengajuan berhasil ' . $label . '.';
         if ($skipped > 0) $message .= ' ' . $skipped . ' dilewati karena statusnya berubah atau bukan kewenangan Kaur.';
+        if ($ajax) {
+            scm_json_response([
+                'success' => $processed > 0,
+                'partial' => $processed > 0 && $skipped > 0,
+                'message' => $message,
+                'action' => $action,
+                'status' => $action === 'approve' ? 'Disetujui (Menunggu Finalisasi QR)' : 'Ditolak',
+                'processed' => $processed,
+                'skipped' => $skipped,
+                'processed_ids' => $processed_ids,
+                'skipped_ids' => $skipped_ids,
+                'actionable_remaining' => $this->Peminjaman_model->count_actionable_peminjaman('kaur'),
+            ], $processed > 0 ? 200 : 409);
+            return;
+        }
         $this->session->set_flashdata($processed > 0 ? 'success' : 'error', $message);
         redirect('kaur/dashboard/peminjaman');
     }
@@ -218,6 +262,6 @@ class Peminjaman extends CI_Controller {
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static function ($id) {
             return $id > 0;
         })));
-        return array_slice($ids, 0, 100);
+        return array_slice($ids, 0, 25);
     }
 }

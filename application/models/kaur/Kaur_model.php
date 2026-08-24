@@ -544,6 +544,48 @@ class Kaur_model extends CI_Model {
         return $rows;
     }
 
+    private function build_bast_rows_query($filters = []) {
+        $this->db->from($this->kaprodiTable . ' p');
+        $this->db->join('users u', 'u.id_user = p.id_user', 'left');
+        $this->db->join($this->bastTable . ' b', "b.id_bast = (SELECT MAX(b2.id_bast) FROM `{$this->bastTable}` b2 WHERE b2.id_pengajuan = p.id_pengajuan)", 'left', false);
+        $this->db->group_start()->where_in('p.status', ['Disetujui', 'Approval'])->or_where('b.id_bast IS NOT NULL', null, false)->group_end();
+
+        foreach ((array) $filters as $filter) {
+            $field = (string) ($filter['field'] ?? '');
+            $value = trim((string) ($filter['value'] ?? ''));
+            if ($value === '') continue;
+            if ($field === 'kode') $this->db->like('p.kode_pengajuan', $value);
+            elseif ($field === 'prodi') $this->db->group_start()->like('p.nama_prodi', $value)->or_like('p.nama_pengajuan', $value)->group_end();
+            elseif ($field === 'jenis') $this->db->like('p.jenis_pengajuan', $value);
+            elseif ($field === 'nomor_bast') $this->db->like('b.nomor_bast', $value);
+            elseif ($field === 'tanggal_bast') $this->db->where('b.tanggal_bast', $value);
+        }
+    }
+
+    public function get_bast_rows($filters = [], $limit = 10, $offset = 0) {
+        $this->db->select('p.*, u.nama_lengkap, b.id_bast, b.nomor_bast, b.tanggal_bast, b.jenis_bast, b.file_bast, b.catatan AS catatan_bast, b.created_at AS bast_created_at');
+        $this->build_bast_rows_query($filters);
+        $this->db->order_by('COALESCE(b.created_at, p.updated_at, p.created_at)', 'DESC', false);
+        $this->db->limit((int) $limit, (int) $offset);
+        $rows = $this->db->get()->result();
+        foreach ($rows as $row) {
+            $row->items = $this->get_kaprodi_items($row->id_pengajuan);
+            $row->summary = $this->calculate_summary($row->items);
+        }
+        return $rows;
+    }
+
+    public function count_bast_rows($filters = []) {
+        $this->build_bast_rows_query($filters);
+        return (int) $this->db->count_all_results();
+    }
+
+    public function count_pending_bast_rows() {
+        $this->build_bast_rows_query([]);
+        $this->db->where('b.id_bast IS NULL', null, false);
+        return (int) $this->db->count_all_results();
+    }
+
     public function pengajuan_has_bast($id_pengajuan) {
         if (!$this->db->table_exists($this->bastTable)) {
             return false;

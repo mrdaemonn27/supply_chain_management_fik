@@ -8,6 +8,7 @@ class Ruangan extends CI_Controller {
         $this->load->model('admin/Ruangan_model');
         $this->load->library('session');
         $this->load->library('form_validation');
+        $this->load->helper(['url', 'scm_pagination']);
         $this->guard_laboran();
     }
 
@@ -24,9 +25,28 @@ class Ruangan extends CI_Controller {
     }
 
     public function index() {
+        $fields = (array) $this->input->get('filter_field', true);
+        $values = (array) $this->input->get('filter_value', true);
+        $filters = [];
+        foreach (array_slice($fields, 0, 4) as $index => $field) {
+            $value = trim((string) ($values[$index] ?? ''));
+            if ($value !== '') $filters[] = ['field' => (string) $field, 'value' => $value];
+        }
+        $allowed_sort = ['index', 'name', 'description'];
+        $sort = in_array($this->input->get('sort', true), $allowed_sort, true) ? $this->input->get('sort', true) : 'index';
+        $direction = strtolower((string) $this->input->get('dir', true)) === 'asc' ? 'asc' : 'desc';
+        $per_page = scm_read_per_page($this->input->get('per_page', true));
+        $total = $this->Ruangan_model->count_all($filters);
+        $total_pages = max(1, (int) ceil($total / $per_page));
+        $page = min(max(1, (int) $this->input->get('page', true)), $total_pages);
+
         $data['title']        = 'Manajemen Ruangan';
         $data['page']         = 'index'; 
-        $data['ruangan_list'] = $this->Ruangan_model->get_all(); 
+        $data['ruangan_list'] = $this->Ruangan_model->get_all($per_page, ($page - 1) * $per_page, $filters, $sort, $direction);
+        $data['filter_rows'] = $filters;
+        $data['sort'] = $sort;
+        $data['direction'] = $direction;
+        $data['pagination'] = compact('page', 'per_page', 'total', 'total_pages');
         
         $this->load->view('admin/ruangan', $data); 
     }

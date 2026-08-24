@@ -6,7 +6,7 @@ class Approval extends CI_Controller {
     public function __construct() {
         parent::__construct();
         $this->load->library('session');
-        $this->load->helper('url');
+        $this->load->helper(['url', 'scm_ajax', 'scm_pagination']);
         $this->load->helper('loan_progress');
         $this->load->model('Peminjaman_model');
         $this->load->model('Aset_model');
@@ -15,18 +15,25 @@ class Approval extends CI_Controller {
 
     private function guard_laboran() {
         if (!$this->session->userdata('logged_in')) {
+            if (scm_is_ajax()) {
+                scm_json_abort(['success' => false, 'message' => 'Sesi Anda berakhir. Silakan login kembali.', 'redirect' => site_url('auth')], 401);
+            }
             $this->session->set_flashdata('error', 'Silakan login terlebih dahulu.');
             redirect('auth');
         }
 
         if (!in_array(strtolower((string) $this->session->userdata('role')), ['admin', 'laboran'], true)) {
+            if (scm_is_ajax()) {
+                scm_json_abort(['success' => false, 'message' => 'Anda tidak memiliki izin untuk memproses approval Laboran.'], 403);
+            }
             $this->session->set_flashdata('error', 'Akses approval khusus Laboran.');
             redirect('admin/dashboard');
         }
     }
 
     public function index() {
-        redirect('admin/peminjaman');
+        $query = trim((string) $this->input->server('QUERY_STRING'));
+        redirect('admin/peminjaman' . ($query !== '' ? '?' . $query : ''));
     }
 
     private function read_filters() {
@@ -44,7 +51,7 @@ class Approval extends CI_Controller {
 
     private function read_per_page() {
         $value = (int) $this->input->get('per_page');
-        return in_array($value, [10, 25, 50, 100], true) ? $value : 10;
+        return in_array($value, [10, 25], true) ? $value : 10;
     }
 
     public function setujui($id_peminjaman) {
@@ -137,16 +144,31 @@ class Approval extends CI_Controller {
     }
 
     public function bulk() {
-        if (strtoupper((string) $this->input->method()) !== 'POST') redirect('admin/peminjaman');
+        $ajax = scm_is_ajax();
+        if (strtoupper((string) $this->input->method()) !== 'POST') {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Metode request tidak diizinkan.'], 405);
+                return;
+            }
+            redirect('admin/peminjaman');
+        }
 
         $action = strtolower(trim((string) $this->input->post('action', true)));
         $ids = $this->bulk_ids();
         $catatan = trim((string) $this->input->post('bulk_note', true));
         if (!in_array($action, ['approve', 'reject'], true) || empty($ids)) {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Pilih minimal satu pengajuan yang dapat diproses.'], 422);
+                return;
+            }
             $this->session->set_flashdata('error', 'Pilih minimal satu pengajuan yang dapat diproses.');
             redirect('admin/peminjaman');
         }
         if ($action === 'reject' && $catatan === '') {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Alasan penolakan terpilih wajib diisi.'], 422);
+                return;
+            }
             $this->session->set_flashdata('error', 'Alasan penolakan terpilih wajib diisi.');
             redirect('admin/peminjaman');
         }
@@ -154,10 +176,13 @@ class Approval extends CI_Controller {
         $expected = ['Menunggu Verifikasi Laboran', 'Menunggu Pengecekan Laboran', 'Menunggu Persetujuan'];
         $processed = 0;
         $skipped = 0;
+        $processed_ids = [];
+        $skipped_ids = [];
         foreach ($ids as $id) {
             $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id);
             if (!$peminjaman || !scm_loan_can_act($peminjaman, 'laboran')) {
                 $skipped++;
+                $skipped_ids[] = $id;
                 continue;
             }
             $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
@@ -190,12 +215,33 @@ class Approval extends CI_Controller {
                         site_url('peminjaman/riwayat'));
                 }
             }
-            if ($ok) $processed++; else $skipped++;
+            if ($ok) {
+                $processed++;
+                $processed_ids[] = $id;
+            } else {
+                $skipped++;
+                $skipped_ids[] = $id;
+            }
         }
 
         $label = $action === 'approve' ? 'disetujui' : 'ditolak';
         $message = $processed . ' pengajuan berhasil ' . $label . '.';
         if ($skipped > 0) $message .= ' ' . $skipped . ' dilewati karena statusnya berubah atau bukan kewenangan Laboran.';
+        if ($ajax) {
+            scm_json_response([
+                'success' => $processed > 0,
+                'partial' => $processed > 0 && $skipped > 0,
+                'message' => $message,
+                'action' => $action,
+                'status' => $action === 'approve' ? 'Menunggu ACC Kaur' : 'Ditolak',
+                'processed' => $processed,
+                'skipped' => $skipped,
+                'processed_ids' => $processed_ids,
+                'skipped_ids' => $skipped_ids,
+                'actionable_remaining' => $this->Peminjaman_model->count_actionable_peminjaman('laboran'),
+            ], $processed > 0 ? 200 : 409);
+            return;
+        }
         $this->session->set_flashdata($processed > 0 ? 'success' : 'error', $message);
         redirect('admin/peminjaman');
     }
@@ -206,6 +252,6 @@ class Approval extends CI_Controller {
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static function ($id) {
             return $id > 0;
         })));
-        return array_slice($ids, 0, 100);
+        return array_slice($ids, 0, 25);
     }
 }

@@ -271,8 +271,9 @@ class Peminjaman_model extends CI_Model {
         return $this->db->update($this->table_peminjam, $data);
     }
 
-    public function get_all_peminjam() {
+    public function get_all_peminjam($limit = null) {
         $this->db->order_by('nama_peminjam', 'ASC');
+        if ($limit !== null) $this->db->limit(max(1, (int) $limit));
         return $this->db->get($this->table_peminjam)->result();
     }
 
@@ -709,6 +710,8 @@ class Peminjaman_model extends CI_Model {
         
         $this->db->from($this->table_peminjaman . ' as p');
         $this->db->join('peminjam', 'peminjam.id_peminjam = p.id_peminjam', 'left');
+        $this->db->join('aset sort_aset', 'sort_aset.id_aset = p.id_aset', 'left');
+        $this->db->join('ruangan sort_ruangan', 'sort_ruangan.id_ruangan = sort_aset.id_ruangan', 'left');
         
         $this->apply_peminjaman_search_filters($filters);
         
@@ -717,24 +720,34 @@ class Peminjaman_model extends CI_Model {
         // ========== SORTING ==========
         // Default: terbaru ke terlama. Bisa dioverride lewat filters['sort_by'] / filters['sort_dir'].
         $sort_map = [
+            'number' => 'id_peminjaman',
+            'peminjam' => 'nama_peminjam',
             'nama_peminjam' => 'nama_peminjam',
+            'masa' => 'tanggal_pinjam',
             'tanggal_pinjam' => 'tanggal_pinjam',
             'tanggal_kembali' => 'tanggal_kembali_rencana',
             'status' => 'status',
         ];
         $sort_key = $filters['sort_by'] ?? '';
         $sort_dir = strtoupper((string) ($filters['sort_dir'] ?? '')) === 'ASC' ? 'ASC' : 'DESC';
+        $has_explicit_sort = $sort_key === 'barang' || $sort_key === 'lab' || isset($sort_map[$sort_key]);
 
         $action_role = strtolower((string) ($filters['action_role'] ?? ''));
-        if ($action_role === 'kaprodi') {
+        if (!$has_explicit_sort && $action_role === 'kaprodi') {
             $this->db->order_by("CASE WHEN MAX(p.status) = 'Menunggu ACC Kaprodi' AND MAX(p.status_kaprodi) = 'Pending' THEN 0 ELSE 1 END", 'ASC', false);
-        } elseif ($action_role === 'laboran') {
+        } elseif (!$has_explicit_sort && $action_role === 'laboran') {
             $this->db->order_by("CASE WHEN MAX(p.status) IN ('Menunggu Verifikasi Laboran','Menunggu Pengecekan Laboran','Menunggu Persetujuan') AND MAX(p.status_kaprodi) = 'Disetujui' AND MAX(p.status_laboran) = 'Pending' THEN 0 ELSE 1 END", 'ASC', false);
-        } elseif ($action_role === 'kaur') {
+        } elseif (!$has_explicit_sort && $action_role === 'kaur') {
             $this->db->order_by("CASE WHEN MAX(p.status) = 'Menunggu ACC Kaur' AND MAX(p.status_kaprodi) = 'Disetujui' AND MAX(p.status_laboran) = 'Disetujui' AND MAX(p.status_kaur) = 'Pending' THEN 0 ELSE 1 END", 'ASC', false);
         }
 
-        if (isset($sort_map[$sort_key])) {
+        if ($sort_key === 'barang') {
+            $this->db->order_by('MIN(sort_aset.nama_aset)', $sort_dir, false);
+            $this->db->order_by('id_peminjaman', 'DESC');
+        } elseif ($sort_key === 'lab') {
+            $this->db->order_by('MIN(sort_ruangan.nama_ruangan)', $sort_dir, false);
+            $this->db->order_by('id_peminjaman', 'DESC');
+        } elseif (isset($sort_map[$sort_key])) {
             $this->db->order_by($sort_map[$sort_key], $sort_dir);
             $this->db->order_by('id_peminjaman', 'DESC');
         } else {
@@ -859,6 +872,15 @@ class Peminjaman_model extends CI_Model {
             if ($value === '') continue;
             if ($field === 'peminjam') {
                 $this->db->group_start()->like('peminjam.nama_peminjam', $value)->or_like('peminjam.nim_nip', $value)->group_end();
+            } elseif ($field === 'all') {
+                $search = '%' . $value . '%';
+                $this->db->group_start()
+                    ->like('peminjam.nama_peminjam', $value)
+                    ->or_like('peminjam.nim_nip', $value)
+                    ->or_like('p.status', $value)
+                    ->or_like('p.keperluan', $value)
+                    ->or_where("p.id_aset IN (SELECT a.id_aset FROM `aset` a WHERE a.nama_aset LIKE " . $this->db->escape($search) . " OR a.kode_aset LIKE " . $this->db->escape($search) . ")", null, false)
+                    ->group_end();
             } elseif ($field === 'barang') {
                 $search = '%' . $value . '%';
                 $this->db->where("p.id_aset IN (SELECT a.id_aset FROM `aset` a WHERE a.nama_aset LIKE " . $this->db->escape($search) . " OR a.kode_aset LIKE " . $this->db->escape($search) . ")", null, false);
@@ -1134,19 +1156,59 @@ class Peminjaman_model extends CI_Model {
         return $results;
     }
 
-    public function get_peminjaman_by_peminjam($id_peminjam) {
-        $this->db->select('
-            peminjaman.*,
-            aset.nama_aset,
-            aset.kode_aset,
-            ruangan.nama_ruangan
-        ');
+    private function apply_peminjam_history_filters(array $filters) {
+        foreach ((array) ($filters['criteria'] ?? []) as $criterion) {
+            $field = (string) ($criterion['field'] ?? 'all');
+            $value = trim((string) ($criterion['value'] ?? ''));
+            if ($value === '') continue;
+            if ($field === 'tanggal') {
+                $range = explode('..', $value, 2);
+                if (count($range) === 2) {
+                    $this->db->where('DATE(peminjaman.tanggal_pinjam) >=', $range[0]);
+                    $this->db->where('DATE(peminjaman.tanggal_kembali_rencana) <=', $range[1]);
+                } else {
+                    $this->db->group_start()->where('DATE(peminjaman.created_at)', $value)->or_where('DATE(peminjaman.tanggal_pinjam)', $value)->or_where('DATE(peminjaman.tanggal_kembali_rencana)', $value)->group_end();
+                }
+                continue;
+            }
+            if ($field === 'barang') { $this->db->like('aset.nama_aset', $value); continue; }
+            if ($field === 'kode') { $this->db->like('aset.kode_aset', $value); continue; }
+            if ($field === 'status') { $this->db->like('peminjaman.status', $value); continue; }
+            $this->db->group_start()->like('aset.nama_aset', $value)->or_like('aset.kode_aset', $value)->or_like('peminjaman.status', $value)->or_like('peminjaman.created_at', $value)->or_like('peminjaman.tanggal_pinjam', $value)->or_like('peminjaman.tanggal_kembali_rencana', $value)->group_end();
+        }
+    }
+
+    private function build_peminjam_history_query($id_peminjam, array $filters, $select = true) {
+        if ($select) {
+            $this->db->select('peminjaman.*, aset.nama_aset, aset.kode_aset, ruangan.nama_ruangan');
+        }
         $this->db->from($this->table_peminjaman . ' as peminjaman');
         $this->db->join('aset', 'aset.id_aset = peminjaman.id_aset', 'left');
         $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
-        $this->db->where('peminjaman.id_peminjam', $id_peminjam);
-        $this->db->order_by('peminjaman.tanggal_pinjam', 'DESC');
+        $this->db->where('peminjaman.id_peminjam', (int) $id_peminjam);
+        $this->apply_peminjam_history_filters($filters);
+    }
+
+    public function get_peminjaman_by_peminjam($id_peminjam, $filters = [], $limit = 10, $offset = 0) {
+        $this->build_peminjam_history_query($id_peminjam, (array) $filters);
+        $sort_map = [
+            'tanggal' => 'peminjaman.created_at',
+            'barang' => 'aset.nama_aset',
+            'masa' => 'peminjaman.tanggal_pinjam',
+            'status' => 'peminjaman.status',
+            'qr' => 'peminjaman.qr_locked',
+        ];
+        $sort_key = (string) ($filters['sort_by'] ?? '');
+        $sort_dir = strtoupper((string) ($filters['sort_dir'] ?? '')) === 'ASC' ? 'ASC' : 'DESC';
+        $this->db->order_by($sort_map[$sort_key] ?? 'peminjaman.tanggal_pinjam', isset($sort_map[$sort_key]) ? $sort_dir : 'DESC');
+        $this->db->order_by('peminjaman.id_peminjaman', 'DESC');
+        $this->db->limit(max(1, (int) $limit), max(0, (int) $offset));
         return $this->db->get()->result();
+    }
+
+    public function count_peminjaman_by_peminjam($id_peminjam, $filters = []) {
+        $this->build_peminjam_history_query($id_peminjam, (array) $filters, false);
+        return (int) $this->db->count_all_results();
     }
 
     public function get_detail_by_group_id($group_id) {
@@ -1507,31 +1569,42 @@ class Peminjaman_model extends CI_Model {
         ]);
     }
 
-    public function get_blokir_pengguna($filters = []) {
+    private function build_blokir_query($filters = []) {
+        $this->db->from($this->table_blokir);
+
+        foreach ($filters as $filter) {
+            $field = (string) ($filter['field'] ?? '');
+            $value = trim((string) ($filter['value'] ?? ''));
+            if ($value === '') continue;
+
+            if ($field === 'pengguna') {
+                $this->db->group_start()->like('nama_peminjam', $value)->or_like('nim_nip', $value)->group_end();
+            } elseif ($field === 'periode') {
+                $this->db->group_start()->where('tanggal_blokir', $value)->or_where('batas_blokir', $value)->group_end();
+            } elseif ($field === 'alasan') {
+                $this->db->group_start()->like('alasan', $value)->or_like('catatan_buka', $value)->group_end();
+            } elseif ($field === 'status') {
+                $this->db->like('status', $value);
+            }
+        }
+    }
+
+    public function get_blokir_pengguna($filters = [], $limit = 10, $offset = 0) {
         if (!$this->db->table_exists($this->table_blokir)) {
             return [];
         }
 
-        $this->db->from($this->table_blokir);
-
-        if (!empty($filters['status'])) {
-            $this->db->where('status', $filters['status']);
-        }
-        if (!empty($filters['tanggal'])) {
-            $this->db->where('tanggal_blokir', $filters['tanggal']);
-        }
-        if (!empty($filters['pencarian'])) {
-            $search = trim((string) $filters['pencarian']);
-            $this->db->group_start();
-            $this->db->like('nama_peminjam', $search);
-            $this->db->or_like('nim_nip', $search);
-            $this->db->or_like('alasan', $search);
-            $this->db->group_end();
-        }
-
+        $this->build_blokir_query($filters);
         $this->db->order_by("FIELD(status, 'Aktif', 'Dibuka')", '', false);
         $this->db->order_by('created_at', 'DESC');
+        $this->db->limit((int) $limit, (int) $offset);
         return $this->db->get()->result();
+    }
+
+    public function count_blokir_pengguna($filters = []) {
+        if (!$this->db->table_exists($this->table_blokir)) return 0;
+        $this->build_blokir_query($filters);
+        return (int) $this->db->count_all_results();
     }
 
     public function count_blokir_aktif() {
@@ -2156,14 +2229,39 @@ class Peminjaman_model extends CI_Model {
     // =======================================================
     // FUNGSI UNTUK FITUR KATALOG BARANG (DASHBOARD USER)
     // =======================================================
-    public function get_katalog_barang() {
+    private function build_katalog_query($filters = [], $id_ruangan = null) {
         $this->db->select('aset.*, ruangan.nama_ruangan');
         $this->db->from('aset');
         $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
         $this->db->where('jumlah_tersedia >', 0);
+        if ($id_ruangan !== null && $id_ruangan !== '') $this->db->where('aset.id_ruangan', (int) $id_ruangan);
+        foreach ((array) $filters as $filter) {
+            $field = (string) ($filter['field'] ?? '');
+            $value = trim((string) ($filter['value'] ?? ''));
+            if ($value === '') continue;
+            if ($field === 'all') {
+                $this->db->group_start()->like('aset.nama_aset', $value)->or_like('aset.kode_aset', $value)->or_like('ruangan.nama_ruangan', $value)->or_like('aset.kondisi', $value);
+                if (is_numeric($value)) $this->db->or_where('aset.jumlah_tersedia', (int) $value);
+                $this->db->group_end();
+            }
+            elseif ($field === 'nama') $this->db->like('aset.nama_aset', $value);
+            elseif ($field === 'kode') $this->db->like('aset.kode_aset', $value);
+            elseif ($field === 'ruangan') $this->db->like('ruangan.nama_ruangan', $value);
+            elseif ($field === 'kondisi') $this->db->like('aset.kondisi', $value);
+            elseif ($field === 'stok' && is_numeric($value)) $this->db->where('aset.jumlah_tersedia', (int) $value);
+        }
+    }
+
+    public function get_katalog_barang($filters = [], $limit = 10, $offset = 0, $id_ruangan = null) {
+        $this->build_katalog_query($filters, $id_ruangan);
         $this->db->order_by('nama_aset', 'ASC');
-        
+        $this->db->limit((int) $limit, (int) $offset);
         return $this->db->get()->result();
+    }
+
+    public function count_katalog_barang($filters = [], $id_ruangan = null) {
+        $this->build_katalog_query($filters, $id_ruangan);
+        return (int) $this->db->count_all_results();
     }
 
     // =======================================================

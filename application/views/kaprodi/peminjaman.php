@@ -6,12 +6,17 @@ $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $approval_total = (int) ($approval_total ?? count($pengajuan));
 $kaprodi_actionable = (int) ($approval_actionable ?? count(array_filter($pengajuan, static function ($p) { return scm_loan_can_act($p, 'kaprodi'); })));
+$kaprodi_page_actionable = count(array_filter($pengajuan, static function ($p) { return scm_loan_can_act($p, 'kaprodi'); }));
 $page = max(1, (int) ($page ?? 1));
 $per_page = (int) ($per_page ?? 10);
 $total_pages = max(1, (int) ($total_pages ?? 1));
 $return_total = (int) ($return_total ?? count($pengembalian));
 $return_page = max(1, (int) ($return_page ?? 1));
 $return_total_pages = max(1, (int) ($return_total_pages ?? 1));
+$approval_sort = (string) ($approval_sort ?? '');
+$approval_dir = (string) ($approval_dir ?? 'desc');
+$return_sort = (string) ($return_sort ?? 'masa');
+$return_dir = (string) ($return_dir ?? 'desc');
 
 if (!function_exists('kaprodi_loan_status_tone')) {
     function kaprodi_loan_status_tone($status)
@@ -48,7 +53,7 @@ if (!function_exists('kaprodi_client_filter_fields')) {
             return [
                 'peminjam' => ['label' => 'Peminjam / NIM', 'placeholder' => 'Cari peminjam / NIM'],
                 'barang' => ['label' => 'Nama barang', 'placeholder' => 'Cari nama barang'],
-                'masa' => ['label' => 'Masa pinjam', 'placeholder' => 'Pilih tanggal pinjam', 'type' => 'date'],
+                'masa' => ['label' => 'Masa pinjam', 'placeholder' => 'Pilih tanggal atau rentang tanggal', 'type' => 'date'],
                 'status' => ['label' => 'Status pengembalian', 'placeholder' => 'Cari status pengembalian'],
             ];
         }
@@ -57,7 +62,7 @@ if (!function_exists('kaprodi_client_filter_fields')) {
             'peminjam' => ['label' => 'Peminjam / NIM', 'placeholder' => 'Cari peminjam / NIM'],
             'barang' => ['label' => 'Nama barang / kode', 'placeholder' => 'Cari nama barang / kode'],
             'lab' => ['label' => 'Laboratorium', 'placeholder' => 'Cari laboratorium'],
-            'masa' => ['label' => 'Masa pinjam', 'placeholder' => 'Pilih tanggal pinjam', 'type' => 'date'],
+            'masa' => ['label' => 'Masa pinjam', 'placeholder' => 'Pilih tanggal atau rentang tanggal', 'type' => 'date'],
             'status' => ['label' => 'Status', 'placeholder' => 'Cari status approval'],
         ];
     }
@@ -70,7 +75,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
         $selected_rows = is_array($selected_rows) && !empty($selected_rows) ? array_slice($selected_rows, 0, 4) : [['field' => $default_field, 'value' => '']];
         $is_server = $scope === 'approval';
         ?>
-        <?php if ($is_server): ?><form method="get" action="<?= current_url() ?>"><input type="hidden" name="page" value="1"><input type="hidden" name="per_page" value="<?= (int) $per_page ?>"><?php endif; ?>
+        <?php if ($is_server): ?><form method="get" action="<?= current_url() ?>"><input type="hidden" name="page" value="1"><input type="hidden" name="per_page" value="<?= (int) $per_page ?>"><input type="hidden" name="sort_by" value="<?= html_escape($_GET['sort_by'] ?? '') ?>"><input type="hidden" name="sort_dir" value="<?= html_escape($_GET['sort_dir'] ?? 'desc') ?>"><?php endif; ?>
         <div id="<?= html_escape($id) ?>" class="kp-multi-filter scm-search-filter" data-kp-multi-filter data-max-filters="4">
             <div class="kp-multi-filter-heading">
                 <h3><i class="bi bi-funnel me-2" aria-hidden="true"></i>Filter pencarian</h3>
@@ -112,6 +117,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= base_url('assets/dashboard-theme.css') ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/loan-progress.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-progress.css'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/approval-bulk-select.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/approval-bulk-select.css'); ?>">
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     <style>
         .kaprodi-loan-page {
@@ -414,7 +420,16 @@ if (!function_exists('render_kaprodi_client_filter')) {
         }
 
         .kp-filter-card {
+            position: relative;
+            z-index: 20;
+            overflow: visible;
             padding: 14px 18px 13px;
+        }
+
+        .kp-card.kp-filter-host {
+            position: relative;
+            z-index: 20;
+            overflow: visible;
         }
 
         .kp-multi-filter {
@@ -1165,7 +1180,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
         <div><h2 class="kp-section-title">Progress Seluruh Peminjaman</h2><p class="kp-section-copy mt-1">Semua tahap dapat dipantau; aksi hanya tersedia saat menunggu Kaprodi.</p></div>
         <span class="kp-count-badge">
             <span class="kp-status-dot"></span>
-            <?= $kaprodi_actionable ?> perlu aksi · <?= number_format($approval_total, 0, ',', '.') ?> total
+            <span data-bulk-actionable-count><?= $kaprodi_actionable ?></span> perlu aksi · <?= number_format($approval_total, 0, ',', '.') ?> total
         </span>
     </section>
 
@@ -1173,51 +1188,34 @@ if (!function_exists('render_kaprodi_client_filter')) {
         <?php render_kaprodi_client_filter('approval', 'kaprodiApprovalFilters', $filter_rows ?? [], $per_page); ?>
     </section>
 
-    <section class="kp-card kp-table-card mb-3" aria-labelledby="kaprodiApprovalTitle">
+    <section class="kp-card kp-table-card mb-3" aria-labelledby="kaprodiApprovalTitle" data-bulk-approval>
         <div class="kp-section-header">
             <h2 id="kaprodiApprovalTitle" class="kp-section-title">Pengajuan Menunggu ACC</h2>
         </div>
+        <?php if (!empty($pengajuan)): ?>
+        <form id="kaprodiBulkForm" method="post" action="<?= base_url('index.php/kaprodi/peminjaman/bulk') ?>" class="approval-bulk-toolbar m-3" data-bulk-form data-bulk-toolbar hidden>
+            <input type="hidden" name="bulk_note" value="">
+            <span class="approval-bulk-toolbar__count" data-bulk-count>0 data terpilih</span>
+            <button type="submit" name="action" value="approve" class="btn btn-sm btn-success rounded-pill px-3" data-bulk-approve-action><i class="bi bi-check2-circle me-1"></i>ACC Terpilih</button>
+            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#kaprodiBulkRejectModal"><i class="bi bi-x-circle me-1"></i>Tolak Terpilih</button>
+            <button type="submit" name="action" value="reject" data-bulk-reject-action hidden></button>
+        </form>
+        <?php endif; ?>
         <div class="table-responsive">
             <table class="table kp-table">
                 <thead>
                 <tr>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-approval-sort="number">
-                            No. Peminjaman <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-approval-sort="peminjam">
-                            Nama Peminjam <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-approval-sort="barang">
-                            Barang <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-approval-sort="lab">
-                            Laboratorium <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-approval-sort="masa">
-                            Masa Pinjam <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-approval-sort="status">
-                            Status <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
+                    <th scope="col" class="approval-bulk-cell"><label class="approval-bulk-select-all" title="Pilih semua data yang dapat di-ACC pada halaman ini"><input type="checkbox" class="form-check-input approval-bulk-check" data-bulk-select-all <?= $kaprodi_page_actionable > 0 ? '' : 'disabled' ?>><span>Pilih</span></label></th>
+                    <?php foreach (['number' => 'No. Peminjaman', 'peminjam' => 'Nama Peminjam', 'barang' => 'Barang', 'lab' => 'Laboratorium', 'masa' => 'Masa Pinjam', 'status' => 'Status'] as $sort_key => $sort_label): ?>
+                    <th scope="col" aria-sort="<?= scm_sort_aria($sort_key, $approval_sort, $approval_dir) ?>"><a class="kp-sort-button scm-sort-control <?= $approval_sort === $sort_key ? 'is-active' : '' ?>" href="<?= scm_sort_url($sort_key, $approval_sort, $approval_dir) ?>"><?= html_escape($sort_label) ?><i class="bi <?= scm_sort_icon_class($sort_key, $approval_sort, $approval_dir) ?>" aria-hidden="true"></i></a></th>
+                    <?php endforeach; ?>
                     <th scope="col" class="text-end">Aksi</th>
                 </tr>
                 </thead>
                 <tbody id="kaprodiApprovalBody">
                 <?php if (empty($pengajuan)): ?>
                     <tr class="kp-empty-row">
-                        <td colspan="7">Belum ada data peminjaman.</td>
+                        <td colspan="8">Belum ada data peminjaman.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($pengajuan as $p): ?>
@@ -1265,6 +1263,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                             data-sort-masa="<?= (int) strtotime((string) ($p->tanggal_pinjam ?? '')) ?>"
                             data-sort-status="<?= html_escape($status) ?>"
                         >
+                            <td class="approval-bulk-cell"><input type="checkbox" class="form-check-input approval-bulk-check" name="loan_ids[]" value="<?= (int) $p->id_peminjaman ?>" form="kaprodiBulkForm" data-bulk-row aria-label="Pilih peminjaman <?= (int) $p->id_peminjaman ?>" <?= $can_kaprodi_act ? '' : 'disabled title="Belum berada pada tahap Kaprodi"' ?>></td>
                             <td>
                                 <div class="kp-primary-text"><?= html_escape($number) ?></div>
                                 <div class="kp-secondary-text">ID <?= html_escape($p->id_peminjaman ?? '-') ?></div>
@@ -1292,11 +1291,12 @@ if (!function_exists('render_kaprodi_client_filter')) {
                                 <div class="kp-primary-text"><?= html_escape(tanggal_indonesia($p->tanggal_pinjam ?? null)) ?></div>
                                 <div class="kp-secondary-text">s.d. <?= html_escape(tanggal_indonesia($p->tanggal_kembali_rencana ?? null)) ?></div>
                             </td>
-                            <td><?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?></td>
+                            <td data-bulk-status><?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?></td>
                             <td class="text-end">
                                 <button
                                     type="button"
                                     class="btn btn-sm btn-outline-primary kp-detail-button"
+                                    data-bulk-action
                                     data-bs-toggle="modal"
                                     data-bs-target="#kaprodiApproval<?= (int) $p->id_peminjaman ?>"
                                 >
@@ -1306,7 +1306,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                         </tr>
                     <?php endforeach; ?>
                     <tr id="kaprodiApprovalEmpty" class="kp-empty-row d-none">
-                        <td colspan="7">Tidak ada hasil yang sesuai dengan filter.</td>
+                        <td colspan="8">Tidak ada hasil yang sesuai dengan filter.</td>
                     </tr>
                 <?php endif; ?>
                 </tbody>
@@ -1317,7 +1317,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                 <div class="kp-page-size">
                     <label for="kaprodiApprovalPageSize">Tampilkan:</label>
                     <select id="kaprodiApprovalPageSize" class="form-select form-select-sm" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.href=u.toString();">
-                        <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
+                        <?php foreach ([10, 25] as $size): ?><option value="<?= $size ?>" <?= $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                     </select>
                     <span id="kaprodiApprovalTotal">Total item: <?= number_format($approval_total, 0, ',', '.') ?></span>
                 </div>
@@ -1326,15 +1326,22 @@ if (!function_exists('render_kaprodi_client_filter')) {
                 <nav class="kp-pagination-nav" aria-label="Paging pengajuan">
                     <ul id="kaprodiApprovalPagination" class="kp-pagination">
                         <?php $kp_query = $_GET; $kp_query['per_page'] = $per_page; $kp_query['page'] = max(1, $page - 1); ?><li><a class="kp-page-button <?= $page <= 1 ? 'disabled' : '' ?>" href="<?= current_url() . '?' . http_build_query($kp_query) ?>">Previous</a></li>
-                        <?php $start_page = max(1, $page - 2); $end_page = min($total_pages, $start_page + 4); $start_page = max(1, $end_page - 4); for ($i = $start_page; $i <= $end_page; $i++): $kp_query['page'] = $i; ?><li><a class="kp-page-button <?= $i === $page ? 'is-active' : '' ?>" href="<?= current_url() . '?' . http_build_query($kp_query) ?>"><?= $i ?></a></li><?php endfor; $kp_query['page'] = min($total_pages, $page + 1); ?>
+                        <?php foreach (scm_pagination_tokens($page, $total_pages) as $token): ?><?php if (is_string($token)): ?><li><span class="kp-page-button disabled">...</span></li><?php else: $kp_query['page'] = $token; ?><li><a class="kp-page-button <?= $token === $page ? 'is-active' : '' ?>" href="<?= current_url() . '?' . http_build_query($kp_query) ?>"><?= $token ?></a></li><?php endif; ?><?php endforeach; $kp_query['page'] = min($total_pages, $page + 1); ?>
                         <li><a class="kp-page-button <?= $page >= $total_pages ? 'disabled' : '' ?>" href="<?= current_url() . '?' . http_build_query($kp_query) ?>">Next</a></li>
                     </ul>
                 </nav>
             </div>
         <?php endif; ?>
+        <div class="modal fade" id="kaprodiBulkRejectModal" tabindex="-1" aria-labelledby="kaprodiBulkRejectTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+                <div class="modal-header"><h2 class="modal-title h5 fw-bold" id="kaprodiBulkRejectTitle">Tolak Peminjaman Terpilih</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+                <div class="modal-body"><label for="kaprodiBulkRejectReason" class="form-label fw-semibold">Alasan penolakan</label><textarea id="kaprodiBulkRejectReason" class="form-control" rows="4" placeholder="Alasan berlaku untuk seluruh data terpilih." data-bulk-reject-reason></textarea></div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button type="button" class="btn btn-danger rounded-pill px-4" data-bulk-reject-submit>Tolak Terpilih</button></div>
+            </div></div>
+        </div>
     </section>
 
-    <section class="kp-card" aria-labelledby="kaprodiReturnTitle">
+    <section class="kp-card kp-filter-host" aria-labelledby="kaprodiReturnTitle">
         <div class="kp-section-header">
             <h2 id="kaprodiReturnTitle" class="kp-section-title">Status Pengembalian (Read-only)</h2>
         </div>
@@ -1346,26 +1353,9 @@ if (!function_exists('render_kaprodi_client_filter')) {
                 <thead>
                 <tr>
                     <th scope="col">No</th>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-return-sort="peminjam">
-                            Peminjam <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-return-sort="barang">
-                            Nama Barang <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-return-sort="masa">
-                            Masa Pinjam <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
-                    <th scope="col">
-                        <button class="kp-sort-button" type="button" data-return-sort="status">
-                            Status Pengembalian <i class="bi bi-arrow-down-up"></i>
-                        </button>
-                    </th>
+                    <?php foreach (['peminjam' => 'Peminjam', 'barang' => 'Nama Barang', 'masa' => 'Masa Pinjam', 'status' => 'Status Pengembalian'] as $sort_key => $sort_label): ?>
+                    <th scope="col" aria-sort="<?= scm_sort_aria($sort_key, $return_sort, $return_dir) ?>"><a class="kp-sort-button scm-sort-control <?= $return_sort === $sort_key ? 'is-active' : '' ?>" href="<?= scm_sort_url($sort_key, $return_sort, $return_dir, 'return_sort', 'return_dir', 'return_page') ?>"><?= html_escape($sort_label) ?><i class="bi <?= scm_sort_icon_class($sort_key, $return_sort, $return_dir) ?>" aria-hidden="true"></i></a></th>
+                    <?php endforeach; ?>
                 </tr>
                 </thead>
                 <tbody id="kaprodiReturnBody">
@@ -1428,7 +1418,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                 <div class="kp-page-size">
                     <label for="kaprodiReturnPageSize">Tampilkan:</label>
                     <select id="kaprodiReturnPageSize" class="form-select form-select-sm" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('return_page','1');window.location.href=u.toString();">
-                        <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
+                        <?php foreach ([10, 25] as $size): ?><option value="<?= $size ?>" <?= $per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                     </select>
                     <span id="kaprodiReturnTotal">Total item: <?= number_format($return_total, 0, ',', '.') ?></span>
                 </div>
@@ -1437,7 +1427,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                 <nav class="kp-pagination-nav" aria-label="Paging status pengembalian">
                     <ul id="kaprodiReturnPagination" class="kp-pagination">
                         <?php $return_query = $_GET; $return_query['per_page'] = $per_page; $return_query['return_page'] = max(1, $return_page - 1); ?><li><a class="kp-page-button <?= $return_page <= 1 ? 'disabled' : '' ?>" href="<?= current_url() . '?' . http_build_query($return_query) ?>">Previous</a></li>
-                        <?php $return_start_page = max(1, $return_page - 2); $return_end_page = min($return_total_pages, $return_start_page + 4); $return_start_page = max(1, $return_end_page - 4); for ($i = $return_start_page; $i <= $return_end_page; $i++): $return_query['return_page'] = $i; ?><li><a class="kp-page-button <?= $i === $return_page ? 'is-active' : '' ?>" href="<?= current_url() . '?' . http_build_query($return_query) ?>"><?= $i ?></a></li><?php endfor; $return_query['return_page'] = min($return_total_pages, $return_page + 1); ?>
+                        <?php foreach (scm_pagination_tokens($return_page, $return_total_pages) as $token): ?><?php if (is_string($token)): ?><li><span class="kp-page-button disabled">...</span></li><?php else: $return_query['return_page'] = $token; ?><li><a class="kp-page-button <?= $token === $return_page ? 'is-active' : '' ?>" href="<?= current_url() . '?' . http_build_query($return_query) ?>"><?= $token ?></a></li><?php endif; ?><?php endforeach; $return_query['return_page'] = min($return_total_pages, $return_page + 1); ?>
                         <li><a class="kp-page-button <?= $return_page >= $return_total_pages ? 'disabled' : '' ?>" href="<?= current_url() . '?' . http_build_query($return_query) ?>">Next</a></li>
                     </ul>
                 </nav>
@@ -1574,6 +1564,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
 <?php endforeach; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= base_url('assets/js/approval-bulk-select.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/approval-bulk-select.js'); ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function (element) {
@@ -1668,228 +1659,6 @@ document.addEventListener('DOMContentLoaded', function () {
             notify();
         });
         return root;
-    }
-
-    function initClientTable(options) {
-        var body = document.getElementById(options.bodyId);
-        if (!body) {
-            return;
-        }
-
-        var filterRoot = initMultiFilter(options.filterRootId);
-        var rows = Array.prototype.slice.call(body.querySelectorAll(options.rowSelector));
-        if (!rows.length) {
-            return;
-        }
-
-        rows.forEach(function (row, index) {
-            row.dataset.originalIndex = String(index);
-        });
-
-        var pageSizeSelect = document.getElementById(options.pageSizeId);
-        var totalElement = document.getElementById(options.totalId);
-        var pageStatusElement = document.getElementById(options.pageStatusId);
-        var paginationElement = document.getElementById(options.paginationId);
-        var emptyElement = document.getElementById(options.emptyId);
-        var sortButtons = Array.prototype.slice.call(document.querySelectorAll(options.sortSelector));
-        var currentPage = 1;
-        var sortKey = '';
-        var sortDirection = 'asc';
-
-        function normalized(value) {
-            return String(value || '').trim().toLocaleLowerCase('id');
-        }
-
-        function filteredRows() {
-            var criteria = filterRoot ? Array.prototype.slice.call(filterRoot.querySelectorAll('[data-filter-row]')).map(function (filterRow) {
-                return {
-                    field: filterRow.querySelector('.kp-multi-filter-field').value,
-                    value: normalized(filterRow.querySelector('.kp-multi-filter-value').value)
-                };
-            }).filter(function (criterion) { return criterion.value !== ''; }) : [];
-
-            return rows.filter(function (row) {
-                return criteria.every(function (criterion) {
-                    var key = 'filter' + criterion.field.charAt(0).toUpperCase() + criterion.field.slice(1);
-                    return normalized(row.dataset[key]).indexOf(criterion.value) !== -1;
-                });
-            });
-        }
-
-        function sortedRows(list) {
-            if (!sortKey) {
-                return list.slice().sort(function (left, right) {
-                    return Number(left.dataset.originalIndex) - Number(right.dataset.originalIndex);
-                });
-            }
-
-            return list.slice().sort(function (left, right) {
-                var leftValue = left.dataset['sort' + sortKey.charAt(0).toUpperCase() + sortKey.slice(1)] || '';
-                var rightValue = right.dataset['sort' + sortKey.charAt(0).toUpperCase() + sortKey.slice(1)] || '';
-                var comparison;
-
-                if (sortKey === 'masa') {
-                    comparison = Number(leftValue) - Number(rightValue);
-                } else {
-                    comparison = normalized(leftValue).localeCompare(normalized(rightValue), 'id', {
-                        numeric: true,
-                        sensitivity: 'base'
-                    });
-                }
-
-                if (comparison === 0) {
-                    comparison = Number(left.dataset.originalIndex) - Number(right.dataset.originalIndex);
-                }
-
-                return sortDirection === 'asc' ? comparison : -comparison;
-            });
-        }
-
-        function pageSizeFor(total) {
-            if (!pageSizeSelect || pageSizeSelect.value === 'all') {
-                return Math.max(total, 1);
-            }
-            return Math.max(Number(pageSizeSelect.value) || 10, 1);
-        }
-
-        function createPageButton(label, page, disabled, active, ariaLabel, ellipsis) {
-            var item = document.createElement('li');
-            if (ellipsis) {
-                item.className = 'page-item disabled';
-                item.setAttribute('aria-hidden', 'true');
-                var separator = document.createElement('span');
-                separator.className = 'kp-page-button page-link';
-                separator.textContent = '...';
-                item.appendChild(separator);
-                return item;
-            }
-            var button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'kp-page-button' + (active ? ' is-active' : '');
-            button.textContent = label;
-            button.disabled = disabled;
-            if (ariaLabel) {
-                button.setAttribute('aria-label', ariaLabel);
-            }
-            if (active) {
-                button.setAttribute('aria-current', 'page');
-            }
-            button.addEventListener('click', function () {
-                currentPage = page;
-                render();
-            });
-            item.appendChild(button);
-            return item;
-        }
-
-        function renderPagination(totalPages) {
-            if (!paginationElement) {
-                return;
-            }
-
-            paginationElement.innerHTML = '';
-            paginationElement.appendChild(createPageButton('Previous', currentPage - 1, currentPage <= 1, false, 'Halaman sebelumnya'));
-
-            var pageTokens = totalPages <= 7
-                ? Array.from({ length: totalPages }, function (_, index) { return index + 1; })
-                : currentPage <= 3
-                    ? [1, 2, 3, 4, 5, 'ellipsis', totalPages]
-                    : currentPage >= totalPages - 2
-                        ? [totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
-                        : [1, 'ellipsis', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis', totalPages];
-            pageTokens.forEach(function (token) {
-                if (typeof token === 'string') {
-                    paginationElement.appendChild(createPageButton('...', currentPage, true, false, 'Pemisah halaman', true));
-                } else {
-                    paginationElement.appendChild(createPageButton(String(token), token, false, token === currentPage, 'Halaman ' + token));
-                }
-            });
-
-            paginationElement.appendChild(createPageButton('Next', currentPage + 1, currentPage >= totalPages, false, 'Halaman berikutnya'));
-        }
-
-        function updateSortButtons() {
-            sortButtons.forEach(function (button) {
-                var buttonKey = button.getAttribute(options.sortAttribute);
-                var icon = button.querySelector('i');
-                var header = button.closest('th');
-                var isCurrent = buttonKey === sortKey;
-
-                if (icon) {
-                    icon.className = isCurrent
-                        ? (sortDirection === 'asc' ? 'bi bi-sort-up-alt' : 'bi bi-sort-down')
-                        : 'bi bi-arrow-down-up';
-                }
-                if (header) {
-                    header.setAttribute('aria-sort', isCurrent ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none');
-                }
-            });
-        }
-
-        function render() {
-            var visibleRows = sortedRows(filteredRows());
-            var pageSize = pageSizeFor(visibleRows.length);
-            var totalPages = Math.max(1, Math.ceil(visibleRows.length / pageSize));
-            currentPage = Math.min(Math.max(currentPage, 1), totalPages);
-            var start = (currentPage - 1) * pageSize;
-            var end = start + pageSize;
-
-            rows.forEach(function (row) {
-                row.classList.add('d-none');
-            });
-
-            visibleRows.forEach(function (row, index) {
-                body.insertBefore(row, emptyElement || null);
-                var numberElement = row.querySelector('[data-row-number]');
-                if (numberElement) {
-                    numberElement.textContent = String(index + 1);
-                }
-                row.classList.toggle('d-none', index < start || index >= end);
-            });
-
-            if (emptyElement) {
-                emptyElement.classList.toggle('d-none', visibleRows.length !== 0);
-            }
-            if (totalElement) {
-                totalElement.textContent = 'Total item: ' + visibleRows.length;
-            }
-            if (pageStatusElement) {
-                pageStatusElement.textContent = 'Halaman: ' + currentPage + ' dari ' + totalPages;
-            }
-
-            renderPagination(totalPages);
-            updateSortButtons();
-        }
-
-        if (filterRoot) {
-            filterRoot.addEventListener('kp:filterchange', function () {
-                currentPage = 1;
-                render();
-            });
-        }
-
-        if (pageSizeSelect) {
-            pageSizeSelect.addEventListener('change', function () {
-                currentPage = 1;
-                render();
-            });
-        }
-
-        sortButtons.forEach(function (button) {
-            button.addEventListener('click', function () {
-                var nextKey = button.getAttribute(options.sortAttribute);
-                if (sortKey === nextKey) {
-                    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-                } else {
-                    sortKey = nextKey;
-                    sortDirection = 'asc';
-                }
-                currentPage = 1;
-                render();
-            });
-        });
-
-        render();
     }
 
     initMultiFilter('kaprodiApprovalFilters');
