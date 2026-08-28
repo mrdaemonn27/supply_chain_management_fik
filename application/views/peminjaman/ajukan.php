@@ -4,6 +4,7 @@ $session_role = strtolower((string) $this->session->userdata('role'));
 $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
+$has_uploaded_visual = !empty($aset->gambar);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -43,8 +44,15 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         .btn-submit { background-color: #ea5b1a; color: white; font-weight: 600; padding: 12px; border-radius: 8px; border: none; transition: 0.3s; }
         .btn-submit:hover { background-color: #c24a13; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(234, 91, 26, 0.3); }
         
-        /* Tambahan untuk menjaga ukuran gambar agar proporsional */
+        /* Visual detail aset selalu memakai gambar yang dikelola melalui CRUD. */
         .aset-thumbnail { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .aset-thumbnail--product {
+            object-fit: contain;
+            padding: 6px;
+            background:
+                radial-gradient(circle at 50% 25%, rgba(255,255,255,.3), transparent 48%),
+                rgba(255,255,255,.08);
+        }
 
         /* Custom Style untuk Drag & Drop Zone */
         .drop-zone {
@@ -166,8 +174,8 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     <h5 class="fw-bold text-fik-orange mb-4"><i class="bi bi-box-seam me-2"></i>Detail Aset</h5>
                     
                     <div class="bg-white bg-opacity-10 rounded-3 p-3 mb-4 text-center">
-                        <?php if(!empty($aset->gambar)): ?>
-                            <img src="<?= base_url('assets/uploads/barang/'.$aset->gambar) ?>" alt="<?= $aset->nama_aset ?>" class="aset-thumbnail">
+                        <?php if($has_uploaded_visual): ?>
+                            <img src="<?= base_url('assets/uploads/barang/'.$aset->gambar) ?>" alt="<?= html_escape($aset->nama_aset) ?>" class="aset-thumbnail aset-thumbnail--product">
                         <?php else: ?>
                             <i class="bi bi-camera" style="font-size: 4rem; color: #f8f9fa; opacity: 0.8;"></i>
                         <?php endif; ?>

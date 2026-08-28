@@ -120,6 +120,43 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             box-shadow: 0 0 0 0.2rem rgba(234, 91, 26, 0.25);
         }
 
+        .rule-card__actions {
+            display: grid;
+            grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+            align-items: stretch;
+            gap: 8px;
+        }
+
+        .rule-card__actions .btn-doc-internal {
+            min-height: 44px;
+            padding: 9px 8px;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        .rule-card__actions .btn-doc-manual {
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.42);
+        }
+
+        .rule-card__actions .btn-doc-manual:hover,
+        .rule-card__actions .btn-doc-manual:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.72);
+            box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.1);
+        }
+
+        @media (max-width: 1199.98px) {
+            .rule-card__actions {
+                grid-template-columns: 1fr;
+            }
+
+            .rule-card__actions .btn-doc-internal {
+                font-size: 0.82rem;
+            }
+        }
+
         /* Header Tampilan Awal (Slimmer) */
         .catalog-header {
             background: linear-gradient(rgba(26, 26, 26, 0.85), rgba(26, 26, 26, 0.9)), url('https://images.unsplash.com/photo-1542744094-24638ea0b3b5?auto=format&fit=crop&q=80') center/cover;
@@ -477,17 +514,25 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                         <i class="bi bi-file-earmark-pdf fs-1 text-fik-orange mb-3 d-block"></i>
                         <h5 class="fw-bold text-white mb-3">Dokumen SOP & Instruksi Kerja</h5>
                         <p class="text-light opacity-75 small mb-4" style="line-height: 1.8;">
-                            Buka dokumen internal berisi SOP, tata tertib, dan instruksi kerja studio/laboratorium.
+                            Akses SOP, tata tertib, instruksi kerja, dan panduan penggunaan sistem peminjaman.
                         </p>
-                        <?php if($can_read_internal_docs): ?>
-                            <button type="button" class="btn-doc-internal" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
-                                <i class="bi bi-eye"></i> Lihat Dokumen
-                            </button>
-                        <?php else: ?>
-                            <a href="<?= base_url('index.php/auth') ?>" class="btn-doc-internal">
-                                <i class="bi bi-lock"></i> Login untuk Akses
+                        <div class="rule-card__actions">
+                            <?php if($can_read_internal_docs): ?>
+                                <button type="button" class="btn-doc-internal" data-bs-toggle="modal" data-bs-target="#internalDocsModal">
+                                    <i class="bi bi-eye"></i> Lihat Dokumen
+                                </button>
+                            <?php else: ?>
+                                <a href="<?= base_url('index.php/auth') ?>" class="btn-doc-internal">
+                                    <i class="bi bi-lock"></i> Login untuk Akses
+                                </a>
+                            <?php endif; ?>
+                            <a href="<?= base_url('assets/documents/User_Manual_Peminjaman_Barang_SCM_FIK_v1.0_2026.pdf') ?>"
+                               class="btn-doc-internal btn-doc-manual"
+                               target="_blank"
+                               rel="noopener">
+                                <i class="bi bi-book"></i> Panduan Peminjaman
                             </a>
-                        <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6 col-xl-4" data-aos="fade-up" data-aos-delay="300">

@@ -97,32 +97,158 @@ $catalog_query['per_page'] = $catalog_per_page;
             border-bottom: 3px solid #ea5b1a;
         }
         
-        /* Placeholder/Wadah Gambar Dinamis */
+        /* Area visual aset: render atau foto dari CRUD aset. */
         .item-img-placeholder {
+            --asset-entry-delay: 0ms;
+            --asset-rotate-x: 0deg;
+            --asset-rotate-y: 0deg;
+            --asset-mouse-raise: 0px;
             height: 180px;
-            background: linear-gradient(135deg, #f1f2f6 0%, #dfe4ea 100%);
+            background:
+                radial-gradient(circle at 50% 26%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 45%),
+                linear-gradient(145deg, #f4f6f9 0%, #e0e6ed 100%);
             display: flex;
             align-items: center;
             justify-content: center;
             color: #a4b0be;
             position: relative;
             overflow: hidden;
+            isolation: isolate;
         }
-        .item-img-placeholder img {
+
+        .item-img-placeholder.asset-visual--product {
+            background:
+                radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.95) 0, rgba(255, 255, 255, 0) 44%),
+                linear-gradient(145deg, #f7f9fc 0%, #e4eaf1 100%);
+        }
+
+        .item-img-placeholder::before {
+            content: '';
+            position: absolute;
+            top: -15%;
+            bottom: -15%;
+            left: -65%;
+            width: 42%;
+            background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0.04) 24%, rgba(255, 255, 255, 0.72) 51%, rgba(255, 255, 255, 0.06) 75%, transparent 100%);
+            transform: skewX(-18deg);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .item-img-placeholder::after {
+            content: '';
+            position: absolute;
+            left: 18%;
+            right: 18%;
+            bottom: 13px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(42, 52, 64, 0.19);
+            filter: blur(10px);
+            z-index: 0;
+            transform: scale(1) translateY(0);
+            opacity: 0.55;
+            transition: transform 360ms ease, opacity 360ms ease;
+        }
+
+        .asset-visual__motion {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             width: 100%;
             height: 100%;
-            object-fit: cover;
-            transition: transform 0.5s ease;
+            opacity: 0;
+            transform: translateY(14px) scale(0.94);
+            animation: asset-visual-enter 720ms cubic-bezier(0.22, 1, 0.36, 1) var(--asset-entry-delay) forwards;
         }
-        
-        /* Efek Zoom saat dihover */
-        .item-card:hover .item-img-placeholder i {
-            transform: scale(1.1);
+
+        .asset-visual__float {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            transform-origin: center bottom;
+            animation: asset-visual-breathe 6s ease-in-out calc(var(--asset-entry-delay) + 720ms) infinite;
+        }
+
+        .asset-visual__content {
+            position: relative;
+            z-index: 2;
+            display: block;
+            max-width: 88%;
+            max-height: 92%;
+            transform: perspective(850px) translate3d(0, var(--asset-mouse-raise), 0) rotateX(var(--asset-rotate-x)) rotateY(var(--asset-rotate-y)) scale(1);
+            transform-style: preserve-3d;
+            transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), filter 300ms ease;
+            will-change: transform;
+        }
+
+        .asset-visual__media {
+            width: min(88%, 305px) !important;
+            height: 92% !important;
+            object-fit: contain !important;
+            filter: drop-shadow(0 16px 14px rgba(37, 45, 54, 0.20));
+        }
+
+        .asset-visual__icon {
+            font-size: 4.5rem;
+            line-height: 1;
+            filter: drop-shadow(0 13px 10px rgba(37, 45, 54, 0.16));
+        }
+
+        @keyframes asset-visual-enter {
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes asset-visual-breathe {
+            0%, 100% { transform: translateY(0) rotateZ(-1.5deg); }
+            50% { transform: translateY(-6px) rotateZ(1.5deg); }
+        }
+
+        .item-card:hover .asset-visual__content {
+            --asset-mouse-raise: -3px;
+            transform: perspective(850px) translate3d(0, var(--asset-mouse-raise), 0) rotateX(var(--asset-rotate-x)) rotateY(var(--asset-rotate-y)) scale(1.055);
+            filter: brightness(1.025) saturate(1.03);
+        }
+
+        .item-card:hover .asset-visual__icon {
             color: #ea5b1a;
-            transition: 0.3s;
         }
-        .item-card:hover .item-img-placeholder img {
-            transform: scale(1.05);
+
+        .item-card:hover .item-img-placeholder::before {
+            animation: asset-visual-sweep 850ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .item-card:hover .item-img-placeholder::after {
+            opacity: 0.4;
+            transform: scale(0.85) translateY(5px);
+        }
+
+        @keyframes asset-visual-sweep {
+            0% { left: -65%; opacity: 0; }
+            20% { opacity: 0.72; }
+            100% { left: 128%; opacity: 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .asset-visual__motion,
+            .asset-visual__float,
+            .item-img-placeholder::before {
+                animation: none;
+            }
+            .asset-visual__motion {
+                opacity: 1;
+                transform: none;
+            }
+            .asset-visual__content,
+            .item-card:hover .asset-visual__content {
+                transform: none;
+                transition: none;
+            }
         }
 
         /* Tombol Pinjam */
@@ -403,7 +529,10 @@ $catalog_query['per_page'] = $catalog_per_page;
 
             <!-- Looping Kartu Barang dari Database -->
             <?php foreach($barang as $index => $b): ?>
-            <?php $catalog_room = isset($b->nama_ruangan) ? $b->nama_ruangan : 'Laboratorium Pusat'; ?>
+            <?php
+                $catalog_room = isset($b->nama_ruangan) ? $b->nama_ruangan : 'Laboratorium Pusat';
+                $has_uploaded_visual = !empty($b->gambar);
+            ?>
             <div
                 class="col-sm-6 col-md-4 col-lg-3 catalog-item"
                 data-aos="fade-up"
@@ -417,26 +546,33 @@ $catalog_query['per_page'] = $catalog_per_page;
                 data-filter-stok="<?= (int) ($b->jumlah_tersedia ?? 0) ?>"
             >
                 <div class="card item-card">
-                    <!-- LOGIKA GAMBAR DINAMIS (DIPERBAIKI: Hapus file_exists) -->
-                    <div class="item-img-placeholder">
-                        <?php if(!empty($b->gambar)): ?>
-                            <!-- Tampilkan Foto Asli jika ada nama filenya -->
-                            <img src="<?= base_url('assets/uploads/barang/'.$b->gambar) ?>" alt="<?= $b->nama_aset ?>" onerror="this.onerror=null; this.src='https://placehold.co/400x300?text=No+Image';">
-                        <?php else: ?>
-                            <!-- Tampilkan Ikon Pintar jika belum ada foto -->
-                            <?php 
-                                $nama_lower = strtolower($b->nama_aset);
-                                if(strpos($nama_lower, 'kamera') !== false || strpos($nama_lower, 'dslr') !== false) {
-                                    echo '<i class="bi bi-camera" style="font-size: 4.5rem; transition: 0.3s;"></i>';
-                                } elseif(strpos($nama_lower, 'komputer') !== false || strpos($nama_lower, 'pc') !== false || strpos($nama_lower, 'mac') !== false) {
-                                    echo '<i class="bi bi-pc-display" style="font-size: 4.5rem; transition: 0.3s;"></i>';
-                                } elseif(strpos($nama_lower, 'tablet') !== false || strpos($nama_lower, 'wacom') !== false) {
-                                    echo '<i class="bi bi-tablet-landscape" style="font-size: 4.5rem; transition: 0.3s;"></i>';
-                                } else {
-                                    echo '<i class="bi bi-box-seam" style="font-size: 4.5rem; transition: 0.3s;"></i>';
-                                }
-                            ?>
-                        <?php endif; ?>
+                    <!-- Semua gambar dari CRUD menerima treatment visual produk yang sama. -->
+                    <div class="item-img-placeholder<?= $has_uploaded_visual ? ' asset-visual--product' : '' ?>" style="--asset-entry-delay: <?= ($index % 4) * 70 ?>ms;">
+                        <div class="asset-visual__motion">
+                            <div class="asset-visual__float">
+                                <?php if($has_uploaded_visual): ?>
+                                    <!-- Render/foto aset dari CRUD Laboran, tanpa mapping nama aset. -->
+                                    <img class="asset-visual__content asset-visual__media"
+                                         src="<?= base_url('assets/uploads/barang/'.$b->gambar) ?>"
+                                         alt="<?= html_escape($b->nama_aset) ?>"
+                                         onerror="this.onerror=null; this.src='https://placehold.co/400x300?text=No+Image';">
+                                <?php else: ?>
+                                    <!-- Ikon fallback tetap memakai animasi visual yang sama. -->
+                                    <?php
+                                        $nama_lower = strtolower($b->nama_aset);
+                                        if(strpos($nama_lower, 'kamera') !== false || strpos($nama_lower, 'dslr') !== false) {
+                                            echo '<i class="bi bi-camera asset-visual__content asset-visual__icon" aria-hidden="true"></i>';
+                                        } elseif(strpos($nama_lower, 'komputer') !== false || strpos($nama_lower, 'pc') !== false || strpos($nama_lower, 'mac') !== false) {
+                                            echo '<i class="bi bi-pc-display asset-visual__content asset-visual__icon" aria-hidden="true"></i>';
+                                        } elseif(strpos($nama_lower, 'tablet') !== false || strpos($nama_lower, 'wacom') !== false) {
+                                            echo '<i class="bi bi-tablet-landscape asset-visual__content asset-visual__icon" aria-hidden="true"></i>';
+                                        } else {
+                                            echo '<i class="bi bi-box-seam asset-visual__content asset-visual__icon" aria-hidden="true"></i>';
+                                        }
+                                    ?>
+                                <?php endif; ?>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="card-body d-flex flex-column p-4">
@@ -624,6 +760,32 @@ $catalog_query['per_page'] = $catalog_per_page;
             const catalogPageStatus = document.getElementById('catalogPageStatus');
             const catalogPageNav = document.getElementById('catalogPageNav');
             const catalogEmptyResult = document.getElementById('catalogEmptyResult');
+            const reducedAssetMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+            const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+            function enableAssetVisualTilt() {
+                if (reducedAssetMotion.matches || !finePointer.matches) return;
+
+                document.querySelectorAll('.item-card .item-img-placeholder').forEach(function (visual) {
+                    visual.addEventListener('pointermove', function (event) {
+                        const bounds = visual.getBoundingClientRect();
+                        const pointerX = (event.clientX - bounds.left) / bounds.width - 0.5;
+                        const pointerY = (event.clientY - bounds.top) / bounds.height - 0.5;
+
+                        visual.style.setProperty('--asset-rotate-y', (pointerX * 7).toFixed(2) + 'deg');
+                        visual.style.setProperty('--asset-rotate-x', (pointerY * -6).toFixed(2) + 'deg');
+                        visual.style.setProperty('--asset-mouse-raise', '-3px');
+                    });
+
+                    visual.addEventListener('pointerleave', function () {
+                        visual.style.setProperty('--asset-rotate-y', '0deg');
+                        visual.style.setProperty('--asset-rotate-x', '0deg');
+                        visual.style.setProperty('--asset-mouse-raise', '0px');
+                    });
+                });
+            }
+
+            enableAssetVisualTilt();
 
             if (catalogGrid && catalogItems.length && catalogFilterRoot?.dataset.mode === 'client' && catalogPageSize && catalogPageNav) {
                 let catalogPage = 1;

@@ -40,10 +40,18 @@ class Faq_model extends CI_Model
             ),
             array(
                 'question' => 'Kapan stok barang berkurang?',
-                'answer' => 'Pada alur SCM FIK saat ini, stok tersedia belum dikurangi ketika pengajuan baru diteruskan. Pengurangan stok dilakukan saat Laboran memproses serah terima barang setelah persetujuan Kaur dan QR aktif.',
-                'keywords' => 'stok berkurang tersedia reserved reservasi serah terima qr diserahkan laboran dipinjam',
+                'answer' => 'Saat pengajuan peminjaman berhasil dikirim, jumlah yang diajukan langsung direservasi sehingga stok tersedia berkurang. Jika pengajuan ditolak atau kedaluwarsa sebelum barang dipinjam, reservasi dilepas dan stok tersedia dikembalikan. Setelah serah terima, stok reservasi dipindahkan menjadi stok dipinjam.',
+                'keywords' => 'stok berkurang tersedia reserved reservasi pengajuan dikirim ditolak kedaluwarsa serah terima qr dipinjam',
                 'category' => 'Peminjaman',
-                'source_reference' => 'application/controllers/admin/Approval.php; application/controllers/admin/Peminjaman.php; application/models/Aset_model.php',
+                'source_reference' => 'application/controllers/Peminjaman.php; application/models/Peminjaman_model.php; application/models/Aset_model.php',
+                'source_url' => null,
+            ),
+            array(
+                'question' => 'Apakah saya bisa meminjam lebih dari satu barang?',
+                'answer' => 'Anda dapat meminjam lebih dari satu unit dari aset yang dipilih selama jumlahnya tidak melebihi stok tersedia. Form pengajuan pengguna saat ini memuat satu jenis aset untuk setiap pengajuan. Jika ingin meminjam jenis aset lain, buat pengajuan terpisah untuk aset tersebut.',
+                'keywords' => 'lebih dari satu banyak beberapa multi unit jenis aset barang jumlah pinjam pengajuan terpisah stok tersedia',
+                'category' => 'Peminjaman',
+                'source_reference' => 'application/controllers/Peminjaman.php; application/views/peminjaman/ajukan.php',
                 'source_url' => null,
             ),
         );
@@ -124,12 +132,22 @@ class Faq_model extends CI_Model
             }
         }
 
+        // Only these public FAQ fields may leave the server for answer
+        // composition. Scores keep unrelated entries out of the AI context.
+        $knowledge = array();
+        foreach ($scored as $item) {
+            if ($item['score'] <= 0) continue;
+            $knowledge[] = $item['faq'];
+            if (count($knowledge) >= 4) break;
+        }
+
         return array(
             'match' => ($best && $confidence !== 'low') ? $best['faq'] : null,
             'confidence' => $confidence,
             'score' => $best ? round($best['score'], 2) : 0,
             'out_of_scope' => $domain_hits === 0,
             'suggestions' => $suggestions,
+            'knowledge' => $knowledge,
         );
     }
 
@@ -233,7 +251,7 @@ class Faq_model extends CI_Model
             'apa', 'yang', 'bagaimana', 'gimana', 'kalau', 'kalo', 'saya',
             'mau', 'bisa', 'untuk', 'dari', 'dan', 'ini', 'itu', 'dengan', 'pada',
             'kapan', 'berapa', 'siapa', 'saja', 'harus', 'nya', 'dong', 'kah', 'ke',
-            'di', 'ada', 'atau', 'lebih', 'seputar', 'tentang', 'tolong',
+            'di', 'ada', 'atau', 'lebih', 'seputar', 'tentang', 'tolong', 'boleh',
         );
         $tokens = preg_split('/\s+/', trim($text), -1, PREG_SPLIT_NO_EMPTY);
         return array_values(array_unique(array_filter($tokens, function ($token) use ($stopwords) {
@@ -249,7 +267,9 @@ class Faq_model extends CI_Model
 
         $synonyms = array(
             'minjem' => 'pinjam', 'minjam' => 'pinjam', 'pinjem' => 'pinjam',
-            'meminjam' => 'pinjam', 'peminjaman' => 'pinjam',
+            'meminjam' => 'pinjam', 'peminjaman' => 'pinjam', 'ambil' => 'pinjam',
+            'sekaligus' => 'banyak', 'beberapa' => 'banyak', 'dua' => 'banyak',
+            'tiga' => 'banyak', 'empat' => 'banyak', 'lima' => 'banyak',
             'acc' => 'setuju', 'approve' => 'setuju', 'approval' => 'setuju',
             'persetujuan' => 'setuju', 'menyetujui' => 'setuju', 'disetujui' => 'setuju',
             'balikin' => 'kembali', 'balik' => 'kembali', 'kembali' => 'kembali',

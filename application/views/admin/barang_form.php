@@ -106,6 +106,12 @@
                         <h5 class="m-0 fw-bold text-warning"><i class="bi bi-database-add me-2"></i> Form <?= isset($aset) ? 'Edit' : 'Input' ?> Master Data Aset</h5>
                     </div>
                     <div class="card-body p-4 p-md-5">
+                        <?php if ($form_error = $this->session->flashdata('error')): ?>
+                            <div class="alert alert-danger d-flex align-items-start gap-2" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                                <span><?= html_escape($form_error) ?></span>
+                            </div>
+                        <?php endif; ?>
                         <form action="<?= base_url('index.php/admin/barang/simpan') ?>" method="POST" enctype="multipart/form-data">
                             <input type="hidden" name="id_aset" value="<?= isset($aset) ? $aset->id_aset : '' ?>">
 

@@ -94,10 +94,38 @@ class Welcome extends CI_Controller {
 
 		if ($result['match'])
 		{
+			$answer = (string) $result['match']['answer'];
+			$provider = 'local';
+
+			// Groq only receives the question, a few public FAQ matches, and a
+			// short conversation context. Any API/config failure falls back to
+			// the existing deterministic FAQ answer without breaking the chat.
+			try
+			{
+				$this->load->library('Groq_client');
+				if ($this->groq_client->is_configured())
+				{
+					$answer = $this->groq_client->answer(
+						$question,
+						isset($result['knowledge']) && is_array($result['knowledge']) ? $result['knowledge'] : array($result['match']),
+						$context
+					);
+					$provider = 'groq';
+				}
+			}
+			catch (Throwable $e)
+			{
+				log_message('error', 'Groq FAQ fallback: '.$e->getMessage());
+			}
+
+			$faq = $result['match'];
+			$faq['answer'] = $answer;
+
 			return $this->output->set_output(json_encode(array(
 				'ok' => TRUE,
-				'faq' => $result['match'],
+				'faq' => $faq,
 				'confidence' => $result['confidence'],
+				'provider' => $provider,
 				'suggestions' => $result['confidence'] === 'medium' ? $result['suggestions'] : array(),
 			), JSON_UNESCAPED_UNICODE));
 		}
