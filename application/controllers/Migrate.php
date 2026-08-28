@@ -29,6 +29,8 @@ class Migrate extends CI_Controller
             exit(1);
         }
 
-        fwrite(STDOUT, 'Database berhasil disinkronkan ke migration 20260828193000.'.PHP_EOL);
+        $state = $this->db->select('version')->limit(1)->get('migrations')->row();
+        $version = $state ? (string) $state->version : 'terbaru';
+        fwrite(STDOUT, 'Database berhasil disinkronkan ke migration '.$version.'.'.PHP_EOL);
     }
 }

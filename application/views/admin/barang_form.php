@@ -152,7 +152,7 @@
 
                                     // GANTI BARIS INI: Tambahkan folder direktori tempat gambar barang disimpan.
                                     // Asumsi foldernya adalah 'assets/uploads/barang/' (Sesuaikan jika nama foldermu berbeda)
-                                    $gambar_url = $ada_gambar ? base_url('assets/uploads/barang/' . $aset->gambar) : '#';
+                                    $gambar_url = $ada_gambar ? base_url('assets/uploads/barang/' . rawurlencode($aset->gambar)) : '#';
 
                                     $gambar_text = $ada_gambar ? '<i class="bi bi-info-circle me-1"></i>Gambar saat ini (Abaikan jika tidak diubah)' : '';
                                     ?>

@@ -553,8 +553,10 @@ $catalog_query['per_page'] = $catalog_per_page;
                                 <?php if($has_uploaded_visual): ?>
                                     <!-- Render/foto aset dari CRUD Laboran, tanpa mapping nama aset. -->
                                     <img class="asset-visual__content asset-visual__media"
-                                         src="<?= base_url('assets/uploads/barang/'.$b->gambar) ?>"
+                                         src="<?= base_url('assets/uploads/barang/'.rawurlencode($b->gambar)) ?>"
                                          alt="<?= html_escape($b->nama_aset) ?>"
+                                         loading="lazy"
+                                         decoding="async"
                                          onerror="this.onerror=null; this.src='https://placehold.co/400x300?text=No+Image';">
                                 <?php else: ?>
                                     <!-- Ikon fallback tetap memakai animasi visual yang sama. -->

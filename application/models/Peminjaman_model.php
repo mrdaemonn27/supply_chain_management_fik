@@ -2233,7 +2233,6 @@ class Peminjaman_model extends CI_Model {
         $this->db->select('aset.*, ruangan.nama_ruangan');
         $this->db->from('aset');
         $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
-        $this->db->where('jumlah_tersedia >', 0);
         if ($id_ruangan !== null && $id_ruangan !== '') $this->db->where('aset.id_ruangan', (int) $id_ruangan);
         foreach ((array) $filters as $filter) {
             $field = (string) ($filter['field'] ?? '');

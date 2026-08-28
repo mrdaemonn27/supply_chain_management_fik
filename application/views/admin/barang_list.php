@@ -158,7 +158,7 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
                                     <td class="p-3 text-center">
                                         <!-- Logika menampilkan gambar atau placeholder -->
                                         <?php if(!empty($b->gambar) && file_exists('./assets/uploads/barang/'.$b->gambar)): ?>
-                                            <img src="<?= base_url('assets/uploads/barang/'.$b->gambar) ?>" alt="<?= $b->nama_aset ?>" class="img-thumbnail-table">
+                                            <img src="<?= base_url('assets/uploads/barang/'.rawurlencode($b->gambar)) ?>" alt="<?= html_escape($b->nama_aset) ?>" class="img-thumbnail-table" loading="lazy" decoding="async">
                                         <?php else: ?>
                                             <div class="img-placeholder mx-auto" title="Tidak ada gambar">
                                                 <i class="bi bi-image text-muted"></i>

@@ -175,7 +175,7 @@ $has_uploaded_visual = !empty($aset->gambar);
                     
                     <div class="bg-white bg-opacity-10 rounded-3 p-3 mb-4 text-center">
                         <?php if($has_uploaded_visual): ?>
-                            <img src="<?= base_url('assets/uploads/barang/'.$aset->gambar) ?>" alt="<?= html_escape($aset->nama_aset) ?>" class="aset-thumbnail aset-thumbnail--product">
+                            <img src="<?= base_url('assets/uploads/barang/'.rawurlencode($aset->gambar)) ?>" alt="<?= html_escape($aset->nama_aset) ?>" class="aset-thumbnail aset-thumbnail--product" decoding="async">
                         <?php else: ?>
                             <i class="bi bi-camera" style="font-size: 4rem; color: #f8f9fa; opacity: 0.8;"></i>
                         <?php endif; ?>
