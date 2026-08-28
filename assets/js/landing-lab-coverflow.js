@@ -9,6 +9,8 @@
         var previous = root.querySelector('[data-lab-prev]');
         var next = root.querySelector('[data-lab-next]');
         var pagination = root.querySelector('[data-lab-pagination]');
+        var currentLabel = root.querySelector('[data-lab-current]');
+        var totalLabel = root.querySelector('[data-lab-total]');
 
         if (!viewport || !cards.length || !previous || !next || !pagination) return;
 
@@ -24,6 +26,7 @@
         root.dataset.labCoverflowReady = 'true';
         root.classList.add('is-ready');
         root.tabIndex = 0;
+        if (totalLabel) totalLabel.textContent = String(cards.length).padStart(2, '0');
 
         cards.forEach(function (card, index) {
             card.dataset.labIndex = String(index);
@@ -87,6 +90,14 @@
                 dot.classList.toggle('is-active', selected);
                 dot.setAttribute('aria-current', selected ? 'true' : 'false');
             });
+
+            if (currentLabel) currentLabel.textContent = String(active + 1).padStart(2, '0');
+            if (dots[active] && typeof pagination.scrollTo === 'function') {
+                pagination.scrollTo({
+                    left: dots[active].offsetLeft - (pagination.clientWidth - dots[active].offsetWidth) / 2,
+                    behavior: 'smooth'
+                });
+            }
 
             previous.disabled = cards.length < 2;
             next.disabled = cards.length < 2;

@@ -270,13 +270,20 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
 
         .lab__ph { position: relative; overflow: hidden; aspect-ratio: 4 / 3; background: var(--surface-2); }
         .lab__ph img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s var(--ease); }
+        .lab__ph::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 46%, rgba(17, 17, 17, .7) 100%); pointer-events: none; }
+        .lab__tag { position: absolute; z-index: 2; left: 18px; bottom: 16px; display: inline-flex; align-items: center; gap: 7px; padding: 7px 11px; border: 1px solid rgba(255,255,255,.25); border-radius: 999px; color: #fff; background: rgba(17,17,17,.38); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); font-size: .7rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
         /* Ruangan yang belum punya foto tetap mendapat blok visual seukuran sama,
            jadi tinggi kartu dalam satu baris tidak jadi belang. */
         .lab__ph--none { display: grid; place-items: center; color: var(--acc); font-size: 2rem; background: rgba(249, 115, 22, .07); }
+        .lab__ph--none::after { display: none; }
 
         .lab__b { display: flex; flex-direction: column; flex: 1; padding: 28px; }
         .lab__d { flex: 1; margin: 12px 0 0; color: var(--gray); font-size: .9375rem; line-height: 1.65; }
-        .lab__n { margin: 22px 0 0; padding-top: 18px; border-top: 1px solid var(--line); color: var(--ink); font-size: .875rem; font-weight: 600; }
+        .lab__foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 22px 0 0; padding-top: 18px; border-top: 1px solid var(--line); }
+        .lab__n { margin: 0; color: var(--ink); font-size: .8125rem; font-weight: 700; }
+        .lab__link { display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto; color: var(--acc-dk); font-size: .8125rem; font-weight: 800; text-decoration: none; }
+        .lab__link i { transition: transform .25s var(--ease); }
+        .lab__link:hover i, .lab__link:focus-visible i { transform: translateX(4px); }
 
         /* ============ SECTION BERLATAR FOTO ============
            Satu-satunya section yang memakai gambar. Foto kampus diredam gradasi
@@ -642,16 +649,16 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                             <div class="labs lab-coverflow__track" data-lab-track>
                         <?php foreach ($ruangan as $r): ?>
                         <?php
-                            // Foto diunggah lewat dashboard admin dan hanya nama
-                            // filenya yang disimpan di basis data.
-                            $foto_ruangan = !empty($r->foto)
-                                ? base_url('assets/uploads/ruangan/'.rawurlencode($r->foto))
-                                : null;
+                            $foto_ruangan = !empty($r->foto_url) ? $r->foto_url : null;
+                            $room_catalog_url = $logged_in
+                                ? base_url('index.php/peminjaman?id_ruangan='.(int) $r->id_ruangan)
+                                : $login_url;
                         ?>
                         <article class="lab" data-lab-card>
                             <?php if ($foto_ruangan): ?>
                             <div class="lab__ph">
                                 <img src="<?= $foto_ruangan; ?>" alt="Foto <?= html_escape($r->nama_ruangan); ?>" loading="lazy" decoding="async">
+                                <span class="lab__tag"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i> Fasilitas FIK</span>
                             </div>
                             <?php else: ?>
                             <div class="lab__ph lab__ph--none" aria-hidden="true">
@@ -663,7 +670,12 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                                 <?php if (!empty($r->deskripsi)): ?>
                                 <p class="lab__d"><?= html_escape($r->deskripsi); ?></p>
                                 <?php endif; ?>
-                                <p class="lab__n"><?= (int) $r->jumlah_aset; ?> unit aset terdaftar</p>
+                                <div class="lab__foot">
+                                    <p class="lab__n"><i class="bi bi-box-seam" aria-hidden="true"></i> <?= (int) $r->jumlah_aset; ?> aset</p>
+                                    <a class="lab__link" href="<?= html_escape($room_catalog_url); ?>">
+                                        <?= $logged_in ? 'Lihat aset' : 'Masuk'; ?> <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
                             </div>
                         </article>
                         <?php endforeach; ?>
@@ -674,6 +686,9 @@ $video_fallback = base_url('assets/uploads/videos/scm_fik.mp4');
                                 <i class="bi bi-arrow-left" aria-hidden="true"></i>
                             </button>
                             <div class="lab-coverflow__pagination" data-lab-pagination aria-label="Pilih laboratorium"></div>
+                            <div class="lab-coverflow__status" aria-live="polite">
+                                <strong data-lab-current>01</strong><span>/</span><span data-lab-total><?= str_pad((string) count($ruangan), 2, '0', STR_PAD_LEFT); ?></span>
+                            </div>
                             <button class="lab-coverflow__nav" type="button" data-lab-next aria-label="Laboratorium berikutnya">
                                 <i class="bi bi-arrow-right" aria-hidden="true"></i>
                             </button>

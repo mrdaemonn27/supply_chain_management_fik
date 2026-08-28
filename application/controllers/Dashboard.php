@@ -8,6 +8,30 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 #[\AllowDynamicProperties]
 class Dashboard extends CI_Controller {
 
+    /**
+     * Utamakan foto dari uploads/ruangan. Fallback uploads/barang dipertahankan
+     * agar data lama tidak langsung rusak saat database belum disinkronkan.
+     */
+    private function resolve_room_photo_url($photo) {
+        $photo = trim(str_replace('\\', '/', (string) $photo));
+        if ($photo === '' || strpos($photo, '..') !== false) return null;
+
+        $candidates = strpos($photo, '/') === false
+            ? ['ruangan/'.$photo, 'barang/'.$photo]
+            : [ltrim($photo, '/')];
+
+        foreach ($candidates as $relative) {
+            if (!preg_match('#^(ruangan|barang)/[^/]+$#i', $relative)) continue;
+            $absolute = FCPATH.'assets/uploads/'.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+            if (!is_file($absolute)) continue;
+
+            [$folder, $filename] = explode('/', $relative, 2);
+            return base_url('assets/uploads/'.$folder.'/'.rawurlencode($filename));
+        }
+
+        return null;
+    }
+
     public function __construct() {
         parent::__construct();
         
@@ -24,6 +48,10 @@ class Dashboard extends CI_Controller {
     public function index() {
         // Mengambil semua data ruangan dari database
         $data['ruangan_list'] = $this->Ruangan_model->get_all();
+        foreach ($data['ruangan_list'] as &$room) {
+            $room['foto_url'] = $this->resolve_room_photo_url($room['foto'] ?? null);
+        }
+        unset($room);
         $data['notifikasi'] = [];
         $data['unread_notifikasi'] = 0;
 

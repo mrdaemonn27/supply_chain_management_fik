@@ -338,11 +338,24 @@ CREATE TABLE `ruangan` (
 --
 
 INSERT INTO `ruangan` (`id_ruangan`, `nama_ruangan`, `icon`, `warna`, `foto`, `deskripsi`, `created_at`) VALUES
-(23, 'Lab Multimedia', 'display', '#8B5CF6', NULL, 'Laboratorium Multimedia untuk praktikum desain grafis, editing video, dan animasi', '2026-06-10 04:20:34'),
+(23, 'Lab Multimedia', 'display', '#8B5CF6', 'lab multimedia.webp', 'Laboratorium Multimedia untuk praktikum desain grafis, editing video, dan animasi', '2026-06-10 04:20:34'),
 (24, 'Lab Fotografi', 'camera-fill', '#EC4899', NULL, 'Laboratorium Fotografi untuk praktikum fotografi studio dan lighting', '2026-06-10 04:26:49'),
 (25, 'Lab Metal Working', 'tools', '#3B82F6', NULL, 'Laboratorium pengerjaan logam untuk praktikum welding, cutting, dan metal fabrication', '2026-06-10 04:26:49'),
 (26, 'Lab Woodworking', 'hammer', '#F59E0B', NULL, 'Laboratorium pengerjaan kayu untuk praktikum woodworking dan furniture', '2026-06-10 04:26:49'),
-(27, 'IK1.03.02', 'door-open-fill', '#FF8C00', NULL, 'Lab Multimedia PC', '2026-06-12 11:35:07');
+(27, 'IK1.03.02', 'door-open-fill', '#FF8C00', NULL, 'Lab Multimedia PC', '2026-06-12 11:35:07'),
+(28, 'Aula FIK', 'building', '#F97316', 'aula.webp', 'Ruang serbaguna untuk seminar, pameran, presentasi, dan kegiatan akademik Fakultas Industri Kreatif.', '2026-08-28 00:00:00'),
+(29, 'Lab Audio', 'soundwave', '#8B5CF6', 'LAB AUDIO.webp', 'Laboratorium produksi audio untuk rekaman, penyuntingan suara, dan pengembangan karya audiovisual.', '2026-08-28 00:00:00'),
+(30, 'Lab Batik', 'palette-fill', '#B45309', 'lab batik.blend.webp', 'Ruang eksplorasi batik untuk proses desain motif, pencantingan, pewarnaan, dan produksi tekstil.', '2026-08-28 00:00:00'),
+(31, 'Lab CGI', 'badge-3d-fill', '#2563EB', 'lab cgi.webp', 'Laboratorium computer-generated imagery untuk pemodelan, animasi, rendering, dan produksi visual digital.', '2026-08-28 00:00:00'),
+(32, 'Lab Finishing', 'brush-fill', '#059669', 'Iab finishingblend.webp', 'Laboratorium penyelesaian karya untuk proses perakitan, penghalusan, pewarnaan, dan kontrol kualitas.', '2026-08-28 00:00:00'),
+(33, 'Lab Green Screen', 'camera-reels-fill', '#16A34A', 'lab greenscreen..webp', 'Studio green screen untuk produksi video, compositing, virtual set, dan eksperimen sinematografi.', '2026-08-28 00:00:00'),
+(34, 'Lab Idealoka', 'lightbulb-fill', '#DB2777', 'lab idealoka.webp', 'Ruang kolaborasi ide dan pengembangan konsep kreatif lintas disiplin.', '2026-08-28 00:00:00'),
+(35, 'Lab Incubator', 'rocket-takeoff-fill', '#EA580C', 'lab incubator.webp', 'Ruang inkubasi untuk pengembangan prototipe, bisnis kreatif, dan kolaborasi proyek mahasiswa.', '2026-08-28 00:00:00'),
+(36, 'Lab Lukis', 'easel2-fill', '#DC2626', 'lab lukis.webp', 'Studio seni lukis untuk eksplorasi medium, warna, komposisi, dan praktik seni rupa.', '2026-08-28 00:00:00'),
+(37, 'Lab Mac', 'apple', '#475569', 'lab Mac.webp', 'Laboratorium komputer Mac untuk desain, multimedia, penyuntingan, dan produksi konten digital.', '2026-08-28 00:00:00'),
+(38, 'Lab Pola dan Jahit', 'scissors', '#7C3AED', 'lab pola dan jahit.webp', 'Laboratorium busana untuk pembuatan pola, pemotongan bahan, penjahitan, dan penyelesaian produk fesyen.', '2026-08-28 00:00:00'),
+(39, 'Lab Sablon', 'layers-fill', '#0891B2', 'lab sablon.webp', 'Laboratorium cetak saring untuk persiapan desain, afdruk, pencampuran tinta, dan produksi sablon.', '2026-08-28 00:00:00'),
+(40, 'Lab Tab Cintiq', 'tablet-landscape', '#4F46E5', 'lab tab cintiq.webp', 'Laboratorium ilustrasi digital dengan perangkat pen display untuk menggambar, desain, dan animasi.', '2026-08-28 00:00:00');
 
 -- --------------------------------------------------------
 
@@ -688,7 +701,7 @@ ALTER TABLE `peminjaman_detail`
 -- AUTO_INCREMENT untuk tabel `ruangan`
 --
 ALTER TABLE `ruangan`
-  MODIFY `id_ruangan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id_ruangan` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- AUTO_INCREMENT untuk tabel `users`

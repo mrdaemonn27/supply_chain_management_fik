@@ -21,6 +21,19 @@ $room_sort_url = static function ($key) use ($room_query, $room_sort, $room_dire
     $query['page'] = 1;
     return current_url() . '?' . http_build_query($query);
 };
+$room_photo_url = static function ($photo) {
+    $photo = trim(str_replace('\\', '/', (string) $photo));
+    if ($photo === '' || strpos($photo, '..') !== false) return null;
+    $candidates = strpos($photo, '/') === false ? ['ruangan/'.$photo, 'barang/'.$photo] : [ltrim($photo, '/')];
+    foreach ($candidates as $relative) {
+        if (!preg_match('#^(ruangan|barang)/[^/]+$#i', $relative)) continue;
+        $absolute = FCPATH.'assets/uploads/'.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+        if (!is_file($absolute)) continue;
+        [$folder, $filename] = explode('/', $relative, 2);
+        return base_url('assets/uploads/'.$folder.'/'.rawurlencode($filename));
+    }
+    return null;
+};
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -216,8 +229,9 @@ $room_sort_url = static function ($key) use ($room_query, $room_sort, $room_dire
                                 >
                                     <td class="p-3 text-center"><?= $no++; ?></td>
                                     <td class="text-center">
-                                        <?php if($r['foto']): ?>
-                                            <img src="<?= base_url('assets/uploads/ruangan/'.$r['foto']) ?>" class="img-thumbnail-custom shadow-sm" alt="Foto Ruangan">
+                                        <?php $foto_ruangan_url = $room_photo_url($r['foto'] ?? null); ?>
+                                        <?php if($foto_ruangan_url): ?>
+                                            <img src="<?= $foto_ruangan_url ?>" class="img-thumbnail-custom shadow-sm" alt="Foto <?= html_escape($r['nama_ruangan'] ?? 'ruangan') ?>">
                                         <?php else: ?>
                                             <div class="bg-light text-muted d-inline-flex align-items-center justify-content-center img-thumbnail-custom border">
                                                 <i class="bi bi-image"></i>
@@ -337,8 +351,9 @@ $room_sort_url = static function ($key) use ($room_query, $room_sort, $room_dire
                             <input type="file" name="foto" id="fileInput" accept="image/jpeg, image/png, image/jpg, image/webp">
                             
                             <?php 
-                                $ada_foto = !empty($ruangan_detail['foto']);
-                                $foto_url = $ada_foto ? base_url('assets/uploads/ruangan/'.$ruangan_detail['foto']) : '#';
+                                $foto_url = $room_photo_url($ruangan_detail['foto'] ?? null);
+                                $ada_foto = !empty($foto_url);
+                                $foto_url = $ada_foto ? $foto_url : '#';
                                 $foto_text = $ada_foto ? '<i class="bi bi-info-circle me-1"></i>Foto saat ini (Abaikan jika tidak diubah)' : '';
                             ?>
 

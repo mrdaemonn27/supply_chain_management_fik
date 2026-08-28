@@ -448,8 +448,8 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 <div class="lab-grid__item" data-lab-card data-search="<?= html_escape($lab_search_text) ?>" data-filter-all="<?= html_escape($lab_search_text) ?>" data-filter-kode="<?= html_escape($r['nama_ruangan'] ?? '') ?>" data-filter-nama="<?= html_escape($lab_search_text) ?>" data-aos="fade-up" data-aos-delay="<?= $delay; ?>">
                     <div class="card service-card">
                         <div class="service-card__media">
-                        <?php if(!empty($r['foto'])): ?>
-                            <img src="<?= base_url('assets/uploads/ruangan/'.rawurlencode($r['foto'])) ?>" alt="Foto <?= html_escape($r['nama_ruangan']) ?>" loading="lazy" decoding="async">
+                        <?php if(!empty($r['foto_url'])): ?>
+                            <img src="<?= html_escape($r['foto_url']) ?>" alt="Foto <?= html_escape($r['nama_ruangan']) ?>" loading="lazy" decoding="async">
                         <?php else: ?>
                             <div class="service-card__placeholder bg-light">
                                 <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>

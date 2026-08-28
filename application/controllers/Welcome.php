@@ -4,6 +4,41 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 class Welcome extends CI_Controller {
 
 	/**
+	 * Cari foto ruangan di folder upload ruangan atau katalog barang.
+	 * Nilai `foto` normal hanya berisi nama file di uploads/ruangan. Dukungan
+	 * path relatif lama tetap dipertahankan agar pembaruan tidak memutus data.
+	 */
+	private function resolve_room_photo_url($photo)
+	{
+		$photo = trim(str_replace('\\', '/', (string) $photo));
+		if ($photo === '' || strpos($photo, '..') !== FALSE)
+		{
+			return NULL;
+		}
+
+		$candidates = strpos($photo, '/') === FALSE
+			? array('ruangan/'.$photo, 'barang/'.$photo)
+			: array(ltrim($photo, '/'));
+
+		foreach ($candidates as $relative)
+		{
+			if (!preg_match('#^(ruangan|barang)/[^/]+$#i', $relative))
+			{
+				continue;
+			}
+
+			$absolute = FCPATH.'assets/uploads/'.str_replace('/', DIRECTORY_SEPARATOR, $relative);
+			if (is_file($absolute))
+			{
+				list($folder, $filename) = explode('/', $relative, 2);
+				return base_url('assets/uploads/'.$folder.'/'.rawurlencode($filename));
+			}
+		}
+
+		return NULL;
+	}
+
+	/**
 	 * Index Page for this controller.
 	 *
 	 * Maps to the following URL
@@ -33,6 +68,11 @@ class Welcome extends CI_Controller {
 
 			if (is_array($rows))
 			{
+				foreach ($rows as $room)
+				{
+					$room->foto_url = $this->resolve_room_photo_url(isset($room->foto) ? $room->foto : NULL);
+				}
+
 				// Model mengurutkan dari yang terbaru; untuk halaman depan urutan
 				// nama lebih mudah dibaca dan tidak berubah-ubah tiap ada data baru.
 				usort($rows, function ($a, $b) {
