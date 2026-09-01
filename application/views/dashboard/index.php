@@ -71,6 +71,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             color: white;
             font-weight: 600;
             border: none;
+            border-bottom: 4px solid transparent;
             border-radius: 8px;
             padding: 8px 20px;
             box-shadow: 0 4px 15px rgba(234, 91, 26, 0.3);
@@ -164,6 +165,223 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             color: white;
             border-bottom: 5px solid #ea5b1a;
         }
+
+        .catalog-header__inner {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .catalog-header__title {
+            grid-column: 2;
+            margin: 0;
+        }
+
+        .catalog-filter-trigger {
+            grid-column: 3;
+            justify-self: end;
+            min-height: 42px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 9px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.52);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 0.78rem;
+            font-weight: 700;
+            transition: background .22s ease, border-color .22s ease, transform .22s ease;
+        }
+
+        .catalog-filter-trigger:hover,
+        .catalog-filter-trigger:focus-visible {
+            border-color: #ea5b1a;
+            background: #ea5b1a;
+            color: #fff;
+            transform: translateY(-1px);
+        }
+
+        .catalog-filter-trigger--mobile { display: none; }
+
+        .navbar-filter-trigger {
+            min-height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 8px 13px;
+            border: 1px solid #cbd1d6;
+            border-radius: 8px;
+            background: #fff;
+            color: #4e5961;
+            font-size: .78rem;
+            font-weight: 700;
+            line-height: 1;
+            transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+        }
+
+        .navbar-filter-trigger:hover,
+        .navbar-filter-trigger:focus-visible {
+            border-color: rgba(234, 91, 26, .62);
+            background: #fff7f2;
+            color: #ea5b1a;
+            transform: translateY(-1px);
+        }
+
+        html.scm-theme-dark .navbar-filter-trigger {
+            border-color: #4b535a;
+            background: #202428;
+            color: #e5e8ea;
+        }
+
+        html.scm-theme-dark .navbar-filter-trigger:hover,
+        html.scm-theme-dark .navbar-filter-trigger:focus-visible {
+            border-color: #ea5b1a;
+            background: #292e32;
+            color: #ff8b24;
+        }
+
+        .lab-filter-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 1040;
+            background: rgba(17, 24, 39, .36);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity .28s ease, visibility .28s ease;
+        }
+
+        .lab-filter-drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            z-index: 1045;
+            display: flex;
+            flex-direction: column;
+            width: min(420px, calc(100vw - 24px));
+            height: 100dvh;
+            padding: 20px;
+            background: #f8f9fa;
+            box-shadow: -16px 0 36px rgba(15, 23, 42, .16);
+            transform: translateX(calc(100% + 16px));
+            visibility: hidden;
+            transition: transform .32s cubic-bezier(.22, 1, .36, 1), visibility .32s step-end;
+        }
+
+        .lab-filter-drawer.is-open {
+            transform: translateX(0);
+            visibility: visible;
+            transition: transform .32s cubic-bezier(.22, 1, .36, 1), visibility 0s;
+        }
+
+        .lab-filter-backdrop.is-open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .lab-filter-drawer__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .lab-filter-drawer__header h2 {
+            margin: 0;
+            color: #1f2937;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .lab-filter-drawer__close {
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #d1d5db;
+            border-radius: 50%;
+            background: #fff;
+            color: #55606c;
+            transition: border-color .2s ease, color .2s ease, background .2s ease;
+        }
+
+        .lab-filter-drawer__close:hover,
+        .lab-filter-drawer__close:focus-visible {
+            border-color: #ea5b1a;
+            background: #fff7f2;
+            color: #ea5b1a;
+        }
+
+        .lab-filter-drawer__body {
+            min-width: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 2px 2px 20px;
+        }
+
+        .lab-filter-drawer .admin-multi-filter {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+            margin: 0 !important;
+            border-radius: 10px;
+        }
+
+        .lab-filter-drawer .admin-multi-filter__rows,
+        .lab-filter-drawer .admin-multi-filter__row {
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .lab-filter-drawer .admin-multi-filter__row {
+            grid-template-columns: minmax(0, 30%) minmax(0, 1fr) auto;
+        }
+
+        .lab-filter-drawer .admin-multi-filter__field,
+        .lab-filter-drawer .admin-multi-filter__value {
+            width: 100%;
+            min-width: 0;
+            max-width: 100%;
+        }
+
+        .lab-filter-drawer .admin-multi-filter__actions {
+            min-width: 0;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 767.98px) {
+            .lab-filter-drawer .admin-multi-filter__row {
+                grid-template-columns: minmax(0, 1fr) auto;
+            }
+
+            .lab-filter-drawer .admin-multi-filter__field {
+                grid-column: 1 / -1;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .lab-filter-drawer .admin-multi-filter__row {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .lab-filter-drawer .admin-multi-filter__field,
+            .lab-filter-drawer .admin-multi-filter__value {
+                grid-column: auto;
+            }
+
+            .lab-filter-drawer .admin-multi-filter__actions {
+                justify-content: flex-end;
+            }
+        }
+
+        body.lab-filter-open {
+            overflow: hidden;
+        }
         
         /* Styling Kartu Lab */
         .service-card {
@@ -172,7 +390,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             overflow: hidden;
             background: white;
             box-shadow: 0 5px 20px rgba(0,0,0,0.04);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: box-shadow 0.4s ease, border-bottom-color 0.4s ease;
             height: 100%;
         }
         .lab-grid {
@@ -185,7 +403,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         }
         .lab-grid__item { display:flex; min-width:0; flex:0 0 calc(100% / var(--lab-columns)); padding:12px; }
         .lab-grid__item .service-card { width:100%; }
-        .lab-search { max-width: 980px; margin: 0 auto 1.5rem; }
         .lab-search-empty { display:none; width:100%; padding:3rem 1rem; text-align:center; }
         .lab-grid__item[hidden] { display:none !important; }
         .service-card__media {
@@ -194,11 +411,11 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             aspect-ratio: 16 / 10;
             overflow: hidden;
             background: #eef1f3;
+            perspective: 900px;
         }
         .service-card:hover {
-            transform: translateY(-10px);
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            border-bottom: 4px solid #ea5b1a;
+            border-bottom-color: #ea5b1a;
         }
         .service-card__media img {
             display: block;
@@ -206,16 +423,28 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             height: 100%;
             object-fit: cover;
             object-position: center;
-            transition: 0.5s;
+            transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg) scale(1);
+            transition: transform .28s cubic-bezier(.22, 1, .36, 1);
+            transform-origin: center center;
         }
         .service-card__placeholder { position: absolute; inset: 0; display: grid; place-items: center; }
-        .service-card:hover .service-card__media img {
-            transform: scale(1.05);
+        .service-card__media.is-pointer-active img {
+            transform: translate3d(var(--media-shift-x, 0px), var(--media-shift-y, 0px), 0)
+                rotateX(var(--media-rotate-x, 0deg))
+                rotateY(var(--media-rotate-y, 0deg))
+                scale(var(--media-scale, 1.03));
+            transition-duration: .12s;
         }
         @media (max-width: 991.98px) {
+            .catalog-filter-trigger--mobile { display: inline-flex; }
             .lab-grid__item { flex-basis:50%; }
         }
         @media (max-width: 575.98px) {
+            .catalog-header { padding: 36px 0; }
+            .catalog-header__inner { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
+            .catalog-header__title { grid-column: 1; text-align: left; font-size: 1.25rem; line-height: 1.35; }
+            .catalog-filter-trigger { grid-column: 2; padding-inline: 12px; font-size: .7rem; }
+            .lab-filter-drawer { width: min(400px, 100vw); padding: 16px; }
             .lab-grid { margin:-9px; }
             .lab-grid__item { flex-basis:100%; padding:9px; }
             .service-card__media { aspect-ratio: 16 / 9; }
@@ -340,6 +569,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             </div>
             
            <div class="d-none d-lg-flex align-items-center gap-2">
+                <button type="button" class="navbar-filter-trigger d-none d-lg-inline-flex js-lab-filter-toggle" id="labFilterToggle" aria-expanded="false" aria-controls="labFilterDrawer">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <span>Pencarian</span>
+                </button>
                 <?php if($this->session->userdata('logged_in')): ?>
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary rounded-circle notif-bell position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi">
@@ -406,8 +639,12 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     </nav>
 
     <div class="catalog-header">
-        <div class="container text-center" data-aos="fade-down" data-aos-duration="800">
-            <h2 class="fw-bolder mb-0" style="letter-spacing: 1px;">DAFTAR <span class="text-fik-orange">STUDIO & LABORATORIUM</span></h2>
+        <div class="container catalog-header__inner" data-aos="fade-down" data-aos-duration="800">
+            <h2 class="catalog-header__title fw-bolder" style="letter-spacing: 1px;">DAFTAR <span class="text-fik-orange">STUDIO & LABORATORIUM</span></h2>
+            <button type="button" class="catalog-filter-trigger catalog-filter-trigger--mobile js-lab-filter-toggle" id="labFilterToggleMobile" aria-expanded="false" aria-controls="labFilterDrawer">
+                <i class="bi bi-search" aria-hidden="true"></i>
+                <span>Pencarian</span>
+            </button>
         </div>
     </div>
 
@@ -419,22 +656,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 $lab_columns--;
             }
         ?>
-        <div class="lab-search" data-aos="fade-up">
-            <?php
-                $multi_filter_id = 'labMultiFilter';
-                $multi_filter_mode = 'client';
-                $multi_filter_fields = [
-                    'all' => ['label' => 'Ruangan / laboratorium', 'placeholder' => 'Cari kode ruangan atau nama laboratorium...'],
-                    'kode' => ['label' => 'Kode ruangan', 'placeholder' => 'Cari kode ruangan...'],
-                    'nama' => ['label' => 'Nama ruangan / laboratorium', 'placeholder' => 'Cari nama ruangan atau laboratorium...'],
-                ];
-                $multi_filter_rows = [['field' => 'all', 'value' => '']];
-                $multi_filter_meta_id = 'labSearchMeta';
-                $multi_filter_meta = number_format($lab_count, 0, ',', '.') . ' ruangan/laboratorium tersedia';
-                include APPPATH . 'views/admin/_multi_filter.php';
-                unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
-            ?>
-        </div>
         <div class="lab-grid" style="--lab-columns: <?= (int) $lab_columns ?>" data-lab-count="<?= (int) $lab_count ?>">
             
             <?php if(empty($ruangan_list)): ?>
@@ -445,7 +666,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             <?php else: ?>
                 <?php $delay = 100; foreach($ruangan_list as $r): ?>
                 <?php $lab_search_text = trim(($r['nama_ruangan'] ?? '') . ' ' . ($r['deskripsi'] ?? '')); ?>
-                <div class="lab-grid__item" data-lab-card data-search="<?= html_escape($lab_search_text) ?>" data-filter-all="<?= html_escape($lab_search_text) ?>" data-filter-kode="<?= html_escape($r['nama_ruangan'] ?? '') ?>" data-filter-nama="<?= html_escape($lab_search_text) ?>" data-aos="fade-up" data-aos-delay="<?= $delay; ?>">
+                <div class="lab-grid__item" data-lab-card data-search="<?= html_escape($lab_search_text) ?>" data-filter-all="<?= html_escape($lab_search_text) ?>" data-filter-kode="<?= html_escape($r['nama_ruangan'] ?? '') ?>" data-filter-nama="<?= html_escape($lab_search_text) ?>">
                     <div class="card service-card">
                         <div class="service-card__media">
                         <?php if(!empty($r['foto_url'])): ?>
@@ -490,6 +711,32 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             </div>
         </div>
     </section>
+
+    <div class="lab-filter-backdrop" id="labFilterBackdrop" aria-hidden="true"></div>
+    <aside class="lab-filter-drawer" id="labFilterDrawer" aria-hidden="true" aria-label="Filter pencarian studio dan laboratorium" tabindex="-1">
+        <div class="lab-filter-drawer__header">
+            <h2>Cari/Filter</h2>
+            <button type="button" class="lab-filter-drawer__close" id="labFilterClose" aria-label="Tutup filter">
+                <i class="bi bi-x-lg" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="lab-filter-drawer__body">
+            <?php
+                $multi_filter_id = 'labMultiFilter';
+                $multi_filter_mode = 'client';
+                $multi_filter_fields = [
+                    'all' => ['label' => 'Ruangan / laboratorium', 'placeholder' => 'Cari kode ruangan atau nama laboratorium...'],
+                    'kode' => ['label' => 'Kode ruangan', 'placeholder' => 'Cari kode ruangan...'],
+                    'nama' => ['label' => 'Nama ruangan / laboratorium', 'placeholder' => 'Cari nama ruangan atau laboratorium...'],
+                ];
+                $multi_filter_rows = [['field' => 'all', 'value' => '']];
+                $multi_filter_meta_id = 'labSearchMeta';
+                $multi_filter_meta = number_format($lab_count, 0, ',', '.') . ' ruangan/laboratorium tersedia';
+                include APPPATH . 'views/admin/_multi_filter.php';
+                unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
+            ?>
+        </div>
+    </aside>
 
     <section class="sop-section">
         <div class="container">
@@ -711,9 +958,138 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             root.addEventListener('admin-multi-filter-change', render);
             render();
         }
+
+        function bindLabCard3d() {
+            const canHover = window.matchMedia
+                && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+            const reducedMotion = window.matchMedia
+                && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            if (!canHover || reducedMotion) return;
+
+            document.querySelectorAll('.service-card').forEach((card) => {
+                const surface = card.querySelector('.service-card__media');
+                const image = surface && surface.querySelector('img');
+                if (!surface || !image || card.dataset.pointer3dBound === 'true') return;
+
+                card.dataset.pointer3dBound = 'true';
+                const target = { x: 0, y: 0, rotateX: 0, rotateY: 0, scale: 1 };
+                const current = { x: 0, y: 0, rotateX: 0, rotateY: 0, scale: 1 };
+                let frameId = 0;
+                let isActive = false;
+
+                const render = () => {
+                    const easing = isActive ? 0.16 : 0.2;
+                    current.x += (target.x - current.x) * easing;
+                    current.y += (target.y - current.y) * easing;
+                    current.rotateX += (target.rotateX - current.rotateX) * easing;
+                    current.rotateY += (target.rotateY - current.rotateY) * easing;
+                    current.scale += (target.scale - current.scale) * easing;
+
+                    surface.style.setProperty('--media-shift-x', `${current.x.toFixed(2)}px`);
+                    surface.style.setProperty('--media-shift-y', `${current.y.toFixed(2)}px`);
+                    surface.style.setProperty('--media-rotate-x', `${current.rotateX.toFixed(2)}deg`);
+                    surface.style.setProperty('--media-rotate-y', `${current.rotateY.toFixed(2)}deg`);
+                    surface.style.setProperty('--media-scale', current.scale.toFixed(3));
+
+                    const settled = Math.abs(current.x - target.x) < 0.01
+                        && Math.abs(current.y - target.y) < 0.01
+                        && Math.abs(current.rotateX - target.rotateX) < 0.01
+                        && Math.abs(current.rotateY - target.rotateY) < 0.01
+                        && Math.abs(current.scale - target.scale) < 0.001;
+
+                    if (!isActive && settled) {
+                        surface.classList.remove('is-pointer-active');
+                        frameId = 0;
+                        return;
+                    }
+
+                    frameId = window.requestAnimationFrame(render);
+                };
+
+                const startRender = () => {
+                    if (!frameId) frameId = window.requestAnimationFrame(render);
+                };
+
+                card.addEventListener('pointermove', (event) => {
+                    if (event.pointerType && !['mouse', 'pen'].includes(event.pointerType)) return;
+
+                    const rect = card.getBoundingClientRect();
+                    if (!rect.width || !rect.height) return;
+
+                    const relativeX = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+                    const relativeY = ((event.clientY - rect.top) / rect.height) * 2 - 1;
+                    const x = Math.max(-1, Math.min(1, relativeX));
+                    const y = Math.max(-1, Math.min(1, relativeY));
+
+                    target.x = x * 3;
+                    target.y = y * 2;
+                    target.rotateX = y * -4;
+                    target.rotateY = x * 6;
+                    target.scale = 1.03;
+                    isActive = true;
+                    surface.classList.add('is-pointer-active');
+                    startRender();
+                });
+
+                card.addEventListener('pointerleave', () => {
+                    target.x = 0;
+                    target.y = 0;
+                    target.rotateX = 0;
+                    target.rotateY = 0;
+                    target.scale = 1;
+                    isActive = false;
+                    startRender();
+                });
+            });
+        }
+
+        function bindLabFilterDrawer() {
+            const toggles = Array.from(document.querySelectorAll('.js-lab-filter-toggle'));
+            const drawer = document.getElementById('labFilterDrawer');
+            const backdrop = document.getElementById('labFilterBackdrop');
+            const close = document.getElementById('labFilterClose');
+            if (!toggles.length || !drawer || !backdrop || !close) return;
+
+            let lastFocusedElement = null;
+
+            const setOpen = (isOpen) => {
+                if (isOpen) {
+                    lastFocusedElement = document.activeElement;
+                }
+
+                drawer.classList.toggle('is-open', isOpen);
+                backdrop.classList.toggle('is-open', isOpen);
+                drawer.setAttribute('aria-hidden', String(!isOpen));
+                backdrop.setAttribute('aria-hidden', String(!isOpen));
+                toggles.forEach((toggle) => toggle.setAttribute('aria-expanded', String(isOpen)));
+                document.body.classList.toggle('lab-filter-open', isOpen);
+
+                if (isOpen) {
+                    window.setTimeout(() => {
+                        const firstField = drawer.querySelector('.admin-multi-filter__value');
+                        (firstField || close).focus();
+                    }, 180);
+                } else if (lastFocusedElement instanceof HTMLElement) {
+                    lastFocusedElement.focus();
+                }
+            };
+
+            toggles.forEach((toggle) => toggle.addEventListener('click', () => setOpen(true)));
+            close.addEventListener('click', () => setOpen(false));
+            backdrop.addEventListener('click', () => setOpen(false));
+
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && drawer.classList.contains('is-open')) {
+                    setOpen(false);
+                }
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             bindInternalDocsModal();
             bindLabSearch();
+            bindLabCard3d();
+            bindLabFilterDrawer();
         });
     </script>
 </body>
