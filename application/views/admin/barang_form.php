@@ -7,6 +7,7 @@
     <title><?= isset($aset) ? 'Edit' : 'Tambah' ?> Master Data - Laboran SCM</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
@@ -93,6 +94,16 @@
         .text-fik-orange {
             color: #ea5b1a;
         }
+
+        .asset-model-preview {
+            width: min(240px, 100%);
+            height: 160px;
+            display: inline-block;
+            border-radius: 8px;
+            background: linear-gradient(145deg, #f7f9fc 0%, #e4eaf1 100%);
+            --poster-color: transparent;
+            --progress-bar-color: #ea5b1a;
+        }
     </style>
 </head>
 
@@ -143,24 +154,26 @@
                             </div>
 
                             <div class="mb-4">
-                                <label class="form-label fw-semibold">Foto / Gambar Aset</label>
+                                <label class="form-label fw-semibold">Media Utama Aset</label>
                                 <div class="drop-zone shadow-sm" id="dropZone">
-                                    <input type="file" name="gambar" id="fileInput" accept="image/jpeg, image/png, image/jpg, image/webp">
+                                    <input type="file" name="gambar" id="fileInput" accept="image/jpeg, image/png, image/jpg, image/webp,.glb,.gltf,model/gltf-binary,model/gltf+json">
 
                                     <?php
                                     $ada_gambar = (isset($aset) && !empty($aset->gambar));
+                                    $primary_is_3d = $ada_gambar && in_array(strtolower(pathinfo($aset->gambar, PATHINFO_EXTENSION)), ['glb', 'gltf'], true);
 
                                     // GANTI BARIS INI: Tambahkan folder direktori tempat gambar barang disimpan.
                                     // Asumsi foldernya adalah 'assets/uploads/barang/' (Sesuaikan jika nama foldermu berbeda)
                                     $gambar_url = $ada_gambar ? base_url('assets/uploads/barang/' . rawurlencode($aset->gambar)) : '#';
 
-                                    $gambar_text = $ada_gambar ? '<i class="bi bi-info-circle me-1"></i>Gambar saat ini (Abaikan jika tidak diubah)' : '';
+                                    $gambar_text = $ada_gambar ? '<i class="bi bi-info-circle me-1"></i>Media saat ini (Abaikan jika tidak diubah)' : '';
                                     ?>
 
                                     <div id="previewContainer" class="preview-container <?= $ada_gambar ? 'd-block' : 'd-none' ?>">
                                         <div class="preview-wrapper">
-                                            <img id="imagePreview" src="<?= $gambar_url ?>" data-default-src="<?= $gambar_url ?>" alt="Preview" class="img-thumbnail shadow-sm mb-2" style="max-height: 160px; border-radius: 8px;">
-                                            <button type="button" id="btnRemovePreview" class="btn-remove-preview" title="Batal Pilih Foto">
+                                            <img id="imagePreview" src="<?= $gambar_url ?>" data-default-src="<?= $gambar_url ?>" alt="Preview media aset" class="img-thumbnail shadow-sm mb-2 <?= $primary_is_3d ? 'd-none' : '' ?>" style="max-height: 160px; border-radius: 8px;">
+                                            <model-viewer id="modelPreview" src="<?= $primary_is_3d ? $gambar_url : '' ?>" alt="Preview model 3D aset" class="asset-model-preview shadow-sm mb-2 <?= $primary_is_3d ? '' : 'd-none' ?>" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.55"></model-viewer>
+                                            <button type="button" id="btnRemovePreview" class="btn-remove-preview" title="Batal Pilih Media">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
                                         </div>
@@ -172,9 +185,39 @@
                                     <div id="placeholderContainer" class="preview-container <?= $ada_gambar ? 'd-none' : 'd-block' ?>">
                                         <i class="bi bi-download display-4 text-secondary mb-3 d-block"></i>
                                         <h6 class="mb-1 text-dark fs-5"><span class="fw-bold">Pilih file</span> atau drag ke sini.</h6>
-                                        <p class="text-muted small mb-0 mt-2">Format yang didukung: JPG, JPEG, PNG, WEBP. Maksimal 2MB.</p>
+                                        <p class="text-muted small mb-0 mt-2">Gambar: JPG, JPEG, PNG, WEBP maksimal 2MB. Model: GLB atau GLTF maksimal 15MB.</p>
                                     </div>
                                 </div>
+                            </div>
+                            <?php
+                            $gallery_filenames = [];
+                            if (isset($aset) && !empty($aset->foto)) {
+                                $gallery_source = json_decode((string) $aset->foto, true);
+                                $gallery_filenames = is_array($gallery_source) ? $gallery_source : [$aset->foto];
+                                $gallery_filenames = array_values(array_unique(array_filter(array_map('basename', $gallery_filenames))));
+                            }
+                            ?>
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold">Media Galeri Tambahan <span class="text-muted fw-normal">(opsional)</span></label>
+                                <input type="file" name="galeri_tambahan[]" class="form-control" accept="image/jpeg, image/png, image/jpg, image/webp,.glb,.gltf,model/gltf-binary,model/gltf+json" multiple>
+                                <div class="form-text">Pilih hingga 5 media tambahan. Gambar JPG, JPEG, PNG, WEBP maksimal 2MB; GLB/GLTF maksimal 15MB per file. GLTF harus memakai resource yang tertanam; GLB lebih disarankan.</div>
+                                <?php if (!empty($gallery_filenames)): ?>
+                                    <div class="d-flex flex-wrap gap-3 mt-3">
+                                        <?php foreach ($gallery_filenames as $gallery_filename): ?>
+                                            <?php $gallery_is_3d = in_array(strtolower(pathinfo($gallery_filename, PATHINFO_EXTENSION)), ['glb', 'gltf'], true); ?>
+                                            <label class="border rounded-3 p-2 bg-light text-center" style="width: 132px; cursor: pointer;">
+                                                <?php if ($gallery_is_3d): ?>
+                                                    <model-viewer src="<?= base_url('assets/uploads/barang/' . rawurlencode($gallery_filename)) ?>" alt="Model 3D galeri aset" class="rounded-2 mb-2" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" style="width: 112px; height: 82px; background: #eef1f5;"></model-viewer>
+                                                <?php else: ?>
+                                                    <img src="<?= base_url('assets/uploads/barang/' . rawurlencode($gallery_filename)) ?>" alt="Gambar galeri aset" class="img-fluid rounded-2 mb-2" style="width: 112px; height: 82px; object-fit: cover;">
+                                                <?php endif; ?>
+                                                <span class="d-flex align-items-center justify-content-center gap-1 small text-danger">
+                                                    <input class="form-check-input m-0" type="checkbox" name="hapus_galeri[]" value="<?= html_escape($gallery_filename) ?>"> Hapus
+                                                </span>
+                                            </label>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             <div class="row mb-4 p-3 bg-light rounded-3 border">
                                 <div class="col-md-6">
@@ -212,14 +255,17 @@
             const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
             const previewContainer = document.getElementById('previewContainer');
-            const placeholderContainer = document.getElementById('placeholderContainer');
-            const imagePreview = document.getElementById('imagePreview');
-            const fileNameDisplay = document.getElementById('fileName');
-            const btnRemovePreview = document.getElementById('btnRemovePreview');
+             const placeholderContainer = document.getElementById('placeholderContainer');
+             const imagePreview = document.getElementById('imagePreview');
+             const modelPreview = document.getElementById('modelPreview');
+             const fileNameDisplay = document.getElementById('fileName');
+             const btnRemovePreview = document.getElementById('btnRemovePreview');
 
             // Ambil data default foto lama (jika sedang di form edit)
-            const defaultSrc = imagePreview ? imagePreview.getAttribute('data-default-src') : '#';
-            const defaultText = fileNameDisplay ? fileNameDisplay.getAttribute('data-default-text') : '';
+             const defaultSrc = imagePreview ? imagePreview.getAttribute('data-default-src') : '#';
+             const defaultText = fileNameDisplay ? fileNameDisplay.getAttribute('data-default-text') : '';
+             const defaultIs3d = <?= $primary_is_3d ? 'true' : 'false' ?>;
+             let previewObjectUrl = null;
 
             if (dropZone && fileInput) {
                 // Mencegah browser membuka file gambar di tab baru saat di-drag
@@ -259,27 +305,59 @@
                     }
                 });
 
-                function updatePreview(file) {
-                    // Validasi bahwa file adalah gambar (Frontend validation)
-                    if (!file.type.match('image.*')) {
-                        alert('Format file ditolak! Pastikan Anda mengunggah format gambar yang didukung (JPG, PNG, WEBP).');
-                        fileInput.value = ''; // Reset input agar tidak error di PHP
-                        return;
-                    }
+                 function updatePreview(file) {
+                     const is3d = /\.(glb|gltf)$/i.test(file.name);
+                     const isImage = /\.(gif|jpe?g|png|webp)$/i.test(file.name) || String(file.type || '').toLowerCase().indexOf('image/') === 0;
+                     const maxBytes = is3d ? 15 * 1024 * 1024 : 2 * 1024 * 1024;
 
-                    // Proses baca file lokal ke browser tanpa perlu upload ke server dulu
-                    let reader = new FileReader();
-                    reader.readAsDataURL(file);
-                    reader.onload = function(e) {
-                        imagePreview.src = e.target.result;
-                        fileNameDisplay.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i> File dipilih: <b class="text-dark">${file.name}</b>`;
+                     if (!is3d && !isImage) {
+                         alert('Format file ditolak! Gunakan JPG, JPEG, PNG, WEBP, GLB, atau GLTF.');
+                         fileInput.value = ''; // Reset input agar tidak error di PHP
+                         return;
+                     }
+                     if (file.size > maxBytes) {
+                         alert(is3d ? 'Ukuran model terlalu besar. Maksimal 15MB per file.' : 'Ukuran gambar terlalu besar. Maksimal 2MB per file.');
+                         fileInput.value = '';
+                         return;
+                     }
 
-                        previewContainer.classList.remove('d-none');
-                        previewContainer.classList.add('d-block');
-                        placeholderContainer.classList.remove('d-block');
-                        placeholderContainer.classList.add('d-none');
-                    }
-                }
+                     if (previewObjectUrl) {
+                         URL.revokeObjectURL(previewObjectUrl);
+                         previewObjectUrl = null;
+                     }
+                     if (is3d) {
+                         previewObjectUrl = URL.createObjectURL(file);
+                         modelPreview.src = previewObjectUrl;
+                         modelPreview.classList.remove('d-none');
+                         imagePreview.classList.add('d-none');
+                         setFileName(file.name);
+                         previewContainer.classList.remove('d-none');
+                         previewContainer.classList.add('d-block');
+                         placeholderContainer.classList.remove('d-block');
+                         placeholderContainer.classList.add('d-none');
+                         return;
+                     }
+
+                     // Baca gambar lokal ke browser tanpa perlu upload ke server dulu.
+                     let reader = new FileReader();
+                     reader.readAsDataURL(file);
+                     reader.onload = function(e) {
+                         imagePreview.src = e.target.result;
+                         imagePreview.classList.remove('d-none');
+                         modelPreview.classList.add('d-none');
+                         setFileName(file.name);
+
+                         previewContainer.classList.remove('d-none');
+                         previewContainer.classList.add('d-block');
+                         placeholderContainer.classList.remove('d-block');
+                         placeholderContainer.classList.add('d-none');
+                     }
+                 }
+
+                 function setFileName(name) {
+                     fileNameDisplay.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i> File dipilih: <b class="text-dark"></b>';
+                     fileNameDisplay.querySelector('b').textContent = name;
+                 }
 
                 // Logika Dinamis saat tombol X diklik
                 if (btnRemovePreview) {
@@ -290,15 +368,26 @@
                         // 1. Selalu kosongkan input file yang baru dipilih
                         fileInput.value = '';
 
-                        // 2. Cek apakah ada foto aslinya di DB (Mode Edit)
-                        if (defaultSrc !== '' && defaultSrc !== '#') {
-                            // Jika ada, kembalikan ke foto lama
-                            imagePreview.src = defaultSrc;
-                            fileNameDisplay.innerHTML = defaultText;
-                        } else {
-                            // Jika tidak ada foto (Mode Tambah), sembunyikan gambar & munculkan ikon awan
-                            imagePreview.src = '#';
-                            fileNameDisplay.innerHTML = '';
+                         // 2. Cek apakah ada foto aslinya di DB (Mode Edit)
+                         if (defaultSrc !== '' && defaultSrc !== '#') {
+                             // Jika ada, kembalikan ke media lama
+                             if (defaultIs3d) {
+                                 modelPreview.src = defaultSrc;
+                                 modelPreview.classList.remove('d-none');
+                                 imagePreview.classList.add('d-none');
+                             } else {
+                                 imagePreview.src = defaultSrc;
+                                 imagePreview.classList.remove('d-none');
+                                 modelPreview.classList.add('d-none');
+                             }
+                             fileNameDisplay.innerHTML = defaultText;
+                         } else {
+                             // Jika tidak ada media (Mode Tambah), sembunyikan preview & munculkan ikon awan
+                             imagePreview.src = '#';
+                             modelPreview.removeAttribute('src');
+                             imagePreview.classList.add('d-none');
+                             modelPreview.classList.add('d-none');
+                             fileNameDisplay.innerHTML = '';
                             previewContainer.classList.remove('d-block');
                             previewContainer.classList.add('d-none');
                             placeholderContainer.classList.remove('d-none');

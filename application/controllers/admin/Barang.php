@@ -360,6 +360,61 @@ class Barang extends CI_Controller {
         return $kode;
     }
 
+    /**
+     * Kolom foto lama tidak dipakai oleh alur peminjaman. Gunakan sebagai
+     * daftar JSON gambar galeri agar schema aset yang sudah ada tetap utuh.
+     */
+    private function read_gallery_filenames($value) {
+        $value = trim((string) $value);
+        if ($value === '') return [];
+
+        $decoded = json_decode($value, true);
+        $files = is_array($decoded) ? $decoded : [$value];
+        $files = array_map(static function ($file) {
+            $file = trim((string) $file);
+            return basename($file) === $file ? $file : '';
+        }, $files);
+
+        return array_values(array_unique(array_filter($files)));
+    }
+
+    private function is_3d_asset_filename($filename) {
+        return in_array(strtolower((string) pathinfo($filename, PATHINFO_EXTENSION)), ['glb', 'gltf'], true);
+    }
+
+    private function upload_asset_media($field) {
+        $original_name = (string) ($_FILES[$field]['name'] ?? '');
+        $is_3d_asset = $this->is_3d_asset_filename($original_name);
+        $config = [
+            'upload_path'   => './assets/uploads/barang/',
+            'allowed_types' => $is_3d_asset ? 'glb|gltf' : 'gif|jpg|jpeg|png|webp',
+            'max_size'      => $is_3d_asset ? 15360 : 2048,
+            'encrypt_name'  => true,
+            'file_ext_tolower' => true,
+        ];
+
+        if (!is_dir($config['upload_path'])) {
+            mkdir($config['upload_path'], 0777, true);
+        }
+
+        $this->load->library('upload');
+        $this->upload->initialize($config, true);
+
+        if (!$this->upload->do_upload($field)) {
+            return null;
+        }
+
+        return (string) $this->upload->data('file_name');
+    }
+
+    private function remove_asset_image_file($filename) {
+        $filename = basename((string) $filename);
+        $path = './assets/uploads/barang/' . $filename;
+        if ($filename !== '' && is_file($path)) {
+            unlink($path);
+        }
+    }
+
     public function tambah() {
         $data['ruangan'] = $this->Barang_model->get_all_ruangan();
         $this->load->view('admin/barang_form', $data);
@@ -416,54 +471,84 @@ class Barang extends CI_Controller {
             $data['jumlah_tersedia'] = (int) $data['jumlah_total'] - $allocated;
         }
 
-        // LOGIKA UPLOAD GAMBAR DINAMIS
+        $existing = !empty($id_aset) ? $this->Barang_model->get_by_id($id_aset) : null;
+        $existing_gallery = $existing ? $this->read_gallery_filenames($existing->foto ?? '') : [];
+        $gallery = $existing_gallery;
+        $files_to_delete = [];
+
+        // Media utama tetap memakai alur upload yang sudah ada.
         if (!empty($_FILES['gambar']['name'])) {
-            // PERBAIKAN PATH: Disamakan dengan yang dipanggil di View User (assets/uploads/barang/)
-            $config['upload_path']   = './assets/uploads/barang/'; 
-            
-            // Buat folder otomatis jika belum ada di dalam project Anda
-            if (!is_dir($config['upload_path'])) {
-                mkdir($config['upload_path'], 0777, TRUE);
-            }
-
-            $config['allowed_types'] = 'gif|jpg|jpeg|png|webp';
-            $config['max_size']      = 2048; // 2MB
-            $config['encrypt_name']  = TRUE;
-
-            $this->load->library('upload', $config);
-
-            if ($this->upload->do_upload('gambar')) {
-                $upload_data = $this->upload->data();
-                
-                // PERBAIKAN DB: Hanya simpan nama file-nya saja agar URL di view User tidak rusak
-                $data['gambar'] = $upload_data['file_name'];
-                
-                // Jika edit, hapus gambar lama dari folder agar tidak menumpuk di server
-                if (!empty($id_aset)) {
-                    $old_data = $this->Barang_model->get_by_id($id_aset);
-                    if ($old_data && !empty($old_data->gambar) && file_exists('./assets/uploads/barang/' . $old_data->gambar)) {
-                        unlink('./assets/uploads/barang/' . $old_data->gambar);
-                    }
-                }
-            } else {
-                // Jika error upload
-                $this->session->set_flashdata('error', 'Gagal upload foto: ' . $this->upload->display_errors('', ''));
+            $primary_image = $this->upload_asset_media('gambar');
+            if ($primary_image === null) {
+                $this->session->set_flashdata('error', 'Gagal upload media utama: ' . $this->upload->display_errors('', ''));
                 if (empty($id_aset)) {
                     redirect('admin/barang/tambah');
                 } else {
                     redirect('admin/barang/edit/' . $id_aset); 
                 }
-                return; // Hentikan eksekusi
+                return;
             }
+
+            $data['gambar'] = $primary_image;
+            if ($existing && !empty($existing->gambar) && $existing->gambar !== $primary_image && !in_array($existing->gambar, $gallery, true)) {
+                $files_to_delete[] = $existing->gambar;
+            }
+        }
+
+        // Hapus media tambahan yang dipilih pada form edit.
+        $remove_gallery = array_map('basename', (array) $this->input->post('hapus_galeri'));
+        foreach ($remove_gallery as $filename) {
+            $key = array_search($filename, $gallery, true);
+            if ($key !== false) {
+                unset($gallery[$key]);
+                $files_to_delete[] = $filename;
+            }
+        }
+        $gallery = array_values($gallery);
+
+        // Maksimal lima media tambahan agar tetap aman dalam kolom foto existing.
+        $new_gallery_names = array_filter((array) ($_FILES['galeri_tambahan']['name'] ?? []));
+        if (count($gallery) + count($new_gallery_names) > 5) {
+            $this->session->set_flashdata('error', 'Galeri aset maksimal berisi 5 media tambahan.');
+            redirect(empty($id_aset) ? 'admin/barang/tambah' : 'admin/barang/edit/' . $id_aset);
+            return;
+        }
+
+        foreach (array_keys($new_gallery_names) as $index) {
+            $_FILES['galeri_upload_temp'] = [
+                'name'     => $_FILES['galeri_tambahan']['name'][$index],
+                'type'     => $_FILES['galeri_tambahan']['type'][$index],
+                'tmp_name' => $_FILES['galeri_tambahan']['tmp_name'][$index],
+                'error'    => $_FILES['galeri_tambahan']['error'][$index],
+                'size'     => $_FILES['galeri_tambahan']['size'][$index],
+            ];
+            $gallery_image = $this->upload_asset_media('galeri_upload_temp');
+            if ($gallery_image === null) {
+                $this->session->set_flashdata('error', 'Gagal upload media galeri: ' . $this->upload->display_errors('', ''));
+                redirect(empty($id_aset) ? 'admin/barang/tambah' : 'admin/barang/edit/' . $id_aset);
+                return;
+            }
+            $gallery[] = $gallery_image;
+        }
+        unset($_FILES['galeri_upload_temp']);
+
+        if (!empty($id_aset) || !empty($gallery)) {
+            $data['foto'] = !empty($gallery) ? json_encode(array_values(array_unique($gallery))) : null;
         }
 
         // SIMPAN KE DATABASE
         if(empty($id_aset)) {
-            $this->Barang_model->insert($data);
+            $saved = $this->Barang_model->insert($data);
             $this->session->set_flashdata('success', 'Barang berhasil ditambahkan!');
         } else {
-            $this->Barang_model->update($id_aset, $data);
+            $saved = $this->Barang_model->update($id_aset, $data);
             $this->session->set_flashdata('success', 'Master data berhasil diperbarui!');
+        }
+
+        if ($saved) {
+            foreach (array_unique($files_to_delete) as $filename) {
+                $this->remove_asset_image_file($filename);
+            }
         }
 
         redirect('admin/barang'); 
@@ -472,9 +557,12 @@ class Barang extends CI_Controller {
     public function hapus($id_aset) {
         $old_data = $this->Barang_model->get_by_id($id_aset);
         
-        // PERBAIKAN PATH HAPUS: Hapus file gambar dari server jika ada sesuai path yang benar
-        if ($old_data && !empty($old_data->gambar) && file_exists('./assets/uploads/barang/' . $old_data->gambar)) {
-            unlink('./assets/uploads/barang/' . $old_data->gambar);
+        // Hapus seluruh gambar aset dari penyimpanan saat master aset dihapus.
+        if ($old_data) {
+            $this->remove_asset_image_file($old_data->gambar ?? '');
+            foreach ($this->read_gallery_filenames($old_data->foto ?? '') as $filename) {
+                $this->remove_asset_image_file($filename);
+            }
         }
         
         $this->Barang_model->delete($id_aset);

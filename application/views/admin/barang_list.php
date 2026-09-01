@@ -21,6 +21,7 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
     <title>Master Data Aset - Panel Laboran FIK</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
         body { background-color: #f8f9fa; font-family: 'Poppins', sans-serif; }
@@ -67,6 +68,7 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
         }
         /* Style untuk thumbnail gambar di tabel */
         .img-thumbnail-table { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd; }
+        .model-thumbnail-table { width: 60px; height: 60px; display: block; margin: auto; border-radius: 8px; border: 1px solid #ddd; background: #eef1f5; --poster-color: transparent; --progress-bar-color: #ea5b1a; }
         .img-placeholder { width: 60px; height: 60px; background-color: #eee; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 1.5rem; }
     </style>
 </head>
@@ -158,7 +160,12 @@ $master_base_query = ['filter_field' => array_column($master_filters['criteria']
                                     <td class="p-3 text-center">
                                         <!-- Logika menampilkan gambar atau placeholder -->
                                         <?php if(!empty($b->gambar) && file_exists('./assets/uploads/barang/'.$b->gambar)): ?>
-                                            <img src="<?= base_url('assets/uploads/barang/'.rawurlencode($b->gambar)) ?>" alt="<?= html_escape($b->nama_aset) ?>" class="img-thumbnail-table" loading="lazy" decoding="async">
+                                            <?php $is_3d_asset = in_array(strtolower(pathinfo($b->gambar, PATHINFO_EXTENSION)), ['glb', 'gltf'], true); ?>
+                                            <?php if ($is_3d_asset): ?>
+                                                <model-viewer src="<?= base_url('assets/uploads/barang/'.rawurlencode($b->gambar)) ?>" alt="Model 3D <?= html_escape($b->nama_aset) ?>" class="model-thumbnail-table" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.45" loading="lazy"></model-viewer>
+                                            <?php else: ?>
+                                                <img src="<?= base_url('assets/uploads/barang/'.rawurlencode($b->gambar)) ?>" alt="<?= html_escape($b->nama_aset) ?>" class="img-thumbnail-table" loading="lazy" decoding="async">
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <div class="img-placeholder mx-auto" title="Tidak ada gambar">
                                                 <i class="bi bi-image text-muted"></i>

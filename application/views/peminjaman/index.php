@@ -24,6 +24,7 @@ $catalog_query['per_page'] = $catalog_per_page;
     <!-- Bootstrap 5 & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
     
     <!-- AOS Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
@@ -175,6 +176,11 @@ $catalog_query['per_page'] = $catalog_per_page;
             animation: asset-visual-breathe 6s ease-in-out calc(var(--asset-entry-delay) + 720ms) infinite;
         }
 
+        /* Render WEBP produk tetap diam; kedalaman muncul saat pengguna berinteraksi. */
+        .item-img-placeholder.asset-visual--interactive .asset-visual__float {
+            animation: none;
+        }
+
         .asset-visual__content {
             position: relative;
             z-index: 2;
@@ -192,6 +198,108 @@ $catalog_query['per_page'] = $catalog_per_page;
             height: 92% !important;
             object-fit: contain !important;
             filter: drop-shadow(0 16px 14px rgba(37, 45, 54, 0.20));
+        }
+
+        /* Model 3D dikendalikan oleh model-viewer: diam saat idle, drag untuk rotasi. */
+        .asset-visual__model {
+            width: 96%;
+            height: 96%;
+            display: block;
+            background: transparent;
+            --poster-color: transparent;
+            --progress-bar-color: #ea5b1a;
+            filter: drop-shadow(0 16px 14px rgba(37, 45, 54, 0.20));
+            cursor: grab;
+        }
+
+        .asset-visual__model:active {
+            cursor: grabbing;
+        }
+
+        .asset-gallery {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            touch-action: pan-y;
+        }
+
+        .asset-gallery__track {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: transform;
+        }
+
+        .asset-gallery__slide {
+            flex: 0 0 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            height: 100%;
+        }
+
+        .asset-gallery__control {
+            position: absolute;
+            top: 50%;
+            z-index: 5;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(31, 38, 48, 0.7);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transform: translateY(-50%);
+            transition: background-color 180ms ease, transform 180ms ease;
+        }
+
+        .asset-gallery__control:hover,
+        .asset-gallery__control:focus-visible {
+            background: #ea5b1a;
+            transform: translateY(-50%) scale(1.06);
+        }
+
+        .asset-gallery__control--previous { left: 10px; }
+        .asset-gallery__control--next { right: 10px; }
+
+        .asset-gallery__dots {
+            position: absolute;
+            z-index: 5;
+            left: 50%;
+            bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transform: translateX(-50%);
+        }
+
+        .asset-gallery__dot {
+            width: 6px;
+            height: 6px;
+            padding: 0;
+            border: 0;
+            border-radius: 99px;
+            background: rgba(48, 56, 66, 0.34);
+            transition: width 200ms ease, background-color 200ms ease;
+        }
+
+        .asset-gallery__dot.is-active {
+            width: 18px;
+            background: #ea5b1a;
+        }
+
+        .asset-gallery__slide[data-asset-product-viewer],
+        .asset-gallery__slide--model { cursor: grab; }
+        .asset-gallery__slide[data-asset-product-viewer].is-dragging { cursor: grabbing; }
+
+        @media (max-width: 575.98px) {
+            .asset-gallery__control { width: 28px; height: 28px; }
         }
 
         .asset-visual__icon {
@@ -213,6 +321,17 @@ $catalog_query['per_page'] = $catalog_per_page;
             --asset-mouse-raise: -3px;
             transform: perspective(850px) translate3d(0, var(--asset-mouse-raise), 0) rotateX(var(--asset-rotate-x)) rotateY(var(--asset-rotate-y)) scale(1.055);
             filter: brightness(1.025) saturate(1.03);
+        }
+
+        /* WEBP produk menahan pose terakhir seperti product viewer, tanpa hover float. */
+        .item-card:hover .item-img-placeholder.asset-visual--interactive .asset-visual__content {
+            --asset-mouse-raise: 0px;
+            transform: perspective(850px) translate3d(0, 0, 0) rotateX(var(--asset-rotate-x)) rotateY(var(--asset-rotate-y)) scale(1);
+            filter: none;
+        }
+
+        .item-img-placeholder.asset-visual--interactive .asset-gallery__slide.is-dragging .asset-visual__content {
+            filter: brightness(1.02) saturate(1.03);
         }
 
         .item-card:hover .asset-visual__icon {
@@ -531,7 +650,22 @@ $catalog_query['per_page'] = $catalog_per_page;
             <?php foreach($barang as $index => $b): ?>
             <?php
                 $catalog_room = isset($b->nama_ruangan) ? $b->nama_ruangan : 'Laboratorium Pusat';
-                $has_uploaded_visual = !empty($b->gambar);
+                $asset_images = [];
+                foreach ([$b->gambar ?? ''] as $filename) {
+                    $filename = basename((string) $filename);
+                    if ($filename !== '') $asset_images[] = $filename;
+                }
+                $gallery_source = json_decode((string) ($b->foto ?? ''), true);
+                $gallery_images = is_array($gallery_source) ? $gallery_source : [($b->foto ?? '')];
+                foreach ($gallery_images as $filename) {
+                    $filename = basename((string) $filename);
+                    if ($filename !== '') $asset_images[] = $filename;
+                }
+                $asset_images = array_values(array_unique($asset_images));
+                $has_uploaded_visual = !empty($asset_images);
+                $has_interactive_image = (bool) array_filter($asset_images, static function ($filename) {
+                    return in_array(strtolower(pathinfo($filename, PATHINFO_EXTENSION)), ['webp', 'glb', 'gltf'], true);
+                });
             ?>
             <div
                 class="col-sm-6 col-md-4 col-lg-3 catalog-item"
@@ -546,18 +680,42 @@ $catalog_query['per_page'] = $catalog_per_page;
                 data-filter-stok="<?= (int) ($b->jumlah_tersedia ?? 0) ?>"
             >
                 <div class="card item-card">
-                    <!-- Semua gambar dari CRUD menerima treatment visual produk yang sama. -->
-                    <div class="item-img-placeholder<?= $has_uploaded_visual ? ' asset-visual--product' : '' ?>" style="--asset-entry-delay: <?= ($index % 4) * 70 ?>ms;">
+                    <!-- Semua media dari CRUD menerima treatment visual produk yang sama. -->
+                    <div class="item-img-placeholder<?= $has_uploaded_visual ? ' asset-visual--product' : '' ?><?= $has_interactive_image ? ' asset-visual--interactive' : '' ?>" style="--asset-entry-delay: <?= ($index % 4) * 70 ?>ms;">
                         <div class="asset-visual__motion">
                             <div class="asset-visual__float">
                                 <?php if($has_uploaded_visual): ?>
-                                    <!-- Render/foto aset dari CRUD Laboran, tanpa mapping nama aset. -->
-                                    <img class="asset-visual__content asset-visual__media"
-                                         src="<?= base_url('assets/uploads/barang/'.rawurlencode($b->gambar)) ?>"
-                                         alt="<?= html_escape($b->nama_aset) ?>"
-                                         loading="lazy"
-                                         decoding="async"
-                                         onerror="this.onerror=null; this.src='https://placehold.co/400x300?text=No+Image';">
+                                    <div class="asset-gallery" data-asset-gallery aria-label="Galeri aset <?= html_escape($b->nama_aset) ?>">
+                                        <div class="asset-gallery__track" data-asset-gallery-track>
+                                            <?php foreach ($asset_images as $image_index => $image_filename): ?>
+                                                <?php $asset_extension = strtolower(pathinfo($image_filename, PATHINFO_EXTENSION)); ?>
+                                                <?php $is_webp = $asset_extension === 'webp'; ?>
+                                                <?php $is_3d_model = in_array($asset_extension, ['glb', 'gltf'], true); ?>
+                                                <div class="asset-gallery__slide<?= $is_3d_model ? ' asset-gallery__slide--model' : '' ?>"<?= $is_webp ? ' data-asset-product-viewer' : '' ?> data-asset-gallery-slide aria-hidden="<?= $image_index === 0 ? 'false' : 'true' ?>">
+                                                    <?php if ($is_3d_model): ?>
+                                                        <model-viewer class="asset-visual__model" src="<?= base_url('assets/uploads/barang/'.rawurlencode($image_filename)) ?>" alt="Model 3D <?= html_escape($b->nama_aset) ?><?= count($asset_images) > 1 ? ' - media ' . ($image_index + 1) : '' ?>" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.55" loading="lazy" reveal="auto"></model-viewer>
+                                                    <?php else: ?>
+                                                        <img class="asset-visual__content asset-visual__media"
+                                                             src="<?= base_url('assets/uploads/barang/'.rawurlencode($image_filename)) ?>"
+                                                             alt="<?= html_escape($b->nama_aset) ?><?= count($asset_images) > 1 ? ' - gambar ' . ($image_index + 1) : '' ?>"
+                                                             loading="lazy"
+                                                             decoding="async"
+                                                             draggable="false"
+                                                             onerror="this.onerror=null; this.src='https://placehold.co/400x300?text=No+Image';">
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                        <?php if (count($asset_images) > 1): ?>
+                                            <button type="button" class="asset-gallery__control asset-gallery__control--previous" data-asset-gallery-previous aria-label="Gambar sebelumnya"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+                                            <button type="button" class="asset-gallery__control asset-gallery__control--next" data-asset-gallery-next aria-label="Gambar berikutnya"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+                                            <div class="asset-gallery__dots" aria-label="Pilih gambar aset">
+                                                <?php foreach ($asset_images as $image_index => $unused): ?>
+                                                    <button type="button" class="asset-gallery__dot<?= $image_index === 0 ? ' is-active' : '' ?>" data-asset-gallery-dot="<?= $image_index ?>" aria-label="Tampilkan gambar <?= $image_index + 1 ?>" aria-current="<?= $image_index === 0 ? 'true' : 'false' ?>"></button>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 <?php else: ?>
                                     <!-- Ikon fallback tetap memakai animasi visual yang sama. -->
                                     <?php
@@ -769,7 +927,9 @@ $catalog_query['per_page'] = $catalog_per_page;
                 if (reducedAssetMotion.matches || !finePointer.matches) return;
 
                 document.querySelectorAll('.item-card .item-img-placeholder').forEach(function (visual) {
+                    if (visual.classList.contains('asset-visual--interactive')) return;
                     visual.addEventListener('pointermove', function (event) {
+                        if (event.target.closest('.asset-gallery__control, .asset-gallery__dot')) return;
                         const bounds = visual.getBoundingClientRect();
                         const pointerX = (event.clientX - bounds.left) / bounds.width - 0.5;
                         const pointerY = (event.clientY - bounds.top) / bounds.height - 0.5;
@@ -787,7 +947,120 @@ $catalog_query['per_page'] = $catalog_per_page;
                 });
             }
 
+            function enableInteractiveAssetViewers() {
+                if (reducedAssetMotion.matches || !finePointer.matches) return;
+
+                document.querySelectorAll('[data-asset-product-viewer]').forEach(function (viewer) {
+                    const visual = viewer.closest('.item-img-placeholder');
+                    if (!visual) return;
+
+                    let activePointerId = null;
+                    let lastPoint = null;
+                    let rotationX = 0;
+                    let rotationY = 0;
+                    const limit = function (value, minimum, maximum) {
+                        return Math.max(minimum, Math.min(maximum, value));
+                    };
+
+                    viewer.addEventListener('pointerdown', function (event) {
+                        if (event.button !== undefined && event.button !== 0) return;
+                        activePointerId = event.pointerId;
+                        lastPoint = { x: event.clientX, y: event.clientY };
+                        viewer.classList.add('is-dragging');
+                        if (viewer.setPointerCapture) viewer.setPointerCapture(event.pointerId);
+                        event.preventDefault();
+                    });
+
+                    viewer.addEventListener('pointermove', function (event) {
+                        if (event.pointerId !== activePointerId || !lastPoint) return;
+                        const deltaX = event.clientX - lastPoint.x;
+                        const deltaY = event.clientY - lastPoint.y;
+                        rotationY = limit(rotationY + (deltaX * 0.16), -18, 18);
+                        rotationX = limit(rotationX - (deltaY * 0.14), -14, 14);
+                        visual.style.setProperty('--asset-rotate-y', rotationY.toFixed(2) + 'deg');
+                        visual.style.setProperty('--asset-rotate-x', rotationX.toFixed(2) + 'deg');
+                        lastPoint = { x: event.clientX, y: event.clientY };
+                    });
+
+                    const stopRotation = function (event) {
+                        if (event.pointerId !== activePointerId) return;
+                        if (viewer.hasPointerCapture && viewer.hasPointerCapture(event.pointerId)) {
+                            viewer.releasePointerCapture(event.pointerId);
+                        }
+                        activePointerId = null;
+                        lastPoint = null;
+                        viewer.classList.remove('is-dragging');
+                    };
+
+                    viewer.addEventListener('pointerup', stopRotation);
+                    viewer.addEventListener('pointercancel', stopRotation);
+                });
+            }
+
+            function enableAssetGalleries() {
+                document.querySelectorAll('[data-asset-gallery]').forEach(function (gallery) {
+                    const track = gallery.querySelector('[data-asset-gallery-track]');
+                    const slides = Array.from(gallery.querySelectorAll('[data-asset-gallery-slide]'));
+                    const dots = Array.from(gallery.querySelectorAll('[data-asset-gallery-dot]'));
+                    const previous = gallery.querySelector('[data-asset-gallery-previous]');
+                    const next = gallery.querySelector('[data-asset-gallery-next]');
+                    if (!track || slides.length < 2) return;
+
+                    let activeIndex = 0;
+                    let pointerStart = null;
+
+                    function showSlide(index) {
+                        activeIndex = (index + slides.length) % slides.length;
+                        track.style.transform = 'translate3d(' + (-activeIndex * 100) + '%, 0, 0)';
+                        slides.forEach(function (slide, slideIndex) {
+                            slide.setAttribute('aria-hidden', slideIndex === activeIndex ? 'false' : 'true');
+                        });
+                        dots.forEach(function (dot, dotIndex) {
+                            const active = dotIndex === activeIndex;
+                            dot.classList.toggle('is-active', active);
+                            dot.setAttribute('aria-current', active ? 'true' : 'false');
+                        });
+                    }
+
+                    if (previous) previous.addEventListener('click', function () { showSlide(activeIndex - 1); });
+                    if (next) next.addEventListener('click', function () { showSlide(activeIndex + 1); });
+                    dots.forEach(function (dot) {
+                        dot.addEventListener('click', function () { showSlide(Number(dot.dataset.assetGalleryDot)); });
+                    });
+
+                    gallery.addEventListener('pointerdown', function (event) {
+                        if (event.button !== undefined && event.button !== 0) return;
+                        if (event.target.closest('.asset-gallery__control, .asset-gallery__dot')) return;
+
+                        // Drag pada media interaktif dipakai sebagai product viewer, bukan pindah slide.
+                        if (event.target.closest('model-viewer')) {
+                            return;
+                        }
+                        if (finePointer.matches && event.target.closest('[data-asset-product-viewer]')) {
+                            return;
+                        }
+                        pointerStart = { x: event.clientX, y: event.clientY, id: event.pointerId };
+                    });
+
+                    gallery.addEventListener('pointerup', function (event) {
+                        if (!pointerStart || pointerStart.id !== event.pointerId) return;
+                        const deltaX = event.clientX - pointerStart.x;
+                        const deltaY = event.clientY - pointerStart.y;
+                        pointerStart = null;
+                        if (Math.abs(deltaX) > 42 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                            showSlide(activeIndex + (deltaX < 0 ? 1 : -1));
+                        }
+                    });
+
+                    gallery.addEventListener('pointercancel', function (event) {
+                        pointerStart = null;
+                    });
+                });
+            }
+
+            enableAssetGalleries();
             enableAssetVisualTilt();
+            enableInteractiveAssetViewers();
 
             if (catalogGrid && catalogItems.length && catalogFilterRoot?.dataset.mode === 'client' && catalogPageSize && catalogPageNav) {
                 let catalogPage = 1;

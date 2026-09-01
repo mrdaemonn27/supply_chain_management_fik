@@ -5,6 +5,7 @@ $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userda
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
 $has_uploaded_visual = !empty($aset->gambar);
+$asset_is_3d = $has_uploaded_visual && in_array(strtolower(pathinfo($aset->gambar, PATHINFO_EXTENSION)), ['glb', 'gltf'], true);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -14,6 +15,7 @@ $has_uploaded_visual = !empty($aset->gambar);
     <title>Ajukan Peminjaman - SCM FIK</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     
     <style>
@@ -52,6 +54,12 @@ $has_uploaded_visual = !empty($aset->gambar);
             background:
                 radial-gradient(circle at 50% 25%, rgba(255,255,255,.3), transparent 48%),
                 rgba(255,255,255,.08);
+        }
+        .aset-thumbnail--model {
+            display: block;
+            background: rgba(255,255,255,.08);
+            --poster-color: transparent;
+            --progress-bar-color: #ea5b1a;
         }
 
         /* Custom Style untuk Drag & Drop Zone */
@@ -175,7 +183,11 @@ $has_uploaded_visual = !empty($aset->gambar);
                     
                     <div class="bg-white bg-opacity-10 rounded-3 p-3 mb-4 text-center">
                         <?php if($has_uploaded_visual): ?>
-                            <img src="<?= base_url('assets/uploads/barang/'.rawurlencode($aset->gambar)) ?>" alt="<?= html_escape($aset->nama_aset) ?>" class="aset-thumbnail aset-thumbnail--product" decoding="async">
+                            <?php if ($asset_is_3d): ?>
+                                <model-viewer src="<?= base_url('assets/uploads/barang/'.rawurlencode($aset->gambar)) ?>" alt="Model 3D <?= html_escape($aset->nama_aset) ?>" class="aset-thumbnail aset-thumbnail--product aset-thumbnail--model" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.55"></model-viewer>
+                            <?php else: ?>
+                                <img src="<?= base_url('assets/uploads/barang/'.rawurlencode($aset->gambar)) ?>" alt="<?= html_escape($aset->nama_aset) ?>" class="aset-thumbnail aset-thumbnail--product" decoding="async">
+                            <?php endif; ?>
                         <?php else: ?>
                             <i class="bi bi-camera" style="font-size: 4rem; color: #f8f9fa; opacity: 0.8;"></i>
                         <?php endif; ?>

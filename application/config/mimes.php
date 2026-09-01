@@ -87,6 +87,8 @@ return array(
 	'mjp2'	=>	array('image/jp2', 'video/mj2', 'image/jpx', 'image/jpm'),
 	'png'	=>	array('image/png', 'image/x-png'),
 	'webp'	=>	'image/webp',
+	'glb'	=>	array('model/gltf-binary', 'application/octet-stream'),
+	'gltf'	=>	array('model/gltf+json', 'application/json', 'text/plain', 'application/octet-stream'),
 	'tiff'	=>	'image/tiff',
 	'tif'	=>	'image/tiff',
 	'heic' 	=>	'image/heic',
