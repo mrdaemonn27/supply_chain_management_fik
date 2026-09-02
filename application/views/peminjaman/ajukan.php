@@ -4,8 +4,23 @@ $session_role = strtolower((string) $this->session->userdata('role'));
 $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
-$has_uploaded_visual = !empty($aset->gambar);
-$asset_is_3d = $has_uploaded_visual && in_array(strtolower(pathinfo($aset->gambar, PATHINFO_EXTENSION)), ['glb', 'gltf'], true);
+$asset_media = [];
+$gallery_source = json_decode((string) ($aset->foto ?? ''), true);
+$gallery_filenames = is_array($gallery_source) ? $gallery_source : [($aset->foto ?? '')];
+$media_filenames = array_merge([($aset->gambar ?? '')], $gallery_filenames);
+foreach ($media_filenames as $media_filename) {
+    $media_filename = basename(trim((string) $media_filename));
+    $media_extension = strtolower(pathinfo($media_filename, PATHINFO_EXTENSION));
+    if (
+        $media_filename !== ''
+        && in_array($media_extension, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'glb', 'gltf'], true)
+        && is_file(FCPATH . 'assets/uploads/barang/' . $media_filename)
+        && !in_array($media_filename, $asset_media, true)
+    ) {
+        $asset_media[] = $media_filename;
+    }
+}
+$has_uploaded_visual = !empty($asset_media);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -46,20 +61,145 @@ $asset_is_3d = $has_uploaded_visual && in_array(strtolower(pathinfo($aset->gamba
         .btn-submit { background-color: #ea5b1a; color: white; font-weight: 600; padding: 12px; border-radius: 8px; border: none; transition: 0.3s; }
         .btn-submit:hover { background-color: #c24a13; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(234, 91, 26, 0.3); }
         
-        /* Visual detail aset selalu memakai gambar yang dikelola melalui CRUD. */
-        .aset-thumbnail { width: 100%; height: 180px; object-fit: cover; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        /* Galeri detail aset: foto utama lalu media tambahan 3D. */
+        .asset-showcase {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            width: 100%;
+            aspect-ratio: 4 / 3;
+            min-height: 210px;
+            border: 1px solid rgba(255,255,255,.14);
+            border-radius: 16px;
+            background:
+                radial-gradient(circle at 50% 22%, rgba(255,255,255,.22), transparent 45%),
+                linear-gradient(145deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 18px 34px rgba(31,14,3,.25);
+            touch-action: pan-y;
+            user-select: none;
+        }
+        .asset-showcase__slide {
+            position: absolute;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 12px;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(.985);
+            transition: opacity .35s ease, transform .4s ease, visibility 0s linear .4s;
+        }
+        .asset-showcase__slide.is-active {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1);
+            transition-delay: 0s;
+        }
+        .aset-thumbnail { width: 100%; height: 100%; min-height: 0; object-fit: cover; border-radius: 11px; }
         .aset-thumbnail--product {
             object-fit: contain;
-            padding: 6px;
+            padding: 8px;
             background:
-                radial-gradient(circle at 50% 25%, rgba(255,255,255,.3), transparent 48%),
-                rgba(255,255,255,.08);
+                radial-gradient(circle at 50% 25%, rgba(255,255,255,.42), transparent 50%),
+                rgba(255,255,255,.1);
         }
         .aset-thumbnail--model {
             display: block;
             background: rgba(255,255,255,.08);
             --poster-color: transparent;
             --progress-bar-color: #ea5b1a;
+        }
+        .asset-showcase__badge {
+            position: absolute;
+            z-index: 3;
+            top: 12px;
+            left: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border: 1px solid rgba(255,255,255,.18);
+            border-radius: 999px;
+            color: #fff;
+            background: rgba(36,17,5,.76);
+            box-shadow: 0 6px 16px rgba(0,0,0,.18);
+            backdrop-filter: blur(8px);
+            font-size: .68rem;
+            font-weight: 700;
+            letter-spacing: .03em;
+        }
+        .asset-showcase__counter {
+            position: absolute;
+            z-index: 3;
+            top: 12px;
+            right: 12px;
+            padding: 5px 9px;
+            border-radius: 999px;
+            color: rgba(255,255,255,.9);
+            background: rgba(36,17,5,.62);
+            backdrop-filter: blur(8px);
+            font-size: .68rem;
+            font-weight: 600;
+        }
+        .asset-showcase__nav {
+            position: absolute;
+            z-index: 4;
+            top: 50%;
+            display: inline-grid;
+            place-items: center;
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            border: 1px solid rgba(255,255,255,.24);
+            border-radius: 50%;
+            color: #fff;
+            background: rgba(45,21,7,.72);
+            box-shadow: 0 6px 18px rgba(0,0,0,.2);
+            backdrop-filter: blur(8px);
+            transform: translateY(-50%);
+            transition: background-color .2s ease, transform .2s ease;
+        }
+        .asset-showcase__nav:hover,
+        .asset-showcase__nav:focus-visible { background: #ea5b1a; transform: translateY(-50%) scale(1.06); }
+        .asset-showcase__nav--previous { left: 12px; }
+        .asset-showcase__nav--next { right: 12px; }
+        .asset-showcase__footer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            min-height: 28px;
+            margin-top: 12px;
+        }
+        .asset-showcase__dot {
+            width: 9px;
+            height: 7px;
+            padding: 0;
+            border: 0;
+            border-radius: 999px;
+            background: rgba(255,255,255,.35);
+            box-shadow: 0 0 0 1px rgba(255,255,255,.08);
+            transition: width .3s ease, background-color .3s ease, transform .2s ease;
+        }
+        .asset-showcase__dot:hover { transform: scale(1.14); }
+        .asset-showcase__dot.is-active { width: 34px; background: #ea5b1a; }
+        .asset-showcase__hint {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            min-height: 18px;
+            margin-top: 2px;
+            color: rgba(255,255,255,.64);
+            font-size: .66rem;
+        }
+        @media (max-width: 575.98px) {
+            .asset-showcase { min-height: 230px; }
+            .asset-showcase__nav { width: 34px; height: 34px; }
+            .info-card { padding: 1.15rem !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .asset-showcase__slide, .asset-showcase__nav, .asset-showcase__dot { transition: none; }
         }
 
         /* Custom Style untuk Drag & Drop Zone */
@@ -181,15 +321,37 @@ $asset_is_3d = $has_uploaded_visual && in_array(strtolower(pathinfo($aset->gamba
                 <div class="card info-card h-100 p-4">
                     <h5 class="fw-bold text-fik-orange mb-4"><i class="bi bi-box-seam me-2"></i>Detail Aset</h5>
                     
-                    <div class="bg-white bg-opacity-10 rounded-3 p-3 mb-4 text-center">
+                    <div class="mb-4 text-center">
                         <?php if($has_uploaded_visual): ?>
-                            <?php if ($asset_is_3d): ?>
-                                <model-viewer src="<?= base_url('assets/uploads/barang/'.rawurlencode($aset->gambar)) ?>" alt="Model 3D <?= html_escape($aset->nama_aset) ?>" class="aset-thumbnail aset-thumbnail--product aset-thumbnail--model" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.55"></model-viewer>
-                            <?php else: ?>
-                                <img src="<?= base_url('assets/uploads/barang/'.rawurlencode($aset->gambar)) ?>" alt="<?= html_escape($aset->nama_aset) ?>" class="aset-thumbnail aset-thumbnail--product" decoding="async">
+                            <div class="asset-showcase" data-asset-showcase tabindex="0" aria-roledescription="carousel" aria-label="Galeri media <?= html_escape($aset->nama_aset) ?>">
+                                <?php foreach ($asset_media as $media_index => $media_filename): ?>
+                                    <?php $media_is_3d = in_array(strtolower(pathinfo($media_filename, PATHINFO_EXTENSION)), ['glb', 'gltf'], true); ?>
+                                    <div class="asset-showcase__slide<?= $media_index === 0 ? ' is-active' : '' ?>" data-asset-showcase-slide data-media-type="<?= $media_is_3d ? '3D interaktif' : 'Foto produk' ?>" aria-hidden="<?= $media_index === 0 ? 'false' : 'true' ?>">
+                                        <?php if ($media_is_3d): ?>
+                                            <model-viewer src="<?= base_url('assets/uploads/barang/'.rawurlencode($media_filename)) ?>" alt="Model 3D <?= html_escape($aset->nama_aset) ?>" class="aset-thumbnail aset-thumbnail--product aset-thumbnail--model" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.65" exposure="1.05" auto-rotate auto-rotate-delay="1800" rotation-per-second="18deg" loading="eager" reveal="auto"></model-viewer>
+                                        <?php else: ?>
+                                            <img src="<?= base_url('assets/uploads/barang/'.rawurlencode($media_filename)) ?>" alt="<?= html_escape($aset->nama_aset) ?><?= count($asset_media) > 1 ? ' - media ' . ($media_index + 1) : '' ?>" class="aset-thumbnail aset-thumbnail--product" decoding="async"<?= $media_index === 0 ? ' fetchpriority="high"' : ' loading="lazy"' ?>>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                                <span class="asset-showcase__badge" data-asset-showcase-type><i class="bi bi-image"></i> Foto produk</span>
+                                <?php if (count($asset_media) > 1): ?>
+                                    <span class="asset-showcase__counter" data-asset-showcase-counter>1 / <?= count($asset_media) ?></span>
+                                    <button type="button" class="asset-showcase__nav asset-showcase__nav--previous" data-asset-showcase-previous aria-label="Media sebelumnya"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+                                    <button type="button" class="asset-showcase__nav asset-showcase__nav--next" data-asset-showcase-next aria-label="Media berikutnya"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (count($asset_media) > 1): ?>
+                                <div class="asset-showcase__footer" aria-label="Pilih media aset">
+                                    <?php foreach ($asset_media as $media_index => $media_filename): ?>
+                                        <?php $media_is_3d = in_array(strtolower(pathinfo($media_filename, PATHINFO_EXTENSION)), ['glb', 'gltf'], true); ?>
+                                        <button type="button" class="asset-showcase__dot<?= $media_index === 0 ? ' is-active' : '' ?>" data-asset-showcase-dot="<?= $media_index ?>" aria-label="Tampilkan <?= $media_is_3d ? 'model 3D' : 'foto' ?> <?= $media_index + 1 ?>" aria-current="<?= $media_index === 0 ? 'true' : 'false' ?>"></button>
+                                    <?php endforeach; ?>
+                                </div>
+                                <div class="asset-showcase__hint" data-asset-showcase-hint><i class="bi bi-arrow-left-right"></i> Geser atau gunakan tombol untuk melihat media lain</div>
                             <?php endif; ?>
                         <?php else: ?>
-                            <i class="bi bi-camera" style="font-size: 4rem; color: #f8f9fa; opacity: 0.8;"></i>
+                            <div class="asset-showcase"><i class="bi bi-camera" style="font-size: 4rem; color: #f8f9fa; opacity: 0.8;"></i></div>
                         <?php endif; ?>
                     </div>
                     <h5 class="fw-bold text-white mb-1"><?= $aset->nama_aset ?></h5>
@@ -334,6 +496,76 @@ $asset_is_3d = $has_uploaded_visual && in_array(strtolower(pathinfo($aset->gamba
             const imagePreview = document.getElementById('imagePreview');
             const fileNameDisplay = document.getElementById('fileName');
             const btnRemovePreview = document.getElementById('btnRemovePreview');
+
+            if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelectorAll('model-viewer[auto-rotate]').forEach(function (model) {
+                    model.removeAttribute('auto-rotate');
+                });
+            }
+
+            document.querySelectorAll('[data-asset-showcase]').forEach(function (showcase) {
+                const slides = Array.from(showcase.querySelectorAll('[data-asset-showcase-slide]'));
+                const dots = Array.from(showcase.parentElement.querySelectorAll('[data-asset-showcase-dot]'));
+                const previous = showcase.querySelector('[data-asset-showcase-previous]');
+                const next = showcase.querySelector('[data-asset-showcase-next]');
+                const badge = showcase.querySelector('[data-asset-showcase-type]');
+                const counter = showcase.querySelector('[data-asset-showcase-counter]');
+                const hint = showcase.parentElement.querySelector('[data-asset-showcase-hint]');
+                if (!slides.length) return;
+
+                let activeIndex = 0;
+                let swipeStart = null;
+
+                function showMedia(index) {
+                    activeIndex = (index + slides.length) % slides.length;
+                    slides.forEach(function (slide, slideIndex) {
+                        const active = slideIndex === activeIndex;
+                        slide.classList.toggle('is-active', active);
+                        slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+                    });
+                    dots.forEach(function (dot, dotIndex) {
+                        const active = dotIndex === activeIndex;
+                        dot.classList.toggle('is-active', active);
+                        dot.setAttribute('aria-current', active ? 'true' : 'false');
+                    });
+
+                    const mediaType = slides[activeIndex].dataset.mediaType || 'Media aset';
+                    if (badge) {
+                        badge.innerHTML = '<i class="bi ' + (mediaType.indexOf('3D') === 0 ? 'bi-badge-3d' : 'bi-image') + '"></i> ' + mediaType;
+                    }
+                    if (counter) counter.textContent = (activeIndex + 1) + ' / ' + slides.length;
+                    if (hint) {
+                        hint.innerHTML = mediaType.indexOf('3D') === 0
+                            ? '<i class="bi bi-mouse"></i> Drag model untuk melihat dari berbagai sudut'
+                            : '<i class="bi bi-arrow-left-right"></i> Geser atau gunakan tombol untuk melihat media lain';
+                    }
+                }
+
+                if (previous) previous.addEventListener('click', function () { showMedia(activeIndex - 1); });
+                if (next) next.addEventListener('click', function () { showMedia(activeIndex + 1); });
+                dots.forEach(function (dot) {
+                    dot.addEventListener('click', function () { showMedia(Number(dot.dataset.assetShowcaseDot)); });
+                });
+                showcase.addEventListener('keydown', function (event) {
+                    if (event.key === 'ArrowLeft') { event.preventDefault(); showMedia(activeIndex - 1); }
+                    if (event.key === 'ArrowRight') { event.preventDefault(); showMedia(activeIndex + 1); }
+                });
+                showcase.addEventListener('pointerdown', function (event) {
+                    if (event.target.closest('button, model-viewer')) return;
+                    swipeStart = { id: event.pointerId, x: event.clientX, y: event.clientY };
+                });
+                showcase.addEventListener('pointerup', function (event) {
+                    if (!swipeStart || swipeStart.id !== event.pointerId) return;
+                    const deltaX = event.clientX - swipeStart.x;
+                    const deltaY = event.clientY - swipeStart.y;
+                    swipeStart = null;
+                    if (Math.abs(deltaX) > 42 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                        showMedia(activeIndex + (deltaX < 0 ? 1 : -1));
+                    }
+                });
+                showcase.addEventListener('pointercancel', function () { swipeStart = null; });
+                showMedia(0);
+            });
 
             // Ambil data default foto lama (jika sedang di form edit)
             const defaultSrc = imagePreview ? imagePreview.getAttribute('data-default-src') : '#';
