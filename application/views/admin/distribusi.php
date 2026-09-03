@@ -14,6 +14,12 @@ $formatDistributionDate = static function ($value) {
     return $timestamp ? date('d M Y', $timestamp) : (string) $value;
 };
 
+$formatDistributionDateTime = static function ($value) {
+    $timestamp = strtotime((string) $value);
+    return $timestamp ? date('d M Y, H:i', $timestamp) : (string) $value;
+};
+$trackingDetailUrl = base_url('index.php/admin/distribusi/detail/');
+
 $distributionOrigins = [];
 $distributionDestinations = [];
 foreach ($distribusi as $item) {
@@ -55,7 +61,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         .distribution-toolbar .form-control, .distribution-toolbar .form-select { min-height: 40px; }
         .distribution-toolbar .btn { min-height: 40px; white-space: nowrap; }
         .distribution-table-wrap { overflow-x: auto; }
-        .distribution-table { min-width: 760px; margin: 0; }
+        .distribution-table { min-width: 1120px; margin: 0; }
         .distribution-table thead th { padding: .78rem .75rem; color: #111827 !important; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; font-size: .68rem; font-family: inherit; font-weight: 700 !important; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
         .distribution-table thead th, .distribution-table thead th * { color: #111827 !important; font-weight: 700 !important; }
         .distribution-table tbody td { padding: .9rem .75rem; color: #374151; border-color: #edf0f2; font-size: .78rem; vertical-align: middle; }
@@ -72,6 +78,11 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         .distribution-quantity { color: #111827; font-size: .82rem; font-weight: 600; text-align: center; }
         .distribution-date { white-space: nowrap; }
         .distribution-staff { color: #4b5563; font-weight: 500; }
+        .distribution-condition { display: inline-flex; align-items: center; padding: .22rem .5rem; border: 1px solid #b8d7c3; border-radius: 999px; color: #167749; background: #f1fcf5; font-size: .68rem; font-weight: 700; white-space: nowrap; }
+        .distribution-location { color: #374151; font-weight: 600; white-space: nowrap; }
+        .distribution-location i { color: #ea5b1a; margin-right: .22rem; }
+        .distribution-action { white-space: nowrap; }
+        .distribution-action .btn { font-size: .72rem; }
         .distribution-empty { padding: 4rem 1rem !important; color: #6b7280 !important; }
         .distribution-empty i { display: block; margin-bottom: .75rem; color: #c4cbd4; font-size: 2rem; }
         .distribution-pagination { display: flex; align-items: center; justify-content: space-between; gap: 1rem; min-height: 64px; padding: .75rem 1rem; border-top: 1px solid #e5e7eb; background: #fafbfc; color: #6b7280; font-size: .72rem; }
@@ -93,6 +104,27 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         .distribution-drawer .form-control, .distribution-drawer .form-select { min-height: 42px; }
         .distribution-drawer textarea.form-control { min-height: auto; }
         .distribution-drawer .form-hint { margin-top: .35rem; color: #9ca3af; font-size: .7rem; line-height: 1.45; }
+        .distribution-asset-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #f0d4c4; border-radius: 8px; background: #fffaf7; }
+        .distribution-asset-summary__name { color: #111827; font-size: .94rem; font-weight: 700; }
+        .distribution-asset-summary__meta { margin-top: .18rem; color: #6b7280; font-size: .75rem; }
+        .distribution-stock-info { padding: .7rem .8rem; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafbfc; color: #4b5563; font-size: .76rem; }
+        .tracking-modal .modal-content { border: 0; border-radius: 10px; overflow: hidden; }
+        .tracking-modal .modal-header { border-bottom: 3px solid #ea5b1a; background: #202124; color: #fff; }
+        .tracking-modal .modal-title { font-size: 1rem; font-weight: 700; }
+        .tracking-modal .btn-close { filter: invert(1) grayscale(1) brightness(3); }
+        .tracking-current-location { display: flex; align-items: center; gap: .65rem; padding: .82rem 1rem; border: 1px solid #f0d4c4; border-radius: 8px; background: #fffaf7; color: #374151; font-size: .8rem; }
+        .tracking-current-location i { color: #ea5b1a; font-size: 1rem; }
+        .tracking-timeline { position: relative; margin: 1.25rem 0 0 .3rem; padding-left: 1.55rem; }
+        .tracking-timeline::before { position: absolute; top: .45rem; bottom: .45rem; left: .25rem; width: 2px; background: #f1c7b1; content: ''; }
+        .tracking-event { position: relative; padding: 0 0 1.15rem; }
+        .tracking-event:last-child { padding-bottom: 0; }
+        .tracking-event::before { position: absolute; z-index: 1; top: .2rem; left: -1.55rem; width: .74rem; height: .74rem; border: 2px solid #ea5b1a; border-radius: 50%; background: #fff; content: ''; }
+        .tracking-event__title { color: #111827; font-size: .82rem; font-weight: 700; }
+        .tracking-event__route { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin-top: .3rem; color: #374151; font-size: .8rem; }
+        .tracking-event__route i { color: #ea5b1a; }
+        .tracking-event__meta { display: flex; flex-wrap: wrap; gap: .35rem .9rem; margin-top: .35rem; color: #6b7280; font-size: .72rem; }
+        .tracking-event__note { margin-top: .35rem; color: #6b7280; font-size: .73rem; line-height: 1.5; }
+        .tracking-loading { padding: 2rem 0; color: #6b7280; font-size: .82rem; text-align: center; }
         @media (max-width: 1100px) {
             .distribution-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .distribution-toolbar .toolbar-search { grid-column: 1 / -1; }
@@ -104,8 +136,9 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
             .distribution-page-heading .btn { align-self: flex-start; }
             .distribution-toolbar { grid-template-columns: 1fr; }
             .distribution-toolbar .toolbar-search { grid-column: auto; }
-            .distribution-table { min-width: 680px; }
+            .distribution-table { min-width: 1120px; }
             .distribution-drawer { width: 100% !important; }
+            .distribution-asset-summary { grid-template-columns: 1fr; }
             .distribution-pagination { align-items: stretch; flex-direction: column; }
             .distribution-pagination-left { justify-content: center; }
             .distribution-page-info { align-self: center; }
@@ -153,8 +186,9 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         'aset' => ['label' => 'Aset / kode', 'placeholder' => 'Cari nama aset atau kode'],
         'asal' => ['label' => 'Ruangan asal', 'placeholder' => 'Cari ruangan asal'],
         'tujuan' => ['label' => 'Ruangan tujuan', 'placeholder' => 'Cari ruangan tujuan'],
+        'lokasi_terakhir' => ['label' => 'Lokasi terakhir', 'placeholder' => 'Cari lokasi aset saat ini'],
         'jumlah' => ['label' => 'Jumlah', 'placeholder' => 'Cari jumlah barang', 'type' => 'number'],
-        'tanggal' => ['label' => 'Tanggal', 'placeholder' => 'Pilih tanggal distribusi', 'type' => 'date'],
+        'tanggal' => ['label' => 'Rentang tanggal', 'placeholder' => 'YYYY-MM-DD..YYYY-MM-DD'],
         'petugas' => ['label' => 'Petugas', 'placeholder' => 'Cari nama petugas'],
     ];
     include APPPATH . 'views/admin/_multi_filter.php';
@@ -172,15 +206,18 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                     <tr>
                         <th class="distribution-index-column">No</th>
                         <th class="ps-3">Aset</th>
+                        <th>Kondisi</th>
                         <th>Perpindahan</th>
+                        <th>Lokasi Terakhir</th>
                         <th class="text-center">Jumlah</th>
-                        <th>Tanggal</th>
-                        <th class="pe-3">Petugas</th>
+                        <th>Waktu</th>
+                        <th>Petugas</th>
+                        <th class="pe-3 text-end">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="distributionTableBody">
                 <?php if (empty($distribusi)): ?>
-                    <tr id="distributionEmptyRow"><td colspan="6" class="distribution-empty text-center"><i class="bi bi-arrow-left-right"></i><div class="fw-semibold text-dark">Belum ada riwayat distribusi</div><div class="small mt-1">Catat perpindahan barang pertama untuk mulai melihat riwayat distribusi.</div></td></tr>
+                    <tr id="distributionEmptyRow"><td colspan="9" class="distribution-empty text-center"><i class="bi bi-arrow-left-right"></i><div class="fw-semibold text-dark">Belum ada riwayat distribusi</div><div class="small mt-1">Catat perpindahan barang pertama untuk mulai melihat riwayat distribusi.</div></td></tr>
                 <?php else: foreach ($distribusi as $distribution_index => $d): ?>
                     <?php
                     $assetName = (string) ($d->nama_aset ?? '-');
@@ -188,15 +225,20 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                     $origin = (string) ($d->ruangan_asal ?? '-');
                     $destination = (string) ($d->ruangan_tujuan ?? '-');
                     $dateValue = (string) ($d->tanggal_distribusi ?? '');
-                    $searchText = strtolower(implode(' ', [$assetName, $assetCode, $origin, $destination, (string) ($d->nama_petugas ?? ''), (string) ($d->keterangan ?? '')]));
+                    $lastLocation = (string) ($d->lokasi_terakhir ?? '-');
+                    $condition = (string) ($d->kondisi_aset ?: $d->kondisi_terkini ?: '-');
+                    $dateTimeValue = (string) ($d->waktu_distribusi ?: $d->created_at ?: $dateValue);
                     ?>
-                    <tr class="distribution-data-row" data-filter-aset="<?= html_escape($assetName . ' ' . $assetCode) ?>" data-filter-asal="<?= html_escape($origin) ?>" data-filter-tujuan="<?= html_escape($destination) ?>" data-filter-jumlah="<?= (int) $d->jumlah ?>" data-filter-tanggal="<?= html_escape($dateValue) ?>" data-filter-petugas="<?= html_escape($d->nama_petugas ?? '-') ?>">
+                    <tr class="distribution-data-row" data-filter-aset="<?= html_escape($assetName . ' ' . $assetCode) ?>" data-filter-asal="<?= html_escape($origin) ?>" data-filter-tujuan="<?= html_escape($destination) ?>" data-filter-lokasi_terakhir="<?= html_escape($lastLocation) ?>" data-filter-jumlah="<?= (int) $d->jumlah ?>" data-filter-tanggal="<?= html_escape($dateValue) ?>" data-filter-petugas="<?= html_escape($d->nama_petugas ?? '-') ?>">
                         <td class="distribution-index-column"><span class="distribution-index"><?= (($distribution_page - 1) * $distribution_per_page) + $distribution_index + 1 ?></span></td>
                         <td class="ps-3"><div class="asset-name"><?= html_escape($assetName) ?></div><div class="asset-meta"><?= html_escape($assetCode) ?></div></td>
+                        <td><span class="distribution-condition"><?= html_escape($condition) ?></span></td>
                         <td><div class="distribution-route"><span><?= html_escape($origin) ?></span><i class="bi bi-arrow-right" aria-hidden="true"></i><span class="route-destination"><?= html_escape($destination) ?></span></div><?php if (trim((string) ($d->keterangan ?? '')) !== ''): ?><div class="distribution-note" title="<?= html_escape($d->keterangan) ?>"><?= html_escape($d->keterangan) ?></div><?php endif; ?></td>
+                        <td><span class="distribution-location"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><?= html_escape($lastLocation) ?></span></td>
                         <td class="distribution-quantity"><?= (int) $d->jumlah ?></td>
-                        <td class="distribution-date"><?= html_escape($formatDistributionDate($dateValue)) ?></td>
-                        <td class="distribution-staff pe-3"><?= html_escape($d->nama_petugas ?: 'Laboran') ?></td>
+                        <td class="distribution-date"><?= html_escape($formatDistributionDateTime($dateTimeValue)) ?></td>
+                        <td class="distribution-staff"><?= html_escape($d->nama_petugas ?: 'Laboran') ?></td>
+                        <td class="distribution-action pe-3 text-end"><button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-2 js-view-tracking" data-asset-id="<?= (int) $d->id_aset ?>"><i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>Tracking</button></td>
                     </tr>
                 <?php endforeach; endif; ?>
                 </tbody>
@@ -228,106 +270,189 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
     </div>
     <div class="offcanvas-body">
-        <form action="<?= base_url('index.php/admin/distribusi/simpan') ?>" method="post" class="vstack gap-3">
-            <div><label class="form-label" for="distributionAsset">Aset</label><select id="distributionAsset" name="id_aset" class="form-select" required><option value="">Pilih aset</option><?php foreach ($aset as $a): ?><option value="<?= $a->id_aset ?>"><?= html_escape($a->nama_aset . ' - ' . $a->kode_aset . ' (' . $a->nama_ruangan . ')') ?></option><?php endforeach; ?></select></div>
-            <div><label class="form-label" for="distributionRoom">Ruangan Tujuan</label><select id="distributionRoom" name="id_ruangan_tujuan" class="form-select" required><option value="">Pilih ruangan</option><?php foreach ($ruangan as $r): ?><option value="<?= $r['id_ruangan'] ?>"><?= html_escape($r['nama_ruangan']) ?></option><?php endforeach; ?></select></div>
-            <div class="row g-3"><div class="col-6"><label class="form-label" for="distributionAmount">Jumlah</label><input id="distributionAmount" type="number" name="jumlah" min="1" value="1" class="form-control"></div><div class="col-6"><label class="form-label" for="distributionTransferDate">Tanggal</label><input id="distributionTransferDate" type="date" name="tanggal_distribusi" value="<?= date('Y-m-d') ?>" class="form-control"></div></div>
-            <div><label class="form-label" for="distributionNotes">Keterangan</label><textarea id="distributionNotes" name="keterangan" class="form-control" rows="4"></textarea><div class="form-hint">Tambahkan catatan jika diperlukan untuk menjelaskan perpindahan.</div></div>
+        <form id="distributionForm" action="<?= base_url('index.php/admin/distribusi/simpan') ?>" method="post" class="vstack gap-3">
+            <div>
+                <label class="form-label" for="distributionAsset">Pilih Aset</label>
+                <select id="distributionAsset" name="id_aset" class="form-select" required>
+                    <option value="">Pilih aset</option>
+                    <?php foreach ($aset as $a): ?>
+                        <option value="<?= (int) $a->id_aset ?>" data-code="<?= html_escape($a->kode_aset) ?>" data-room-id="<?= (int) $a->id_ruangan ?>" data-room="<?= html_escape($a->nama_ruangan) ?>" data-stock="<?= (int) $a->jumlah_tersedia ?>" data-condition="<?= html_escape($a->kondisi ?: '-') ?>"><?= html_escape($a->nama_aset . ' - ' . $a->kode_aset . ' (' . $a->nama_ruangan . ')') ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <div class="row g-3">
+                <div class="col-sm-6"><label class="form-label" for="distributionAssetCode">Kode Aset</label><input id="distributionAssetCode" type="text" class="form-control" readonly placeholder="Terisi otomatis"></div>
+                <div class="col-sm-6"><label class="form-label" for="distributionCondition">Kondisi Aset</label><input id="distributionCondition" type="text" class="form-control" readonly placeholder="Terisi otomatis"></div>
+            </div>
+            <div id="distributionStockInfo" class="distribution-stock-info"><i class="bi bi-box-seam me-1" aria-hidden="true"></i>Pilih aset untuk melihat lokasi dan stok tersedia.</div>
+            <div>
+                <label class="form-label" for="distributionOrigin">Lokasi / Ruangan Asal</label>
+                <select id="distributionOrigin" name="id_ruangan_asal" class="form-select" required>
+                    <option value="">Pilih ruangan asal</option>
+                    <?php foreach ($ruangan as $r): ?><option value="<?= (int) $r['id_ruangan'] ?>"><?= html_escape($r['nama_ruangan']) ?></option><?php endforeach; ?>
+                </select>
+                <div class="form-hint">Lokasi terakhir aset terisi otomatis dan dapat disesuaikan oleh petugas yang memiliki akses distribusi.</div>
+            </div>
+            <div><label class="form-label" for="distributionRoom">Lokasi / Ruangan Tujuan</label><select id="distributionRoom" name="id_ruangan_tujuan" class="form-select" required><option value="">Pilih ruangan tujuan</option><?php foreach ($ruangan as $r): ?><option value="<?= (int) $r['id_ruangan'] ?>"><?= html_escape($r['nama_ruangan']) ?></option><?php endforeach; ?></select></div>
+            <div class="row g-3">
+                <div class="col-sm-4"><label class="form-label" for="distributionAmount">Jumlah</label><input id="distributionAmount" type="number" name="jumlah" min="1" value="1" class="form-control" required></div>
+                <div class="col-sm-4"><label class="form-label" for="distributionTransferDate">Tanggal</label><input id="distributionTransferDate" type="date" name="tanggal_distribusi" value="<?= date('Y-m-d') ?>" class="form-control" required></div>
+                <div class="col-sm-4"><label class="form-label" for="distributionTransferTime">Jam</label><input id="distributionTransferTime" type="time" name="jam_distribusi" value="<?= date('H:i') ?>" class="form-control" required></div>
+            </div>
+            <div class="row g-3">
+                <div class="col-sm-6"><label class="form-label" for="distributionOfficer">Petugas</label><input id="distributionOfficer" type="text" class="form-control" value="<?= html_escape($operator_name ?? 'Petugas Laboratorium') ?>" readonly></div>
+                <div class="col-sm-6"><label class="form-label" for="distributionRecipient">Penanggung Jawab Penerima</label><input id="distributionRecipient" type="text" name="penerima" maxlength="150" class="form-control" placeholder="Opsional"></div>
+            </div>
+            <div><label class="form-label" for="distributionNotes">Keterangan / Catatan</label><textarea id="distributionNotes" name="keterangan" class="form-control" rows="4" maxlength="1000"></textarea><div class="form-hint">Tambahkan catatan untuk menjelaskan alasan atau kondisi perpindahan bila diperlukan.</div></div>
             <button type="submit" class="btn btn-fik rounded-pill mt-2"><i class="bi bi-arrow-left-right me-1"></i> Simpan Distribusi</button>
         </form>
+    </div>
+</div>
+
+<div class="modal fade tracking-modal" id="trackingModal" tabindex="-1" aria-labelledby="trackingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="trackingModalLabel"><i class="bi bi-diagram-3 me-2" aria-hidden="true"></i>Riwayat Perpindahan Aset</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div id="trackingModalContent" class="tracking-loading"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Memuat riwayat perpindahan...</div>
+            </div>
+        </div>
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const filterRoot = document.getElementById('distributionMultiFilter');
-    const pageSizeSelect = document.getElementById('distributionPageSize');
-    const total = document.getElementById('distributionTotal');
-    const pageInfo = document.getElementById('distributionPageInfo');
-    const pagination = document.getElementById('distributionPagination');
-    const filteredEmpty = document.getElementById('distributionFilteredEmpty');
-    const rows = Array.from(document.querySelectorAll('.distribution-data-row'));
-    let currentPage = 1;
+    const assetSelect = document.getElementById('distributionAsset');
+    const originSelect = document.getElementById('distributionOrigin');
+    const targetSelect = document.getElementById('distributionRoom');
+    const amountInput = document.getElementById('distributionAmount');
+    const assetCode = document.getElementById('distributionAssetCode');
+    const conditionInput = document.getElementById('distributionCondition');
+    const stockInfo = document.getElementById('distributionStockInfo');
+    const distributionForm = document.getElementById('distributionForm');
+    const trackingModalElement = document.getElementById('trackingModal');
+    const trackingContent = document.getElementById('trackingModalContent');
+    const trackingBaseUrl = <?= json_encode($trackingDetailUrl) ?>;
+    const trackingModal = trackingModalElement && window.bootstrap ? new bootstrap.Modal(trackingModalElement) : null;
 
-    if (!filterRoot || filterRoot.dataset.mode !== 'client' || !pageSizeSelect || !total || !pageInfo || !pagination) return;
-
-    const getPageSize = function () {
-        return pageSizeSelect.value === 'all' ? Math.max(rows.length, 1) : Math.max(parseInt(pageSizeSelect.value, 10) || 10, 1);
-    };
-    const compactPageTokens = function (pageCount, currentPage) {
-        if (pageCount <= 7) return Array.from({ length: pageCount }, function (_, index) { return index + 1; });
-        if (currentPage <= 3) return [1, 2, 3, 4, 5, 'ellipsis', pageCount];
-        if (currentPage >= pageCount - 2) return [pageCount - 4, pageCount - 3, pageCount - 2, pageCount - 1, pageCount];
-        return [1, 'ellipsis', currentPage - 2, currentPage - 1, currentPage, currentPage + 1, currentPage + 2, 'ellipsis', pageCount];
+    const escapeHtml = function (value) {
+        return String(value == null ? '' : value).replace(/[&<>'"]/g, function (character) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'}[character];
+        });
     };
 
-    const createPageItem = function (label, page, disabled, active, ariaLabel, ellipsis) {
-        const item = document.createElement('li');
-        item.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
-        if (ellipsis) {
-            item.setAttribute('aria-hidden', 'true');
-            const separator = document.createElement('span');
-            separator.className = 'page-link';
-            separator.textContent = '...';
-            item.appendChild(separator);
-            return item;
+    const formatDateTime = function (value) {
+        if (!value) return 'Tidak tercatat';
+        const date = new Date(String(value).replace(' ', 'T'));
+        if (Number.isNaN(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat('id-ID', {
+            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        }).format(date).replace('.', ':');
+    };
+
+    const refreshTargetOptions = function () {
+        if (!originSelect || !targetSelect) return;
+        Array.from(targetSelect.options).forEach(function (option) {
+            option.disabled = option.value !== '' && option.value === originSelect.value;
+        });
+        if (targetSelect.value && targetSelect.value === originSelect.value) targetSelect.value = '';
+    };
+
+    const populateAssetDetails = function () {
+        if (!assetSelect) return;
+        const selected = assetSelect.options[assetSelect.selectedIndex];
+        const hasAsset = Boolean(selected && selected.value);
+        const stock = hasAsset ? Math.max(parseInt(selected.dataset.stock || '0', 10), 0) : 0;
+
+        assetCode.value = hasAsset ? selected.dataset.code || '' : '';
+        conditionInput.value = hasAsset ? selected.dataset.condition || '-' : '';
+        amountInput.max = stock > 0 ? String(stock) : '';
+        if (stock > 0 && parseInt(amountInput.value || '1', 10) > stock) amountInput.value = String(stock);
+        if (!amountInput.value || parseInt(amountInput.value, 10) < 1) amountInput.value = '1';
+
+        if (hasAsset) {
+            originSelect.value = selected.dataset.roomId || '';
+            stockInfo.innerHTML = '<i class="bi bi-box-seam me-1" aria-hidden="true"></i>Lokasi terakhir: <strong>' + escapeHtml(selected.dataset.room || '-') + '</strong> &middot; Stok tersedia: <strong>' + stock + '</strong>';
+        } else {
+            originSelect.value = '';
+            stockInfo.innerHTML = '<i class="bi bi-box-seam me-1" aria-hidden="true"></i>Pilih aset untuk melihat lokasi dan stok tersedia.';
         }
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'page-link';
-        button.textContent = label;
-        button.setAttribute('aria-label', ariaLabel || label);
-        if (active) button.setAttribute('aria-current', 'page');
-        button.disabled = disabled;
-        if (!disabled && !active) button.addEventListener('click', function () {
-            currentPage = page;
-            render();
+        refreshTargetOptions();
+    };
+
+    if (assetSelect) assetSelect.addEventListener('change', populateAssetDetails);
+    if (originSelect) originSelect.addEventListener('change', refreshTargetOptions);
+    if (distributionForm) {
+        distributionForm.addEventListener('submit', function (event) {
+            const selected = assetSelect.options[assetSelect.selectedIndex];
+            const stock = selected && selected.value ? parseInt(selected.dataset.stock || '0', 10) : 0;
+            const amount = parseInt(amountInput.value || '0', 10);
+            let message = '';
+            if (originSelect.value && targetSelect.value && originSelect.value === targetSelect.value) {
+                message = 'Ruangan tujuan harus berbeda dari ruangan asal.';
+            } else if (!Number.isInteger(amount) || amount < 1 || amount > stock) {
+                message = 'Jumlah distribusi harus berada dalam batas stok tersedia.';
+            }
+
+            if (message) {
+                event.preventDefault();
+                amountInput.setCustomValidity(message);
+                amountInput.reportValidity();
+                amountInput.setCustomValidity('');
+            }
         });
-        item.appendChild(button);
-        return item;
+    }
+
+    const renderTracking = function (payload) {
+        const asset = payload.asset || {};
+        const history = Array.isArray(payload.history) ? payload.history : [];
+        const summary = '<div class="distribution-asset-summary">'
+            + '<div><div class="distribution-asset-summary__name">' + escapeHtml(asset.nama_aset || '-') + '</div>'
+            + '<div class="distribution-asset-summary__meta">' + escapeHtml(asset.kode_aset || '-') + ' &middot; Kondisi: ' + escapeHtml(asset.kondisi || '-') + '</div></div>'
+            + '<span class="distribution-condition">Stok tersedia: ' + escapeHtml(asset.jumlah_tersedia || 0) + '</span></div>'
+            + '<div class="tracking-current-location mt-3"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><div><strong>Lokasi terakhir</strong><br>' + escapeHtml(asset.lokasi_terakhir || '-') + '</div></div>';
+
+        if (!history.length) {
+            trackingContent.innerHTML = summary + '<div class="tracking-loading">Belum ada riwayat perpindahan untuk aset ini.</div>';
+            return;
+        }
+
+        const events = history.map(function (movement, index) {
+            const condition = movement.kondisi_aset || asset.kondisi || '-';
+            const note = movement.keterangan ? '<div class="tracking-event__note">' + escapeHtml(movement.keterangan) + '</div>' : '';
+            const receiver = movement.penerima ? '<span><i class="bi bi-person-check me-1" aria-hidden="true"></i>Penerima: ' + escapeHtml(movement.penerima) + '</span>' : '';
+            return '<article class="tracking-event">'
+                + '<div class="tracking-event__title">Perpindahan ' + (index + 1) + '</div>'
+                + '<div class="tracking-event__route"><strong>' + escapeHtml(movement.ruangan_asal || '-') + '</strong><i class="bi bi-arrow-right" aria-hidden="true"></i><strong>' + escapeHtml(movement.ruangan_tujuan || '-') + '</strong></div>'
+                + '<div class="tracking-event__meta"><span><i class="bi bi-person me-1" aria-hidden="true"></i>Petugas: ' + escapeHtml(movement.nama_petugas || 'Laboran') + '</span>'
+                + '<span><i class="bi bi-clock me-1" aria-hidden="true"></i>' + escapeHtml(formatDateTime(movement.waktu_distribusi || movement.created_at || movement.tanggal_distribusi)) + '</span>'
+                + '<span><i class="bi bi-box-seam me-1" aria-hidden="true"></i>Jumlah: ' + escapeHtml(movement.jumlah || 0) + '</span>'
+                + '<span><i class="bi bi-check2-circle me-1" aria-hidden="true"></i>Kondisi: ' + escapeHtml(condition) + '</span>' + receiver + '</div>' + note + '</article>';
+        }).join('');
+        trackingContent.innerHTML = summary + '<div class="tracking-timeline">' + events + '</div>';
     };
 
-    const renderPagination = function (pageCount, filteredRows) {
-        pagination.replaceChildren();
-        pagination.appendChild(createPageItem('Previous', currentPage - 1, currentPage <= 1, false, 'Halaman sebelumnya'));
-
-        compactPageTokens(pageCount, currentPage).forEach(function (token) {
-            pagination.appendChild(typeof token === 'string'
-                ? createPageItem('...', currentPage, true, false, 'Pemisah halaman', true)
-                : createPageItem(String(token), token, false, token === currentPage, 'Halaman ' + token));
+    document.querySelectorAll('.js-view-tracking').forEach(function (button) {
+        button.addEventListener('click', function () {
+            const assetId = button.dataset.assetId;
+            if (!assetId || !trackingModal) return;
+            trackingContent.innerHTML = '<div class="tracking-loading"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Memuat riwayat perpindahan...</div>';
+            trackingModal.show();
+            fetch(trackingBaseUrl + encodeURIComponent(assetId), {headers: {'Accept': 'application/json'}})
+                .then(function (response) { return response.json(); })
+                .then(function (payload) {
+                    if (!payload.success) throw new Error(payload.message || 'Riwayat perpindahan tidak dapat dimuat.');
+                    renderTracking(payload);
+                })
+                .catch(function (error) {
+                    trackingContent.innerHTML = '<div class="tracking-loading text-danger"><i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>' + escapeHtml(error.message || 'Riwayat perpindahan tidak dapat dimuat.') + '</div>';
+                });
         });
-
-        pagination.appendChild(createPageItem('Next', currentPage + 1, currentPage >= pageCount, false, 'Halaman berikutnya'));
-        pageInfo.textContent = 'Halaman: ' + currentPage + ' dari ' + pageCount;
-        total.textContent = 'Total item: ' + filteredRows.length;
-    };
-
-    const render = function () {
-        const criteria = AdminMultiFilter.getCriteria(filterRoot);
-        const filteredRows = rows.filter(function (row) { return AdminMultiFilter.matches(row, criteria); });
-        const pageSize = getPageSize();
-        const pageCount = Math.max(Math.ceil(filteredRows.length / pageSize), 1);
-        currentPage = Math.min(currentPage, pageCount);
-        const firstIndex = (currentPage - 1) * pageSize;
-        const visibleRows = new Set(filteredRows.slice(firstIndex, firstIndex + pageSize));
-
-        rows.forEach(function (row) {
-            row.hidden = !visibleRows.has(row);
-        });
-
-        if (filteredEmpty) filteredEmpty.hidden = rows.length === 0 || filteredRows.length !== 0;
-        renderPagination(pageCount, filteredRows);
-    };
-
-    const filterChanged = function () {
-        currentPage = 1;
-        render();
-    };
-
-    filterRoot.addEventListener('admin-multi-filter-change', filterChanged);
-    pageSizeSelect.addEventListener('change', filterChanged);
-    render();
+    });
 });
 </script>
 </body>

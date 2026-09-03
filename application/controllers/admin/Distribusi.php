@@ -44,39 +44,101 @@ class Distribusi extends CI_Controller {
         $data['pagination'] = compact('page', 'per_page', 'total', 'total_pages');
         $data['aset'] = $this->Aset_model->get_all_aset_ordered('nama_aset', 'ASC');
         $data['ruangan'] = $this->Ruangan_model->get_all();
+        $data['operator_name'] = (string) ($this->session->userdata('nama_lengkap') ?: $this->session->userdata('nama') ?: $this->session->userdata('username') ?: 'Petugas Laboratorium');
         $this->load->view('admin/distribusi', $data);
     }
 
     public function simpan() {
-        $id_aset = $this->input->post('id_aset', true);
-        $id_ruangan_tujuan = $this->input->post('id_ruangan_tujuan', true);
-        $jumlah = max(1, (int) $this->input->post('jumlah', true));
+        $id_aset = (int) $this->input->post('id_aset', true);
+        $id_ruangan_asal_input = (int) $this->input->post('id_ruangan_asal', true);
+        $id_ruangan_tujuan = (int) $this->input->post('id_ruangan_tujuan', true);
+        $jumlah = (int) $this->input->post('jumlah', true);
+        $tanggal = (string) ($this->input->post('tanggal_distribusi', true) ?: date('Y-m-d'));
+        $jam = (string) ($this->input->post('jam_distribusi', true) ?: date('H:i'));
+        $keterangan = trim((string) $this->input->post('keterangan', true));
+        $penerima = trim((string) $this->input->post('penerima', true));
 
-        $aset = $this->Aset_model->get_aset_by_id($id_aset);
-        if (!$aset || !$id_ruangan_tujuan) {
-            $this->session->set_flashdata('error', 'Aset dan ruangan tujuan wajib dipilih.');
+        if ($id_aset < 1 || $id_ruangan_tujuan < 1 || $jumlah < 1 || !$this->is_valid_date($tanggal) || !$this->is_valid_time($jam)) {
+            $this->session->set_flashdata('error', 'Lengkapi aset, jumlah, lokasi tujuan, tanggal, dan jam distribusi dengan benar.');
             redirect('admin/distribusi');
         }
 
-        if ((int) $aset->id_ruangan === (int) $id_ruangan_tujuan) {
-            $this->session->set_flashdata('error', 'Ruangan tujuan sama dengan ruangan saat ini.');
+        $this->db->trans_begin();
+        $aset = $this->Aset_model->get_aset_by_id_for_update($id_aset);
+        $id_ruangan_asal = $id_ruangan_asal_input > 0 ? $id_ruangan_asal_input : (int) ($aset->id_ruangan ?? 0);
+        $asal = $id_ruangan_asal > 0 ? $this->Ruangan_model->get_by_id($id_ruangan_asal) : null;
+        $tujuan = $this->Ruangan_model->get_by_id($id_ruangan_tujuan);
+
+        if (!$aset || !$asal || !$tujuan) {
+            $this->db->trans_rollback();
+            $this->session->set_flashdata('error', 'Aset, ruangan asal, atau ruangan tujuan tidak ditemukan.');
             redirect('admin/distribusi');
         }
 
-        $this->db->trans_start();
-        $this->Distribusi_model->insert([
+        if ($id_ruangan_asal === $id_ruangan_tujuan) {
+            $this->db->trans_rollback();
+            $this->session->set_flashdata('error', 'Ruangan tujuan harus berbeda dari ruangan asal.');
+            redirect('admin/distribusi');
+        }
+
+        if ($jumlah > (int) $aset->jumlah_tersedia) {
+            $this->db->trans_rollback();
+            $this->session->set_flashdata('error', 'Jumlah distribusi melebihi stok aset yang tersedia.');
+            redirect('admin/distribusi');
+        }
+
+        $saved = $this->Distribusi_model->insert([
             'id_aset' => $id_aset,
-            'id_ruangan_asal' => $aset->id_ruangan,
+            'id_ruangan_asal' => $id_ruangan_asal,
             'id_ruangan_tujuan' => $id_ruangan_tujuan,
             'jumlah' => $jumlah,
-            'tanggal_distribusi' => $this->input->post('tanggal_distribusi', true) ?: date('Y-m-d'),
-            'keterangan' => $this->input->post('keterangan', true),
-            'created_by' => $this->session->userdata('id_user'),
+            'kondisi_aset' => (string) ($aset->kondisi ?? ''),
+            'tanggal_distribusi' => $tanggal,
+            'waktu_distribusi' => $tanggal . ' ' . $jam . ':00',
+            'keterangan' => $keterangan !== '' ? $keterangan : null,
+            'penerima' => $penerima !== '' ? $penerima : null,
+            'created_by' => (int) $this->session->userdata('id_user'),
         ]);
-        $this->db->where('id_aset', $id_aset)->update('aset', ['id_ruangan' => $id_ruangan_tujuan]);
-        $this->db->trans_complete();
+        $updated = $this->db->where('id_aset', $id_aset)->update('aset', ['id_ruangan' => $id_ruangan_tujuan]);
 
-        $this->session->set_flashdata($this->db->trans_status() ? 'success' : 'error', $this->db->trans_status() ? 'Distribusi barang berhasil dicatat dan lokasi aset diperbarui.' : 'Gagal menyimpan distribusi barang.');
+        if (!$saved || !$updated || $this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            $this->session->set_flashdata('error', 'Gagal menyimpan distribusi. Lokasi aset dan riwayat tidak diubah.');
+            redirect('admin/distribusi');
+        }
+
+        $this->db->trans_commit();
+        $this->session->set_flashdata('success', 'Distribusi berhasil dicatat. Lokasi terakhir aset dan riwayat perpindahan telah diperbarui.');
         redirect('admin/distribusi');
+    }
+
+    public function detail($id_aset = 0) {
+        $asset = $this->Distribusi_model->get_asset_tracking((int) $id_aset);
+        if (!$asset) {
+            return $this->json_response(['success' => false, 'message' => 'Aset tidak ditemukan.'], 404);
+        }
+
+        return $this->json_response([
+            'success' => true,
+            'asset' => $asset,
+            'history' => $this->Distribusi_model->get_tracking_history((int) $id_aset),
+        ]);
+    }
+
+    private function is_valid_date($value) {
+        $date = DateTime::createFromFormat('Y-m-d', $value);
+        return $date && $date->format('Y-m-d') === $value;
+    }
+
+    private function is_valid_time($value) {
+        $time = DateTime::createFromFormat('H:i', $value);
+        return $time && $time->format('H:i') === $value;
+    }
+
+    private function json_response($payload, $status = 200) {
+        $this->output
+            ->set_status_header($status)
+            ->set_content_type('application/json')
+            ->set_output(json_encode($payload, JSON_UNESCAPED_UNICODE));
     }
 }

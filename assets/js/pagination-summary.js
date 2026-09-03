@@ -15,6 +15,7 @@
         return Array.from(document.querySelectorAll(
             '[class*="pagination-footer"], .kp-pagination-footer, .blokir-footer, .distribution-pagination'
         )).filter(function (footer) {
+            if (footer.dataset.scmPaginationLayout === 'inline') return false;
             return (footer.dataset.scmPaginationEnhanced === 'true' || footer.querySelector('select')) && footer.querySelector('nav');
         });
     }

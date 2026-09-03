@@ -421,14 +421,19 @@ CREATE TABLE `distribusi_barang` (
   `id_ruangan_asal` int(11) DEFAULT NULL,
   `id_ruangan_tujuan` int(11) NOT NULL,
   `jumlah` int(11) NOT NULL DEFAULT 1,
+  `kondisi_aset` varchar(50) DEFAULT NULL,
   `tanggal_distribusi` date NOT NULL,
+  `waktu_distribusi` datetime DEFAULT NULL,
   `keterangan` text DEFAULT NULL,
+  `penerima` varchar(150) DEFAULT NULL,
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE current_timestamp(),
   PRIMARY KEY (`id_distribusi`),
   KEY `idx_distribusi_aset` (`id_aset`),
   KEY `idx_distribusi_asal` (`id_ruangan_asal`),
-  KEY `idx_distribusi_tujuan` (`id_ruangan_tujuan`)
+  KEY `idx_distribusi_tujuan` (`id_ruangan_tujuan`),
+  KEY `idx_distribusi_waktu` (`waktu_distribusi`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 -- --------------------------------------------------------
 

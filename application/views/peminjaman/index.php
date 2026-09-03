@@ -11,8 +11,22 @@ $catalog_page = (int) $catalog_pagination['page'];
 $catalog_per_page = (int) $catalog_pagination['per_page'];
 $catalog_total = (int) $catalog_pagination['total'];
 $catalog_total_pages = (int) $catalog_pagination['total_pages'];
+$catalog_first_item = $catalog_total > 0 ? (($catalog_page - 1) * $catalog_per_page) + 1 : 0;
+$catalog_last_item = $catalog_total > 0 ? min($catalog_total, $catalog_page * $catalog_per_page) : 0;
 $catalog_query = $_GET;
 $catalog_query['per_page'] = $catalog_per_page;
+$catalog_page_size_query = $catalog_query;
+unset($catalog_page_size_query['per_page'], $catalog_page_size_query['page']);
+$catalog_page_size_hidden = [];
+foreach ($catalog_page_size_query as $query_name => $query_value) {
+    if (is_array($query_value)) {
+        foreach ($query_value as $array_value) {
+            $catalog_page_size_hidden[] = ['name' => $query_name . '[]', 'value' => $array_value];
+        }
+    } elseif ($query_value !== null) {
+        $catalog_page_size_hidden[] = ['name' => $query_name, 'value' => $query_value];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -404,11 +418,11 @@ $catalog_query['per_page'] = $catalog_per_page;
         .catalog-filter-hint { grid-column:1 / -1; margin-top:-3px; color:#7c8791; font-size:.66rem; }
         .catalog-empty-result { padding:48px 18px; text-align:center; }
         .catalog-empty-result i { display:block; margin-bottom:10px; color:#a8b1bb; font-size:2.4rem; }
-        .catalog-pagination-footer { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:16px; margin-top:30px; padding:12px 14px; border:1px solid #e1e5e9; border-radius:10px; background:#fff; color:#6f7a85; font-size:.7rem; }
+        .catalog-pagination-footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px; margin-top:30px; padding:12px 14px; border:1px solid #e1e5e9; border-radius:10px; background:#fff; color:#6f7a85; font-size:.7rem; }
         .catalog-pagination-summary { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
         .catalog-pagination-summary .form-select { width:72px; min-height:34px; border-color:#cfd6dd; background:#fff; color:#27313b; font-size:.7rem; }
-        .catalog-pagination-status { text-align:center; white-space:nowrap; }
-        .catalog-page-nav { display:flex; justify-content:flex-end; }
+        .catalog-pagination-status { flex:1 1 auto; text-align:center; white-space:nowrap; }
+        .catalog-page-nav { display:flex; flex:0 0 auto; justify-content:flex-end; margin-left:auto; }
         .catalog-pagination { margin:0; }
         .catalog-pagination .page-link { display:inline-flex; min-width:34px; min-height:34px; align-items:center; justify-content:center; border-color:#e1e5e9; background:#fff; color:#27313b; font-size:.7rem; }
         .catalog-pagination .page-link:hover { background:#fff7f2; color:#ea5b1a; }
@@ -492,8 +506,10 @@ $catalog_query['per_page'] = $catalog_per_page;
         @media (max-width: 575.98px) {
             .catalog-filter-hint { grid-column:auto; }
             .catalog-reset { width:100%; }
-            .catalog-pagination-footer { grid-template-columns:1fr; justify-items:center; }
-            .catalog-page-nav { max-width:100%; justify-content:center; overflow-x:auto; }
+            .catalog-pagination-footer { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:8px 12px; }
+            .catalog-pagination-summary { grid-column:1; grid-row:1; justify-content:flex-start; }
+            .catalog-pagination-status { grid-column:1; grid-row:2; min-width:0; text-align:left; white-space:normal; }
+            .catalog-page-nav { grid-column:2; grid-row:1 / span 2; max-width:100%; margin-left:0; justify-content:flex-end; overflow-x:auto; }
             .sop-modal-content {
                 border-radius: 0;
             }
@@ -506,8 +522,10 @@ $catalog_query['per_page'] = $catalog_per_page;
         @media (min-width:576px) and (max-width:991.98px) {
             .catalog-reset, .catalog-filter-hint { grid-column:1 / -1; }
             .catalog-reset { justify-self:end; }
-            .catalog-pagination-footer { grid-template-columns:1fr; justify-items:center; }
-            .catalog-page-nav { justify-content:center; }
+            .catalog-pagination-footer { display:grid; grid-template-columns:minmax(0, 1fr) auto; align-items:center; gap:8px 16px; }
+            .catalog-pagination-summary { grid-column:1; grid-row:1; justify-content:flex-start; }
+            .catalog-pagination-status { grid-column:1; grid-row:2; text-align:left; }
+            .catalog-page-nav { grid-column:2; grid-row:1 / span 2; margin-left:0; justify-content:flex-end; }
         }
     </style>
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
@@ -792,15 +810,19 @@ $catalog_query['per_page'] = $catalog_per_page;
         </div>
 
         <?php if (isset($catalog_total)): ?>
-        <div class="catalog-pagination-footer">
-            <div class="catalog-pagination-summary">
+        <div class="catalog-pagination-footer" data-scm-pagination-layout="inline">
+            <form method="get" action="<?= html_escape(current_url()) ?>" class="catalog-pagination-summary">
+                <?php foreach ($catalog_page_size_hidden as $hidden_query): ?>
+                    <input type="hidden" name="<?= html_escape($hidden_query['name']) ?>" value="<?= html_escape($hidden_query['value']) ?>">
+                <?php endforeach; ?>
+                <input type="hidden" name="page" value="1">
                 <label for="catalogPageSize">Tampilkan:</label>
-                <select id="catalogPageSize" class="form-select form-select-sm" aria-label="Jumlah aset per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.assign(u.toString());">
+                <select id="catalogPageSize" name="per_page" class="form-select form-select-sm" aria-label="Jumlah aset per halaman" onchange="this.form.submit();">
                     <?php foreach ([10,25,50,100] as $size): ?><option value="<?= $size ?>" <?= $catalog_per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                 </select>
                 <span>Total item: <span id="catalogTotalItems"><?= number_format($catalog_total, 0, ',', '.') ?></span></span>
-            </div>
-            <div id="catalogPageStatus" class="catalog-pagination-status">Halaman: <?= $catalog_page ?> dari <?= $catalog_total_pages ?></div>
+            </form>
+            <div id="catalogPageStatus" class="catalog-pagination-status">Menampilkan <?= number_format($catalog_first_item, 0, ',', '.') ?>&ndash;<?= number_format($catalog_last_item, 0, ',', '.') ?> dari <?= number_format($catalog_total, 0, ',', '.') ?> data</div>
             <nav class="catalog-page-nav" aria-label="Paging katalog alat studio">
                 <ul id="catalogPageNav" class="pagination pagination-sm catalog-pagination">
                     <?php $catalog_query['page'] = max(1, $catalog_page - 1); ?><li class="page-item <?= $catalog_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= current_url() . '?' . http_build_query($catalog_query) ?>">Previous</a></li>
