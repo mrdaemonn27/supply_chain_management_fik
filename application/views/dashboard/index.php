@@ -14,6 +14,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
     
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
     
@@ -167,221 +168,38 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
         }
 
         .catalog-header__inner {
-            display: grid;
-            grid-template-columns: 1fr auto 1fr;
-            align-items: center;
-            gap: 16px;
+            text-align: center;
         }
 
         .catalog-header__title {
-            grid-column: 2;
             margin: 0;
         }
 
-        .catalog-filter-trigger {
-            grid-column: 3;
-            justify-self: end;
-            min-height: 42px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 9px 15px;
-            border: 1px solid rgba(255, 255, 255, 0.52);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            font-size: 0.78rem;
-            font-weight: 700;
-            transition: background .22s ease, border-color .22s ease, transform .22s ease;
-        }
+        .lab-search-panel { max-width: 960px; margin: 0 auto 2rem; }
+        .lab-search-panel .admin-multi-filter { margin-bottom: 0 !important; }
+        .asset-search-results { max-width: 960px; margin: 0 auto 2rem; }
+        .asset-search-results__heading { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+        .asset-search-results__heading h3 { margin:0; color:#1f2937; font-size:1.05rem; font-weight:700; }
+        .asset-search-results__heading p { margin:.25rem 0 0; color:#6b7280; font-size:.78rem; }
+        .asset-search-results__list { display:grid; gap:.75rem; }
+        .asset-search-result { padding:1rem 1.1rem; border:1px solid #e1e5e9; border-left:4px solid #ea5b1a; border-radius:12px; background:#fff; box-shadow:0 4px 14px rgba(15,23,42,.045); }
+        .asset-search-result__top { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
+        .asset-search-result__name { margin:0; color:#20262d; font-size:.95rem; font-weight:700; }
+        .asset-search-result__codes { margin:.2rem 0 0; color:#7c8791; font-family:monospace; font-size:.7rem; }
+        .asset-search-result__stock { flex:0 0 auto; color:#198754; font-size:.75rem; font-weight:700; }
+        .asset-search-result__locations { display:flex; flex-wrap:wrap; gap:.45rem; margin-top:.75rem; }
+        .asset-location-chip { display:inline-flex; align-items:center; gap:.35rem; padding:.42rem .7rem; border:1px solid rgba(234,91,26,.25); border-radius:999px; background:#fff7f2; color:#8c3f18; font-size:.72rem; font-weight:600; text-decoration:none; }
+        .asset-location-chip:hover, .asset-location-chip:focus { border-color:#ea5b1a; color:#c24a13; }
+        .asset-location-chip small { color:#6b7280; font-weight:500; }
+        .asset-search-results__more { margin:.8rem 0 0; color:#6b7280; font-size:.75rem; text-align:center; }
 
-        .catalog-filter-trigger:hover,
-        .catalog-filter-trigger:focus-visible {
-            border-color: #ea5b1a;
-            background: #ea5b1a;
-            color: #fff;
-            transform: translateY(-1px);
-        }
-
-        .catalog-filter-trigger--mobile { display: none; }
-
-        .navbar-filter-trigger {
-            min-height: 40px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 7px;
-            padding: 8px 13px;
-            border: 1px solid #cbd1d6;
-            border-radius: 8px;
-            background: #fff;
-            color: #4e5961;
-            font-size: .78rem;
-            font-weight: 700;
-            line-height: 1;
-            transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
-        }
-
-        .navbar-filter-trigger:hover,
-        .navbar-filter-trigger:focus-visible {
-            border-color: rgba(234, 91, 26, .62);
-            background: #fff7f2;
-            color: #ea5b1a;
-            transform: translateY(-1px);
-        }
-
-        html.scm-theme-dark .navbar-filter-trigger {
-            border-color: #4b535a;
-            background: #202428;
-            color: #e5e8ea;
-        }
-
-        html.scm-theme-dark .navbar-filter-trigger:hover,
-        html.scm-theme-dark .navbar-filter-trigger:focus-visible {
-            border-color: #ea5b1a;
-            background: #292e32;
-            color: #ff8b24;
-        }
-
-        .lab-filter-backdrop {
-            position: fixed;
-            inset: 0;
-            z-index: 1040;
-            background: rgba(17, 24, 39, .36);
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity .28s ease, visibility .28s ease;
-        }
-
-        .lab-filter-drawer {
-            position: fixed;
-            top: 0;
-            right: 0;
-            z-index: 1045;
-            display: flex;
-            flex-direction: column;
-            width: min(420px, calc(100vw - 24px));
-            height: 100dvh;
-            padding: 20px;
-            background: #f8f9fa;
-            box-shadow: -16px 0 36px rgba(15, 23, 42, .16);
-            transform: translateX(calc(100% + 16px));
-            visibility: hidden;
-            transition: transform .32s cubic-bezier(.22, 1, .36, 1), visibility .32s step-end;
-        }
-
-        .lab-filter-drawer.is-open {
-            transform: translateX(0);
-            visibility: visible;
-            transition: transform .32s cubic-bezier(.22, 1, .36, 1), visibility 0s;
-        }
-
-        .lab-filter-backdrop.is-open {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .lab-filter-drawer__header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .lab-filter-drawer__header h2 {
-            margin: 0;
-            color: #1f2937;
-            font-size: 1rem;
-            font-weight: 700;
-        }
-
-        .lab-filter-drawer__close {
-            width: 38px;
-            height: 38px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid #d1d5db;
-            border-radius: 50%;
-            background: #fff;
-            color: #55606c;
-            transition: border-color .2s ease, color .2s ease, background .2s ease;
-        }
-
-        .lab-filter-drawer__close:hover,
-        .lab-filter-drawer__close:focus-visible {
-            border-color: #ea5b1a;
-            background: #fff7f2;
-            color: #ea5b1a;
-        }
-
-        .lab-filter-drawer__body {
-            min-width: 0;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 2px 2px 20px;
-        }
-
-        .lab-filter-drawer .admin-multi-filter {
-            width: 100%;
-            min-width: 0;
-            max-width: 100%;
-            margin: 0 !important;
-            border-radius: 10px;
-        }
-
-        .lab-filter-drawer .admin-multi-filter__rows,
-        .lab-filter-drawer .admin-multi-filter__row {
-            min-width: 0;
-            max-width: 100%;
-        }
-
-        .lab-filter-drawer .admin-multi-filter__row {
-            grid-template-columns: minmax(0, 30%) minmax(0, 1fr) auto;
-        }
-
-        .lab-filter-drawer .admin-multi-filter__field,
-        .lab-filter-drawer .admin-multi-filter__value {
-            width: 100%;
-            min-width: 0;
-            max-width: 100%;
-        }
-
-        .lab-filter-drawer .admin-multi-filter__actions {
-            min-width: 0;
-            flex-wrap: wrap;
-        }
-
-        @media (max-width: 767.98px) {
-            .lab-filter-drawer .admin-multi-filter__row {
-                grid-template-columns: minmax(0, 1fr) auto;
-            }
-
-            .lab-filter-drawer .admin-multi-filter__field {
-                grid-column: 1 / -1;
-            }
-        }
-
-        @media (max-width: 420px) {
-            .lab-filter-drawer .admin-multi-filter__row {
-                grid-template-columns: minmax(0, 1fr);
-            }
-
-            .lab-filter-drawer .admin-multi-filter__field,
-            .lab-filter-drawer .admin-multi-filter__value {
-                grid-column: auto;
-            }
-
-            .lab-filter-drawer .admin-multi-filter__actions {
-                justify-content: flex-end;
-            }
-        }
-
-        body.lab-filter-open {
-            overflow: hidden;
-        }
+        html.scm-theme-dark .asset-search-results__heading h3,
+        html.scm-theme-dark .asset-search-result__name { color:var(--scm-theme-text); }
+        html.scm-theme-dark .asset-search-results__heading p,
+        html.scm-theme-dark .asset-search-result__codes,
+        html.scm-theme-dark .asset-search-results__more { color:var(--scm-theme-muted); }
+        html.scm-theme-dark .asset-search-result { border-color:var(--scm-theme-border); background:var(--scm-theme-surface); }
+        html.scm-theme-dark .asset-location-chip { border-color:rgba(255,139,36,.35); background:rgba(234,91,26,.12); color:#ffb16b; }
         
         /* Styling Kartu Lab */
         .service-card {
@@ -427,6 +245,14 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             transition: transform .28s cubic-bezier(.22, 1, .36, 1);
             transform-origin: center center;
         }
+        .service-card__model {
+            display:block;
+            width:100%;
+            height:100%;
+            background:linear-gradient(145deg, #f7f9fc 0%, #e4eaf1 100%);
+            --poster-color:transparent;
+            --progress-bar-color:#ea5b1a;
+        }
         .service-card__placeholder { position: absolute; inset: 0; display: grid; place-items: center; }
         .service-card__media.is-pointer-active img {
             transform: translate3d(var(--media-shift-x, 0px), var(--media-shift-y, 0px), 0)
@@ -436,18 +262,15 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             transition-duration: .12s;
         }
         @media (max-width: 991.98px) {
-            .catalog-filter-trigger--mobile { display: inline-flex; }
             .lab-grid__item { flex-basis:50%; }
         }
         @media (max-width: 575.98px) {
             .catalog-header { padding: 36px 0; }
-            .catalog-header__inner { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; }
-            .catalog-header__title { grid-column: 1; text-align: left; font-size: 1.25rem; line-height: 1.35; }
-            .catalog-filter-trigger { grid-column: 2; padding-inline: 12px; font-size: .7rem; }
-            .lab-filter-drawer { width: min(400px, 100vw); padding: 16px; }
+            .catalog-header__title { text-align: center; font-size: 1.25rem; line-height: 1.35; }
             .lab-grid { margin:-9px; }
             .lab-grid__item { flex-basis:100%; padding:9px; }
             .service-card__media { aspect-ratio: 16 / 9; }
+            .asset-search-results__heading, .asset-search-result__top { flex-direction:column; }
         }
 
         /* SOP / Aturan Section */
@@ -569,10 +392,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             </div>
             
            <div class="d-none d-lg-flex align-items-center gap-2">
-                <button type="button" class="navbar-filter-trigger d-none d-lg-inline-flex js-lab-filter-toggle" id="labFilterToggle" aria-expanded="false" aria-controls="labFilterDrawer">
-                    <i class="bi bi-search" aria-hidden="true"></i>
-                    <span>Pencarian</span>
-                </button>
                 <?php if($this->session->userdata('logged_in')): ?>
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary rounded-circle notif-bell position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifikasi">
@@ -641,10 +460,6 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
     <div class="catalog-header">
         <div class="container catalog-header__inner" data-aos="fade-down" data-aos-duration="800">
             <h2 class="catalog-header__title fw-bolder" style="letter-spacing: 1px;">DAFTAR <span class="text-fik-orange">STUDIO & LABORATORIUM</span></h2>
-            <button type="button" class="catalog-filter-trigger catalog-filter-trigger--mobile js-lab-filter-toggle" id="labFilterToggleMobile" aria-expanded="false" aria-controls="labFilterDrawer">
-                <i class="bi bi-search" aria-hidden="true"></i>
-                <span>Pencarian</span>
-            </button>
         </div>
     </div>
 
@@ -656,6 +471,37 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                 $lab_columns--;
             }
         ?>
+
+        <div class="lab-search-panel">
+            <?php
+                $multi_filter_id = 'labMultiFilter';
+                $multi_filter_mode = 'client';
+                $multi_filter_fields = [
+                    'all' => ['label' => 'Studio, lab, atau barang', 'placeholder' => 'Cari studio, laboratorium, nama barang, atau kode aset...'],
+                    'barang' => ['label' => 'Nama barang', 'placeholder' => 'Contoh: HDMI, kamera, tripod...'],
+                    'kode_barang' => ['label' => 'Kode aset', 'placeholder' => 'Cari kode aset...'],
+                    'ruangan' => ['label' => 'Studio / laboratorium', 'placeholder' => 'Cari nama studio atau laboratorium...'],
+                ];
+                $multi_filter_rows = [['field' => 'all', 'value' => '']];
+                $multi_filter_meta_id = 'labSearchMeta';
+                $multi_filter_meta = number_format($lab_count, 0, ',', '.') . ' ruangan/laboratorium tersedia';
+                include APPPATH . 'views/admin/_multi_filter.php';
+                unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
+            ?>
+        </div>
+
+        <section id="assetSearchResults" class="asset-search-results" aria-labelledby="assetSearchResultsTitle" hidden>
+            <div class="asset-search-results__heading">
+                <div>
+                    <h3 id="assetSearchResultsTitle"><i class="bi bi-box-seam me-2 text-fik-orange" aria-hidden="true"></i>Barang ditemukan</h3>
+                    <p id="assetSearchResultsSummary">Lokasi barang yang cocok dengan pencarian.</p>
+                </div>
+                <span class="badge bg-light text-dark border" id="assetSearchResultsCount"></span>
+            </div>
+            <div class="asset-search-results__list" id="assetSearchResultsList"></div>
+            <p class="asset-search-results__more" id="assetSearchResultsMore" hidden></p>
+        </section>
+
         <div class="lab-grid" style="--lab-columns: <?= (int) $lab_columns ?>" data-lab-count="<?= (int) $lab_count ?>">
             
             <?php if(empty($ruangan_list)): ?>
@@ -666,11 +512,16 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             <?php else: ?>
                 <?php $delay = 100; foreach($ruangan_list as $r): ?>
                 <?php $lab_search_text = trim(($r['nama_ruangan'] ?? '') . ' ' . ($r['deskripsi'] ?? '')); ?>
-                <div class="lab-grid__item" data-lab-card data-search="<?= html_escape($lab_search_text) ?>" data-filter-all="<?= html_escape($lab_search_text) ?>" data-filter-kode="<?= html_escape($r['nama_ruangan'] ?? '') ?>" data-filter-nama="<?= html_escape($lab_search_text) ?>">
+                <div class="lab-grid__item" data-lab-card data-room-id="<?= (int) ($r['id_ruangan'] ?? 0) ?>" data-room-search="<?= html_escape($lab_search_text) ?>" data-search="<?= html_escape($lab_search_text) ?>" data-filter-all="<?= html_escape($lab_search_text) ?>" data-filter-ruangan="<?= html_escape($lab_search_text) ?>">
                     <div class="card service-card">
                         <div class="service-card__media">
                         <?php if(!empty($r['foto_url'])): ?>
-                            <img src="<?= html_escape($r['foto_url']) ?>" alt="Foto <?= html_escape($r['nama_ruangan']) ?>" loading="lazy" decoding="async">
+                            <?php $room_media_is_3d = in_array(strtolower((string) pathinfo($r['foto'] ?? '', PATHINFO_EXTENSION)), ['glb', 'gltf'], true); ?>
+                            <?php if($room_media_is_3d): ?>
+                                <model-viewer class="service-card__model" src="<?= html_escape($r['foto_url']) ?>" alt="Model 3D <?= html_escape($r['nama_ruangan']) ?>" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.7" loading="lazy" reveal="auto"></model-viewer>
+                            <?php else: ?>
+                                <img src="<?= html_escape($r['foto_url']) ?>" alt="Foto <?= html_escape($r['nama_ruangan']) ?>" loading="lazy" decoding="async">
+                            <?php endif; ?>
                         <?php else: ?>
                             <div class="service-card__placeholder bg-light">
                                 <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
@@ -706,37 +557,13 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
 
             <div id="labSearchEmpty" class="lab-search-empty" role="status">
                 <i class="bi bi-search fs-1 text-muted d-block mb-2"></i>
-                <h5 class="text-muted">Ruangan atau laboratorium tidak ditemukan.</h5>
-                <p class="small text-muted mb-0">Coba gunakan kode ruangan atau nama laboratorium yang berbeda.</p>
+                <h5 class="text-muted">Studio, laboratorium, atau barang tidak ditemukan.</h5>
+                <p class="small text-muted mb-0">Coba gunakan nama ruangan, nama barang, atau kode aset yang berbeda.</p>
             </div>
         </div>
     </section>
 
-    <div class="lab-filter-backdrop" id="labFilterBackdrop" aria-hidden="true"></div>
-    <aside class="lab-filter-drawer" id="labFilterDrawer" aria-hidden="true" aria-label="Filter pencarian studio dan laboratorium" tabindex="-1">
-        <div class="lab-filter-drawer__header">
-            <h2>Cari/Filter</h2>
-            <button type="button" class="lab-filter-drawer__close" id="labFilterClose" aria-label="Tutup filter">
-                <i class="bi bi-x-lg" aria-hidden="true"></i>
-            </button>
-        </div>
-        <div class="lab-filter-drawer__body">
-            <?php
-                $multi_filter_id = 'labMultiFilter';
-                $multi_filter_mode = 'client';
-                $multi_filter_fields = [
-                    'all' => ['label' => 'Ruangan / laboratorium', 'placeholder' => 'Cari kode ruangan atau nama laboratorium...'],
-                    'kode' => ['label' => 'Kode ruangan', 'placeholder' => 'Cari kode ruangan...'],
-                    'nama' => ['label' => 'Nama ruangan / laboratorium', 'placeholder' => 'Cari nama ruangan atau laboratorium...'],
-                ];
-                $multi_filter_rows = [['field' => 'all', 'value' => '']];
-                $multi_filter_meta_id = 'labSearchMeta';
-                $multi_filter_meta = number_format($lab_count, 0, ',', '.') . ' ruangan/laboratorium tersedia';
-                include APPPATH . 'views/admin/_multi_filter.php';
-                unset($multi_filter_id, $multi_filter_mode, $multi_filter_fields, $multi_filter_rows, $multi_filter_meta_id, $multi_filter_meta);
-            ?>
-        </div>
-    </aside>
+    <script type="application/json" id="labAssetSearchData"><?= json_encode($asset_search_index ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?></script>
 
     <section class="sop-section">
         <div class="container">
@@ -938,20 +765,180 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             const meta = document.getElementById('labSearchMeta');
             const empty = document.getElementById('labSearchEmpty');
             const cards = Array.from(document.querySelectorAll('[data-lab-card]'));
+            const resultSection = document.getElementById('assetSearchResults');
+            const resultList = document.getElementById('assetSearchResultsList');
+            const resultCount = document.getElementById('assetSearchResultsCount');
+            const resultSummary = document.getElementById('assetSearchResultsSummary');
+            const resultMore = document.getElementById('assetSearchResultsMore');
+            const assetDataNode = document.getElementById('labAssetSearchData');
             if (!root) return;
+
+            const normalize = value => String(value || '')
+                .trim()
+                .toLocaleLowerCase('id')
+                .replace(/laboratorium/g, 'lab')
+                .replace(/[._\-/]+/g, ' ')
+                .replace(/\s+/g, ' ');
+            let assets = [];
+            try {
+                assets = JSON.parse(assetDataNode?.textContent || '[]');
+            } catch (error) {
+                assets = [];
+            }
+            const assetsByRoom = new Map();
+            assets.forEach(asset => {
+                const roomId = String(Number(asset.id_ruangan) || 0);
+                if (!assetsByRoom.has(roomId)) assetsByRoom.set(roomId, []);
+                assetsByRoom.get(roomId).push(asset);
+            });
+
+            const assetMatchesCriterion = (asset, criterion) => {
+                const name = `${asset.nama_aset || ''} ${asset.deskripsi || ''}`;
+                const code = asset.kode_aset || '';
+                const room = asset.nama_ruangan || '';
+                const fields = {
+                    all: `${name} ${code} ${room}`,
+                    barang: name,
+                    kode_barang: code,
+                    ruangan: room
+                };
+                return normalize(fields[criterion.field] || '').includes(normalize(criterion.value));
+            };
+
+            const cardMatchesCriteria = (card, criteria) => {
+                const room = card.dataset.roomSearch || '';
+                const roomAssets = assetsByRoom.get(String(Number(card.dataset.roomId) || 0)) || [];
+                return criteria.every(criterion => {
+                    const query = normalize(criterion.value);
+                    if (!query) return true;
+                    if (criterion.field === 'ruangan') return normalize(room).includes(query);
+                    if (criterion.field === 'all' && normalize(room).includes(query)) return true;
+                    return roomAssets.some(asset => assetMatchesCriterion(asset, criterion));
+                });
+            };
+
+            const hasAssetIdentityMatch = (asset, criteria) => criteria.some(criterion => {
+                if (criterion.field === 'ruangan') return false;
+                const identity = criterion.field === 'kode_barang'
+                    ? asset.kode_aset
+                    : `${asset.nama_aset || ''} ${asset.kode_aset || ''} ${asset.deskripsi || ''}`;
+                return normalize(identity).includes(normalize(criterion.value));
+            });
+
+            const groupAssets = matchedAssets => {
+                const groups = new Map();
+                matchedAssets.forEach(asset => {
+                    const key = normalize(asset.nama_aset) || `aset-${asset.id_aset}`;
+                    if (!groups.has(key)) {
+                        groups.set(key, {
+                            name: asset.nama_aset || 'Barang tanpa nama',
+                            codes: new Set(),
+                            locations: new Map(),
+                            total: 0,
+                            available: 0
+                        });
+                    }
+                    const group = groups.get(key);
+                    if (asset.kode_aset) group.codes.add(asset.kode_aset);
+                    group.total += Number(asset.jumlah_total) || 0;
+                    group.available += Number(asset.jumlah_tersedia) || 0;
+
+                    const roomId = Number(asset.id_ruangan) || 0;
+                    const roomKey = roomId || normalize(asset.nama_ruangan) || 'tanpa-lokasi';
+                    const existing = group.locations.get(roomKey) || {
+                        id: roomId,
+                        name: asset.nama_ruangan || 'Lokasi belum ditentukan',
+                        total: 0,
+                        available: 0
+                    };
+                    existing.total += Number(asset.jumlah_total) || 0;
+                    existing.available += Number(asset.jumlah_tersedia) || 0;
+                    group.locations.set(roomKey, existing);
+                });
+                return Array.from(groups.values());
+            };
+
+            const renderAssetResults = (criteria, matchedAssets) => {
+                if (!resultSection || !resultList || !resultCount || !resultSummary || !resultMore) return;
+                const groups = groupAssets(matchedAssets);
+                resultList.replaceChildren();
+                resultSection.hidden = !criteria.length || !groups.length;
+                if (resultSection.hidden) return;
+
+                const shownGroups = groups.slice(0, 20);
+                resultCount.textContent = `${new Intl.NumberFormat('id-ID').format(groups.length)} jenis barang`;
+                resultSummary.textContent = 'Setiap lokasi di bawah menunjukkan studio atau laboratorium tempat barang tersedia.';
+
+                shownGroups.forEach(group => {
+                    const article = document.createElement('article');
+                    article.className = 'asset-search-result';
+
+                    const top = document.createElement('div');
+                    top.className = 'asset-search-result__top';
+                    const identity = document.createElement('div');
+                    const name = document.createElement('h4');
+                    name.className = 'asset-search-result__name';
+                    name.textContent = group.name;
+                    identity.appendChild(name);
+
+                    const codes = Array.from(group.codes);
+                    if (codes.length) {
+                        const code = document.createElement('p');
+                        code.className = 'asset-search-result__codes';
+                        code.textContent = `Kode: ${codes.slice(0, 5).join(', ')}${codes.length > 5 ? ` +${codes.length - 5} lainnya` : ''}`;
+                        identity.appendChild(code);
+                    }
+                    top.appendChild(identity);
+
+                    const stock = document.createElement('span');
+                    stock.className = 'asset-search-result__stock';
+                    stock.textContent = `${group.available}/${group.total} tersedia`;
+                    top.appendChild(stock);
+                    article.appendChild(top);
+
+                    const locations = document.createElement('div');
+                    locations.className = 'asset-search-result__locations';
+                    group.locations.forEach(location => {
+                        const chip = document.createElement(location.id ? 'a' : 'span');
+                        chip.className = 'asset-location-chip';
+                        if (location.id) chip.href = `<?= base_url('index.php/peminjaman?id_ruangan=') ?>${encodeURIComponent(location.id)}`;
+                        const icon = document.createElement('i');
+                        icon.className = 'bi bi-geo-alt-fill';
+                        icon.setAttribute('aria-hidden', 'true');
+                        const label = document.createElement('span');
+                        label.textContent = location.name;
+                        const quantity = document.createElement('small');
+                        quantity.textContent = `${location.available}/${location.total} tersedia`;
+                        chip.append(icon, label, quantity);
+                        locations.appendChild(chip);
+                    });
+                    article.appendChild(locations);
+                    resultList.appendChild(article);
+                });
+
+                resultMore.hidden = groups.length <= shownGroups.length;
+                resultMore.textContent = resultMore.hidden ? '' : `${groups.length - shownGroups.length} jenis barang lainnya juga cocok. Persempit kata pencarian untuk melihatnya.`;
+            };
 
             const render = () => {
                 const criteria = window.AdminMultiFilter?.getCriteria(root) || [];
                 let visible = 0;
                 cards.forEach(card => {
-                    const matches = window.AdminMultiFilter?.matches(card, criteria) ?? true;
+                    const matches = cardMatchesCriteria(card, criteria);
                     card.hidden = !matches;
                     if (matches) visible += 1;
                 });
+                const matchedAssets = criteria.length
+                    ? assets.filter(asset => criteria.every(criterion => assetMatchesCriterion(asset, criterion)) && hasAssetIdentityMatch(asset, criteria))
+                    : [];
+                renderAssetResults(criteria, matchedAssets);
                 if (empty) empty.style.display = visible ? 'none' : 'block';
                 if (meta) {
                     const formatted = new Intl.NumberFormat('id-ID').format(visible);
-                    meta.textContent = criteria.length ? `${formatted} hasil ditemukan` : `${formatted} ruangan/laboratorium tersedia`;
+                    const assetGroups = groupAssets(matchedAssets).length;
+                    meta.textContent = criteria.length
+                        ? `${formatted} ruangan/laboratorium dan ${new Intl.NumberFormat('id-ID').format(assetGroups)} jenis barang ditemukan`
+                        : `${formatted} ruangan/laboratorium tersedia`;
                 }
             };
 
@@ -1043,53 +1030,10 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             });
         }
 
-        function bindLabFilterDrawer() {
-            const toggles = Array.from(document.querySelectorAll('.js-lab-filter-toggle'));
-            const drawer = document.getElementById('labFilterDrawer');
-            const backdrop = document.getElementById('labFilterBackdrop');
-            const close = document.getElementById('labFilterClose');
-            if (!toggles.length || !drawer || !backdrop || !close) return;
-
-            let lastFocusedElement = null;
-
-            const setOpen = (isOpen) => {
-                if (isOpen) {
-                    lastFocusedElement = document.activeElement;
-                }
-
-                drawer.classList.toggle('is-open', isOpen);
-                backdrop.classList.toggle('is-open', isOpen);
-                drawer.setAttribute('aria-hidden', String(!isOpen));
-                backdrop.setAttribute('aria-hidden', String(!isOpen));
-                toggles.forEach((toggle) => toggle.setAttribute('aria-expanded', String(isOpen)));
-                document.body.classList.toggle('lab-filter-open', isOpen);
-
-                if (isOpen) {
-                    window.setTimeout(() => {
-                        const firstField = drawer.querySelector('.admin-multi-filter__value');
-                        (firstField || close).focus();
-                    }, 180);
-                } else if (lastFocusedElement instanceof HTMLElement) {
-                    lastFocusedElement.focus();
-                }
-            };
-
-            toggles.forEach((toggle) => toggle.addEventListener('click', () => setOpen(true)));
-            close.addEventListener('click', () => setOpen(false));
-            backdrop.addEventListener('click', () => setOpen(false));
-
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape' && drawer.classList.contains('is-open')) {
-                    setOpen(false);
-                }
-            });
-        }
-
         document.addEventListener('DOMContentLoaded', function () {
             bindInternalDocsModal();
             bindLabSearch();
             bindLabCard3d();
-            bindLabFilterDrawer();
         });
     </script>
 </body>

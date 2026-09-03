@@ -9,6 +9,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 #[\AllowDynamicProperties]
 class Barang extends CI_Controller {
 
+    private $import_file_error = '';
+
     public function __construct() {
         parent::__construct();
         
@@ -85,7 +87,7 @@ class Barang extends CI_Controller {
 
         $preview = $this->normalize_import_rows($rows);
         if (empty($preview)) {
-            $this->session->set_flashdata('error', 'Data import kosong atau format kolom tidak terbaca.');
+            $this->session->set_flashdata('error', $this->import_file_error ?: 'Data import kosong atau format kolom tidak terbaca. Pastikan file berformat CSV dan mengikuti template.');
             redirect('admin/barang/import');
         }
 
@@ -193,66 +195,45 @@ class Barang extends CI_Controller {
     }
 
     private function parse_import_file($file) {
+        if ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->import_file_error = 'File CSV gagal diunggah. Silakan pilih ulang file template yang sudah diisi.';
+            return [];
+        }
+
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, ['csv', 'xlsx'], true)) {
-            $this->session->set_flashdata('error', 'Format file harus CSV atau XLSX.');
+        if ($ext !== 'csv') {
+            $this->import_file_error = 'Format file wajib CSV (.csv). File XLS/XLSX tidak dapat diimpor.';
             return [];
         }
 
-        if ($ext === 'csv') {
-            $rows = [];
-            $handle = fopen($file['tmp_name'], 'r');
-            while ($handle && ($row = fgetcsv($handle)) !== false) {
-                $rows[] = $row;
-            }
-            if ($handle) {
-                fclose($handle);
-            }
-            return $rows;
-        }
-
-        return $this->parse_xlsx_rows($file['tmp_name']);
-    }
-
-    private function parse_xlsx_rows($path) {
-        if (!class_exists('ZipArchive')) {
-            $this->session->set_flashdata('error', 'Ekstensi ZipArchive PHP belum aktif, gunakan CSV atau copy-paste dari Excel.');
-            return [];
-        }
-
-        $zip = new ZipArchive();
-        if ($zip->open($path) !== true) {
-            return [];
-        }
-
-        $shared = [];
-        $shared_xml = $zip->getFromName('xl/sharedStrings.xml');
-        if ($shared_xml !== false) {
-            $xml = simplexml_load_string($shared_xml);
-            foreach ($xml->si as $si) {
-                $shared[] = (string) ($si->t ?? '');
-            }
-        }
-
-        $sheet_xml = $zip->getFromName('xl/worksheets/sheet1.xml');
-        $zip->close();
-        if ($sheet_xml === false) {
-            return [];
-        }
-
-        $sheet = simplexml_load_string($sheet_xml);
         $rows = [];
-        foreach ($sheet->sheetData->row as $row) {
-            $cells = [];
-            foreach ($row->c as $cell) {
-                $value = (string) ($cell->v ?? '');
-                if ((string) $cell['t'] === 's') {
-                    $value = $shared[(int) $value] ?? '';
-                }
-                $cells[] = $value;
-            }
-            $rows[] = $cells;
+        $handle = fopen($file['tmp_name'], 'r');
+        if (!$handle) {
+            $this->import_file_error = 'File CSV tidak dapat dibaca.';
+            return [];
         }
+
+        $first_line = fgets($handle);
+        rewind($handle);
+        $delimiter = ',';
+        if ($first_line !== false) {
+            $candidate_counts = [];
+            foreach ([',', ';', "\t"] as $candidate) {
+                $candidate_counts[$candidate] = count(str_getcsv($first_line, $candidate));
+            }
+            arsort($candidate_counts);
+            $delimiter = (string) array_key_first($candidate_counts);
+        }
+
+        while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
+            $rows[] = $row;
+        }
+        fclose($handle);
+
+        if (isset($rows[0][0])) {
+            $rows[0][0] = preg_replace('/^\xEF\xBB\xBF/', '', (string) $rows[0][0]);
+        }
+
         return $rows;
     }
 

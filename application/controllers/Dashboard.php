@@ -4,6 +4,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 /**
  * @property CI_Session $session
  * @property Ruangan_model $Ruangan_model
+ * @property Aset_model $Aset_model
  */
 #[\AllowDynamicProperties]
 class Dashboard extends CI_Controller {
@@ -42,6 +43,7 @@ class Dashboard extends CI_Controller {
 
         // Memuat Model Ruangan agar bisa mengambil data
         $this->load->model('admin/Ruangan_model');
+        $this->load->model('Aset_model');
         $this->load->model('Peminjaman_model');
     }
 
@@ -52,6 +54,10 @@ class Dashboard extends CI_Controller {
             $room['foto_url'] = $this->resolve_room_photo_url($room['foto'] ?? null);
         }
         unset($room);
+
+        // Indeks ini dipakai untuk mencari barang sekaligus menunjukkan seluruh
+        // studio/laboratorium tempat barang tersebut tercatat.
+        $data['asset_search_index'] = $this->Aset_model->get_dashboard_search_index();
         $data['notifikasi'] = [];
         $data['unread_notifikasi'] = 0;
 

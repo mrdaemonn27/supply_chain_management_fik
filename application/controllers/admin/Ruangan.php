@@ -24,6 +24,37 @@ class Ruangan extends CI_Controller {
         }
     }
 
+    private function is_3d_room_filename($filename) {
+        return in_array(strtolower((string) pathinfo($filename, PATHINFO_EXTENSION)), ['glb', 'gltf'], true);
+    }
+
+    /**
+     * Upload foto atau model 3D ruangan dengan batas yang sama seperti media barang.
+     */
+    private function upload_room_media($field) {
+        $original_name = (string) ($_FILES[$field]['name'] ?? '');
+        $is_3d_model = $this->is_3d_room_filename($original_name);
+        $config = [
+            'upload_path'      => './assets/uploads/ruangan/',
+            'allowed_types'    => $is_3d_model ? 'glb|gltf' : 'gif|jpg|jpeg|png|webp',
+            'max_size'         => $is_3d_model ? 15360 : 2048,
+            'encrypt_name'     => true,
+            'file_ext_tolower' => true,
+        ];
+
+        if (!is_dir($config['upload_path'])) {
+            mkdir($config['upload_path'], 0777, true);
+        }
+
+        $this->load->library('upload');
+        $this->upload->initialize($config, true);
+        if (!$this->upload->do_upload($field)) {
+            return null;
+        }
+
+        return (string) $this->upload->data('file_name');
+    }
+
     public function index() {
         $fields = (array) $this->input->get('filter_field', true);
         $values = (array) $this->input->get('filter_value', true);
@@ -64,28 +95,13 @@ class Ruangan extends CI_Controller {
         } else {
             $foto = null;
             
-            // LOGIKA UPLOAD GAMBAR OTOMATIS (Ala Barang.php)
+            // Upload foto atau model 3D ruangan.
             if (!empty($_FILES['foto']['name'])) {
-                $config['upload_path']   = './assets/uploads/ruangan/'; 
-                
-                // Buat folder otomatis jika belum ada
-                if (!is_dir($config['upload_path'])) {
-                    mkdir($config['upload_path'], 0777, TRUE);
-                }
-
-                $config['allowed_types'] = 'gif|jpg|jpeg|png|webp';
-                $config['max_size']      = 2048; // 2MB
-                $config['encrypt_name']  = TRUE; // Acak nama file
-
-                $this->load->library('upload', $config);
-
-                if ($this->upload->do_upload('foto')) {
-                    $upload_data = $this->upload->data();
-                    $foto = $upload_data['file_name']; // Simpan nama filenya saja ke DB
-                } else {
-                    $this->session->set_flashdata('error', 'Gagal upload foto: ' . $this->upload->display_errors('',''));
+                $foto = $this->upload_room_media('foto');
+                if ($foto === null) {
+                    $this->session->set_flashdata('error', 'Gagal upload media ruangan: ' . $this->upload->display_errors('',''));
                     redirect('admin/ruangan/tambah');
-                    return; // Hentikan eksekusi jika error
+                    return;
                 }
             }
 
@@ -126,31 +142,18 @@ class Ruangan extends CI_Controller {
                 'deskripsi'    => $this->input->post('deskripsi', true)
             ];
 
-            // LOGIKA UPLOAD GAMBAR EDIT
+            // Upload foto atau model 3D pengganti.
             if (!empty($_FILES['foto']['name'])) {
-                $config['upload_path']   = './assets/uploads/ruangan/'; 
-                
-                if (!is_dir($config['upload_path'])) {
-                    mkdir($config['upload_path'], 0777, TRUE);
-                }
-
-                $config['allowed_types'] = 'gif|jpg|jpeg|png|webp';
-                $config['max_size']      = 2048;
-                $config['encrypt_name']  = TRUE;
-                
-                $this->load->library('upload', $config);
-                
-                if ($this->upload->do_upload('foto')) {
-                    $upload_data = $this->upload->data();
-                    
+                $uploaded_media = $this->upload_room_media('foto');
+                if ($uploaded_media !== null) {
                     // Hapus foto lama jika ada
                     if ($data['ruangan_detail']['foto'] && file_exists('./assets/uploads/ruangan/' . $data['ruangan_detail']['foto'])) {
                         unlink('./assets/uploads/ruangan/' . $data['ruangan_detail']['foto']);
                     }
-                    
-                    $update_data['foto'] = $upload_data['file_name'];
+
+                    $update_data['foto'] = $uploaded_media;
                 } else {
-                    $this->session->set_flashdata('error', 'Gagal upload foto: ' . $this->upload->display_errors('',''));
+                    $this->session->set_flashdata('error', 'Gagal upload media ruangan: ' . $this->upload->display_errors('',''));
                     redirect('admin/ruangan/ubah/'.$id);
                     return;
                 }

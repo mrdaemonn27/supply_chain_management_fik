@@ -208,7 +208,6 @@
         function render() {
             months.innerHTML = "";
             months.appendChild(renderMonth(viewDate));
-            months.appendChild(renderMonth(addMonths(viewDate, 1)));
             updateSummary();
         }
 

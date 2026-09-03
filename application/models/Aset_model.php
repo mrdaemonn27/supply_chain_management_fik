@@ -39,6 +39,32 @@ class Aset_model extends CI_Model {
     }
 
     /**
+     * Indeks ringan untuk pencarian barang pada beranda.
+     *
+     * Data lokasi tetap berupa satu baris per master aset supaya nama barang
+     * yang sama di beberapa ruangan dapat digabungkan di antarmuka beranda.
+     */
+    public function get_dashboard_search_index() {
+        $this->db->select('
+            aset.id_aset,
+            aset.id_ruangan,
+            aset.nama_aset,
+            aset.kode_aset,
+            aset.deskripsi,
+            aset.jumlah_total,
+            aset.jumlah_tersedia,
+            ruangan.nama_ruangan
+        ');
+        $this->db->from($this->table);
+        $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
+        $this->db->where('aset.nama_aset IS NOT NULL', null, false);
+        $this->db->where('aset.nama_aset !=', '');
+        $this->db->order_by('aset.nama_aset', 'ASC');
+        $this->db->order_by('ruangan.nama_ruangan', 'ASC');
+        return $this->db->get()->result_array();
+    }
+
+    /**
      * Ambil barang yang sering dipinjam
      * @param int $limit - jumlah item yang ditampilkan
      * @param int $offset - offset untuk pagination

@@ -184,7 +184,6 @@
         function render() {
             months.innerHTML = '';
             months.appendChild(buildMonth(state.view, state));
-            months.appendChild(buildMonth(addMonths(state.view, 1), state));
             updateSummary();
         }
 

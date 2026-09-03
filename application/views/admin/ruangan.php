@@ -34,6 +34,10 @@ $room_photo_url = static function ($photo) {
     }
     return null;
 };
+$room_media_is_3d = static function ($filename) {
+    return in_array(strtolower((string) pathinfo($filename, PATHINFO_EXTENSION)), ['glb', 'gltf'], true);
+};
+$editing_room_is_3d = !empty($ruangan_detail['foto']) && $room_media_is_3d($ruangan_detail['foto']);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -44,6 +48,7 @@ $room_photo_url = static function ($photo) {
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     
     <style>
@@ -54,6 +59,8 @@ $room_photo_url = static function ($photo) {
         .btn-fik-orange { background-color: #ea5b1a; color: white; border: none; }
         .btn-fik-orange:hover { background-color: #c24a13; color: white; }
         .img-thumbnail-custom { width: 80px; height: 60px; object-fit: cover; border-radius: 8px; }
+        .room-model-thumbnail { width:80px; height:60px; display:block; margin:auto; border:1px solid #dee2e6; border-radius:8px; background:#eef1f5; --poster-color:transparent; --progress-bar-color:#ea5b1a; }
+        .room-model-preview { width:min(260px, 100%); height:180px; display:inline-block; border:1px solid #dee2e6; border-radius:8px; background:linear-gradient(145deg, #f7f9fc 0%, #e4eaf1 100%); --poster-color:transparent; --progress-bar-color:#ea5b1a; }
 
         /* Custom Style untuk Drag & Drop Zone */
         .drop-zone {
@@ -205,7 +212,7 @@ $room_photo_url = static function ($photo) {
                         <thead class="table-light">
                             <tr>
                                 <th class="p-3 text-center" width="5%" aria-sort="<?= $room_sort === 'index' ? ($room_direction === 'asc' ? 'ascending' : 'descending') : 'none' ?>"><a href="<?= $room_sort_url('index') ?>" class="room-sort-button scm-sort-control <?= $room_sort === 'index' ? 'is-active' : '' ?>" data-room-sort="index">No <i class="bi <?= $room_sort === 'index' ? ($room_direction === 'asc' ? 'bi-sort-up-alt' : 'bi-sort-down') : 'bi-arrow-down-up' ?>"></i></a></th>
-                                <th width="15%" class="text-center">Gambar</th>
+                                <th width="15%" class="text-center">Media</th>
                                 <th width="25%" aria-sort="<?= $room_sort === 'name' ? ($room_direction === 'asc' ? 'ascending' : 'descending') : 'none' ?>"><a href="<?= $room_sort_url('name') ?>" class="room-sort-button scm-sort-control <?= $room_sort === 'name' ? 'is-active' : '' ?>" data-room-sort="name">Nama Ruangan <i class="bi <?= $room_sort === 'name' ? ($room_direction === 'asc' ? 'bi-sort-up-alt' : 'bi-sort-down') : 'bi-arrow-down-up' ?>"></i></a></th>
                                 <th width="40%" aria-sort="<?= $room_sort === 'description' ? ($room_direction === 'asc' ? 'ascending' : 'descending') : 'none' ?>"><a href="<?= $room_sort_url('description') ?>" class="room-sort-button scm-sort-control <?= $room_sort === 'description' ? 'is-active' : '' ?>" data-room-sort="description">Deskripsi <i class="bi <?= $room_sort === 'description' ? ($room_direction === 'asc' ? 'bi-sort-up-alt' : 'bi-sort-down') : 'bi-arrow-down-up' ?>"></i></a></th>
                                 <th width="15%" class="text-center">Aksi</th>
@@ -231,7 +238,11 @@ $room_photo_url = static function ($photo) {
                                     <td class="text-center">
                                         <?php $foto_ruangan_url = $room_photo_url($r['foto'] ?? null); ?>
                                         <?php if($foto_ruangan_url): ?>
-                                            <img src="<?= $foto_ruangan_url ?>" class="img-thumbnail-custom shadow-sm" alt="Foto <?= html_escape($r['nama_ruangan'] ?? 'ruangan') ?>">
+                                            <?php if($room_media_is_3d($r['foto'] ?? '')): ?>
+                                                <model-viewer src="<?= html_escape($foto_ruangan_url) ?>" class="room-model-thumbnail shadow-sm" alt="Model 3D <?= html_escape($r['nama_ruangan'] ?? 'ruangan') ?>" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.55" loading="lazy"></model-viewer>
+                                            <?php else: ?>
+                                                <img src="<?= html_escape($foto_ruangan_url) ?>" class="img-thumbnail-custom shadow-sm" alt="Foto <?= html_escape($r['nama_ruangan'] ?? 'ruangan') ?>">
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <div class="bg-light text-muted d-inline-flex align-items-center justify-content-center img-thumbnail-custom border">
                                                 <i class="bi bi-image"></i>
@@ -292,16 +303,17 @@ $room_photo_url = static function ($photo) {
                         <div class="invalid-feedback"><?= form_error('nama_ruangan') ?></div>
                     </div>
                     
-                    <!-- UPLOAD FOTO DENGAN DRAG AND DROP -->
+                    <!-- UPLOAD FOTO / MODEL 3D DENGAN DRAG AND DROP -->
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">Foto Ruangan (Opsional)</label>
+                        <label class="form-label fw-semibold">Media Ruangan (Opsional)</label>
                         <div class="drop-zone shadow-sm" id="dropZone">
-                            <input type="file" name="foto" id="fileInput" accept="image/jpeg, image/png, image/jpg, image/webp">
+                            <input type="file" name="foto" id="fileInput" accept="image/jpeg,image/png,image/jpg,image/webp,.glb,.gltf,model/gltf-binary,model/gltf+json">
                             
                             <div id="previewContainer" class="preview-container d-none">
                                 <div class="preview-wrapper">
                                     <img id="imagePreview" src="#" data-default-src="#" alt="Preview" class="img-thumbnail shadow-sm mb-2" style="max-height: 160px; border-radius: 8px;">
-                                    <button type="button" id="btnRemovePreview" class="btn-remove-preview" title="Batal Pilih Foto">
+                                    <model-viewer id="modelPreview" alt="Preview model 3D ruangan" class="room-model-preview shadow-sm mb-2 d-none" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.55"></model-viewer>
+                                    <button type="button" id="btnRemovePreview" class="btn-remove-preview" title="Batal Pilih Media">
                                         <i class="bi bi-x-lg"></i>
                                     </button>
                                 </div>
@@ -311,7 +323,7 @@ $room_photo_url = static function ($photo) {
                             <div id="placeholderContainer" class="preview-container d-block">
                                 <i class="bi bi-download display-4 text-secondary mb-3 d-block"></i>
                                 <h6 class="mb-1 text-dark fs-5"><span class="fw-bold">Pilih file</span> atau drag ke sini.</h6>
-                                <p class="text-muted small mb-0 mt-2">Format yang didukung: JPG, JPEG, PNG, WEBP. Maksimal 2MB.</p>
+                                <p class="text-muted small mb-0 mt-2">Gambar: JPG, JPEG, PNG, WEBP maksimal 2MB. Model: GLB atau GLTF maksimal 15MB. GLB lebih disarankan.</p>
                             </div>
                         </div>
                     </div>
@@ -344,24 +356,25 @@ $room_photo_url = static function ($photo) {
                         <div class="invalid-feedback"><?= form_error('nama_ruangan') ?></div>
                     </div>
                     
-                    <!-- UPLOAD FOTO DENGAN DRAG AND DROP -->
+                    <!-- UPLOAD FOTO / MODEL 3D DENGAN DRAG AND DROP -->
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">Upload Foto Baru (Opsional)</label>
+                        <label class="form-label fw-semibold">Upload Media Baru (Opsional)</label>
                         <div class="drop-zone shadow-sm" id="dropZone">
-                            <input type="file" name="foto" id="fileInput" accept="image/jpeg, image/png, image/jpg, image/webp">
+                            <input type="file" name="foto" id="fileInput" accept="image/jpeg,image/png,image/jpg,image/webp,.glb,.gltf,model/gltf-binary,model/gltf+json">
                             
                             <?php 
                                 $foto_url = $room_photo_url($ruangan_detail['foto'] ?? null);
                                 $ada_foto = !empty($foto_url);
                                 $foto_url = $ada_foto ? $foto_url : '#';
-                                $foto_text = $ada_foto ? '<i class="bi bi-info-circle me-1"></i>Foto saat ini (Abaikan jika tidak diubah)' : '';
+                                $foto_text = $ada_foto ? '<i class="bi bi-info-circle me-1"></i>Media saat ini (Abaikan jika tidak diubah)' : '';
                             ?>
 
                             <!-- Container Preview -->
                             <div id="previewContainer" class="preview-container <?= $ada_foto ? 'd-block' : 'd-none' ?>">
                                 <div class="preview-wrapper">
-                                    <img id="imagePreview" src="<?= $foto_url ?>" data-default-src="<?= $foto_url ?>" alt="Preview" class="img-thumbnail shadow-sm mb-2" style="max-height: 160px; border-radius: 8px;">
-                                    <button type="button" id="btnRemovePreview" class="btn-remove-preview" title="Batal Pilih Foto">
+                                    <img id="imagePreview" src="<?= $editing_room_is_3d ? '#' : html_escape($foto_url) ?>" data-default-src="<?= html_escape($foto_url) ?>" alt="Preview media ruangan" class="img-thumbnail shadow-sm mb-2 <?= $editing_room_is_3d ? 'd-none' : '' ?>" style="max-height: 160px; border-radius: 8px;">
+                                    <model-viewer id="modelPreview" src="<?= $editing_room_is_3d ? html_escape($foto_url) : '' ?>" alt="Preview model 3D ruangan" class="room-model-preview shadow-sm mb-2 <?= $editing_room_is_3d ? '' : 'd-none' ?>" camera-controls disable-pan disable-zoom interaction-prompt="none" touch-action="pan-y" shadow-intensity="0.55"></model-viewer>
+                                    <button type="button" id="btnRemovePreview" class="btn-remove-preview" title="Batal Pilih Media">
                                         <i class="bi bi-x-lg"></i>
                                     </button>
                                 </div>
@@ -374,7 +387,7 @@ $room_photo_url = static function ($photo) {
                             <div id="placeholderContainer" class="preview-container <?= $ada_foto ? 'd-none' : 'd-block' ?>">
                                 <i class="bi bi-download display-4 text-secondary mb-3 d-block"></i>
                                 <h6 class="mb-1 text-dark fs-5"><span class="fw-bold">Pilih file baru</span> atau drag ke sini.</h6>
-                                <p class="text-muted small mb-0 mt-2">Format yang didukung: JPG, JPEG, PNG, WEBP. Maksimal 2MB.</p>
+                                <p class="text-muted small mb-0 mt-2">Gambar: JPG, JPEG, PNG, WEBP maksimal 2MB. Model: GLB atau GLTF maksimal 15MB. GLB lebih disarankan.</p>
                             </div>
                         </div>
                     </div>
@@ -402,12 +415,15 @@ $room_photo_url = static function ($photo) {
             const previewContainer = document.getElementById('previewContainer');
             const placeholderContainer = document.getElementById('placeholderContainer');
             const imagePreview = document.getElementById('imagePreview');
+            const modelPreview = document.getElementById('modelPreview');
             const fileNameDisplay = document.getElementById('fileName');
             const btnRemovePreview = document.getElementById('btnRemovePreview');
 
             // Ambil data default foto lama (jika sedang di form edit)
             const defaultSrc = imagePreview ? imagePreview.getAttribute('data-default-src') : '#';
             const defaultText = fileNameDisplay ? fileNameDisplay.getAttribute('data-default-text') : '';
+            const defaultIs3d = <?= $editing_room_is_3d ? 'true' : 'false' ?>;
+            let previewObjectUrl = null;
 
             if (dropZone && fileInput) {
                 // Cegah browser membuka file secara default
@@ -448,22 +464,56 @@ $room_photo_url = static function ($photo) {
                 });
 
                 function updatePreview(file) {
-                    if (!file.type.match('image.*')) {
-                        alert('Format file ditolak! Pastikan Anda mengunggah format gambar yang didukung (JPG, PNG, WEBP).');
+                    const is3d = /\.(glb|gltf)$/i.test(file.name);
+                    const isImage = /\.(gif|jpe?g|png|webp)$/i.test(file.name) || String(file.type || '').toLowerCase().indexOf('image/') === 0;
+                    const maxBytes = is3d ? 15 * 1024 * 1024 : 2 * 1024 * 1024;
+
+                    if (!is3d && !isImage) {
+                        alert('Format file ditolak! Gunakan JPG, JPEG, PNG, WEBP, GLB, atau GLTF.');
                         fileInput.value = '';
                         return;
                     }
+                    if (file.size > maxBytes) {
+                        alert(is3d ? 'Ukuran model terlalu besar. Maksimal 15MB per file.' : 'Ukuran gambar terlalu besar. Maksimal 2MB per file.');
+                        fileInput.value = '';
+                        return;
+                    }
+
+                    if (previewObjectUrl) {
+                        URL.revokeObjectURL(previewObjectUrl);
+                        previewObjectUrl = null;
+                    }
+                    if (is3d) {
+                        previewObjectUrl = URL.createObjectURL(file);
+                        modelPreview.src = previewObjectUrl;
+                        modelPreview.classList.remove('d-none');
+                        imagePreview.classList.add('d-none');
+                        setFileName(file.name);
+                        previewContainer.classList.remove('d-none');
+                        previewContainer.classList.add('d-block');
+                        placeholderContainer.classList.remove('d-block');
+                        placeholderContainer.classList.add('d-none');
+                        return;
+                    }
+
                     let reader = new FileReader();
                     reader.readAsDataURL(file);
                     reader.onload = function(e) {
                         imagePreview.src = e.target.result;
-                        fileNameDisplay.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i> File dipilih: <b class="text-dark">${file.name}</b>`;
-                        
+                        imagePreview.classList.remove('d-none');
+                        modelPreview.classList.add('d-none');
+                        setFileName(file.name);
+
                         previewContainer.classList.remove('d-none');
                         previewContainer.classList.add('d-block');
                         placeholderContainer.classList.remove('d-block');
                         placeholderContainer.classList.add('d-none');
                     }
+                }
+
+                function setFileName(name) {
+                    fileNameDisplay.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i> File dipilih: <b class="text-dark"></b>';
+                    fileNameDisplay.querySelector('b').textContent = name;
                 }
 
                 // Logika Dinamis saat tombol X diklik
@@ -474,15 +524,30 @@ $room_photo_url = static function ($photo) {
 
                         // 1. Selalu kosongkan input file yang baru dipilih
                         fileInput.value = '';
-                        
+                        if (previewObjectUrl) {
+                            URL.revokeObjectURL(previewObjectUrl);
+                            previewObjectUrl = null;
+                        }
+
                         // 2. Cek apakah ada foto aslinya di DB (Mode Edit)
                         if (defaultSrc !== '' && defaultSrc !== '#') {
-                            // Jika ada, kembalikan ke foto lama
-                            imagePreview.src = defaultSrc;
+                            // Jika ada, kembalikan ke media lama
+                            if (defaultIs3d) {
+                                modelPreview.src = defaultSrc;
+                                modelPreview.classList.remove('d-none');
+                                imagePreview.classList.add('d-none');
+                            } else {
+                                imagePreview.src = defaultSrc;
+                                imagePreview.classList.remove('d-none');
+                                modelPreview.classList.add('d-none');
+                            }
                             fileNameDisplay.innerHTML = defaultText;
                         } else {
-                            // Jika tidak ada foto (Mode Tambah), sembunyikan gambar & munculkan ikon awan
+                            // Jika tidak ada media (Mode Tambah), sembunyikan preview & munculkan ikon awan
                             imagePreview.src = '#';
+                            modelPreview.removeAttribute('src');
+                            imagePreview.classList.add('d-none');
+                            modelPreview.classList.add('d-none');
                             fileNameDisplay.innerHTML = '';
                             previewContainer.classList.remove('d-block');
                             previewContainer.classList.add('d-none');

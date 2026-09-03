@@ -49,11 +49,27 @@ $history_query['per_page'] = $history_per_page;
         .table-custom tbody td { padding: 15px; vertical-align: middle; border-bottom: 1px solid #eee; background: white; }
         .table-custom tbody tr:hover td { background-color: #fafafa; }
         
-        .table-custom th:nth-child(4), .table-custom td:nth-child(4) { width: 320px; min-width: 320px; }
+        .table-custom { width: 100%; table-layout: fixed; }
         .badge-status { display:inline-flex; align-items:center; justify-content:center; gap:.4rem; width:300px; min-width:300px; max-width:300px; height:42px; min-height:42px; padding:7px 14px; border-radius:999px; font-weight:600; font-size:.76rem; line-height:1.2; white-space:normal; text-align:center; }
         .history-search { max-width:980px; margin:0 auto 1.25rem; }
-        .history-date { display:inline-flex; align-items:center; gap:.45rem; padding:.4rem .55rem; border-radius:8px; cursor:help; transition:background-color .18s ease; }
+        .history-date { display:grid; width:100%; grid-template-columns:24px minmax(0, 1fr); align-items:center; gap:.55rem; padding:.5rem .6rem; border:1px solid transparent; border-radius:10px; cursor:help; transition:background-color .18s ease, border-color .18s ease; }
         .history-date:hover { background:#fff3eb; }
+        .history-date > i { width:24px; font-size:1rem; text-align:center; }
+        .history-date__range { display:flex; min-width:0; flex-direction:column; gap:.12rem; }
+        .history-date__line { display:block; overflow-wrap:normal !important; word-break:normal !important; white-space:nowrap !important; }
+        .history-date__line--start { color:#252a31; font-size:.8rem; font-weight:600; }
+        .history-date__line--end { color:#6c757d; font-size:.75rem; }
+        .history-date__connector { display:inline-block; min-width:2.15rem; color:#9aa1aa; }
+        @media (min-width: 1200px) {
+            .table-custom.scm-responsive-table th:nth-child(1),
+            .table-custom.scm-responsive-table td:nth-child(1) { width:145px !important; }
+            .table-custom.scm-responsive-table th:nth-child(3),
+            .table-custom.scm-responsive-table td:nth-child(3) { width:235px !important; min-width:235px !important; }
+            .table-custom.scm-responsive-table th:nth-child(4),
+            .table-custom.scm-responsive-table td:nth-child(4) { width:320px !important; min-width:320px !important; }
+            .table-custom.scm-responsive-table th:nth-child(5),
+            .table-custom.scm-responsive-table td:nth-child(5) { width:155px !important; }
+        }
         .history-empty-filter { display:none; }
         .history-pagination { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-top:1.25rem; }
         .history-pagination__info { margin:0; color:#6c757d; font-size:.85rem; }
@@ -174,8 +190,8 @@ $history_query['per_page'] = $history_per_page;
             </div>
         </div>
         <?php endif; ?>
-        <div class="table-responsive" data-aos="fade-up">
-            <table class="table table-custom mb-0">
+        <div class="table-responsive history-table-shell" data-aos="fade-up">
+            <table class="table table-custom history-table mb-0">
                 <thead>
                     <tr>
                         <?php foreach (['tanggal' => 'Tgl Pengajuan', 'barang' => 'Nama Barang', 'masa' => 'Masa Pinjam', 'status' => 'Status Approval', 'qr' => 'Status QR'] as $sort_key => $sort_label): ?>
@@ -207,7 +223,10 @@ $history_query['per_page'] = $history_per_page;
                             <td>
                                 <span class="history-date" tabindex="0" data-bs-toggle="tooltip" data-bs-placement="top" title="Masa pinjam: <?= html_escape(masa_pinjam_indonesia($r->tanggal_pinjam, $r->tanggal_kembali_rencana)) ?>">
                                     <i class="bi bi-calendar-range text-fik-orange"></i>
-                                    <span><span class="d-block small fw-semibold"><?= tanggal_indonesia($r->tanggal_pinjam) ?></span><span class="d-block small text-muted">s.d. <?= tanggal_indonesia($r->tanggal_kembali_rencana) ?></span></span>
+                                    <span class="history-date__range">
+                                        <span class="history-date__line history-date__line--start"><span class="visually-hidden">Mulai: </span><time datetime="<?= html_escape(substr((string) $r->tanggal_pinjam, 0, 10)) ?>"><?= html_escape(tanggal_indonesia($r->tanggal_pinjam)) ?></time></span>
+                                        <span class="history-date__line history-date__line--end"><span class="history-date__connector" aria-hidden="true">s.d.</span><span class="visually-hidden">Selesai: </span><time datetime="<?= html_escape(substr((string) $r->tanggal_kembali_rencana, 0, 10)) ?>"><?= html_escape(tanggal_indonesia($r->tanggal_kembali_rencana)) ?></time></span>
+                                    </span>
                                 </span>
                             </td>
                             <td>

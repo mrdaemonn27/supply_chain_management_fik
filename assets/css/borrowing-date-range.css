@@ -107,6 +107,7 @@ body.date-range-ready .borrowing-date-range__native-fallback {
 .borrowing-date-range__panel {
     position: relative;
     z-index: 5;
+    width: min(100%, 520px);
     margin-top: 10px;
     padding: 20px;
     background: #ffffff;
@@ -170,13 +171,7 @@ body.date-range-ready .borrowing-date-range__native-fallback {
 
 .borrowing-date-range__months {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 28px;
-}
-
-.borrowing-date-range__month + .borrowing-date-range__month {
-    padding-left: 28px;
-    border-left: 1px solid #edf0f4;
+    grid-template-columns: minmax(0, 1fr);
 }
 
 .borrowing-date-range__month-title {
@@ -360,10 +355,6 @@ body.date-range-ready .borrowing-date-range__native-fallback {
     .borrowing-date-range__months {
         grid-template-columns: 1fr;
     }
-
-    .borrowing-date-range__month + .borrowing-date-range__month {
-        display: none;
-    }
 }
 
 /* Shared compact range picker used by every date filter. */
@@ -413,7 +404,7 @@ body.date-range-ready .borrowing-date-range__native-fallback {
     z-index: 1080;
     top: calc(100% + 8px);
     right: 0;
-    width: min(720px, calc(100vw - 40px));
+    width: min(430px, calc(100vw - 40px));
     padding: 18px;
     color: var(--scm-theme-text, #253042);
     background: var(--scm-theme-surface, #fff);
@@ -429,8 +420,7 @@ body.date-range-ready .borrowing-date-range__native-fallback {
 .scm-filter-date-range__navigation { display: flex; gap: 7px; }
 .scm-filter-date-range__nav { display: inline-grid; width: 34px; height: 34px; padding: 0; color: inherit; place-items: center; background: transparent; border: 1px solid var(--scm-theme-border, #dce2ea); border-radius: 9px; }
 .scm-filter-date-range__nav:hover { color: #ea5b1a; background: rgba(234, 91, 26, .07); border-color: rgba(234, 91, 26, .45); }
-.scm-filter-date-range__months { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-.scm-filter-date-range__month + .scm-filter-date-range__month { padding-left: 24px; border-left: 1px solid var(--scm-theme-border, #edf0f4); }
+.scm-filter-date-range__months { display: grid; grid-template-columns: minmax(0, 1fr); }
 .scm-filter-date-range__month-title { margin-bottom: 11px; font-size: .88rem; font-weight: 700; text-align: center; }
 .scm-filter-date-range__weekdays,
 .scm-filter-date-range__days { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
@@ -452,7 +442,6 @@ body.date-range-ready .borrowing-date-range__native-fallback {
 @media (max-width: 767.98px) {
     .scm-filter-date-range__panel { right: auto; left: 0; width: min(94vw, 430px); padding: 15px; }
     .scm-filter-date-range__months { grid-template-columns: 1fr; }
-    .scm-filter-date-range__month + .scm-filter-date-range__month { display: none; }
 }
 
 @media (max-width: 420px) {

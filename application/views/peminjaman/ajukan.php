@@ -32,7 +32,7 @@ $has_uploaded_visual = !empty($asset_media);
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Poppins', sans-serif; background-color: #f8f9fa; }
@@ -261,6 +261,49 @@ $has_uploaded_visual = !empty($asset_media);
             background-color: #bb2d3b;
             transform: scale(1.1);
         }
+        .capture-buttons .btn {
+            min-height: 44px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+        .camera-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1090;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(0, 0, 0, .86);
+            backdrop-filter: blur(4px);
+        }
+        .camera-box {
+            overflow: hidden;
+            width: min(100%, 520px);
+            border: 1px solid rgba(255, 255, 255, .15);
+            border-radius: 16px;
+            background: #050505;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, .45);
+        }
+        .camera-box video {
+            display: block;
+            width: 100%;
+            max-height: 68vh;
+            aspect-ratio: 4 / 3;
+            object-fit: cover;
+            background: #000;
+        }
+        .camera-controls {
+            display: flex;
+            justify-content: center;
+            gap: .65rem;
+            padding: .9rem;
+            background: #111;
+        }
+        @media (max-width: 575.98px) {
+            .capture-buttons .btn { font-size: .82rem; }
+            .camera-controls { flex-direction: column; }
+        }
     </style>
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
 </head>
@@ -436,10 +479,20 @@ $has_uploaded_visual = !empty($asset_media);
 
                         <div class="mb-4 bg-fik-orange-light p-3 rounded-3 border border-warning border-opacity-25">
                             <label class="form-label fw-bold text-fik-brown"><i class="bi bi-camera-fill me-1"></i> Foto Kondisi Awal Alat <span class="text-danger">*</span></label>
-                            
+
+                            <div class="d-flex flex-column flex-sm-row gap-2 mt-2 capture-buttons">
+                                <button type="button" class="btn btn-outline-secondary flex-fill" id="btnGaleriKondisi">
+                                    <i class="bi bi-images me-1"></i> Pilih dari Galeri
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary flex-fill" id="btnKameraKondisi">
+                                    <i class="bi bi-camera me-1"></i> Buka Kamera
+                                </button>
+                            </div>
+                            <div class="small text-muted mt-2">Pilih satu foto dari galeri, drag ke area di bawah, atau ambil langsung menggunakan kamera.</div>
+
                             <div class="drop-zone shadow-sm bg-white mt-2 mb-2" id="dropZone">
-                                <input type="file" name="foto_kondisi" id="fileInput" accept="image/jpeg, image/png, image/jpg, image/webp" required>
-                                
+                                <input type="file" name="foto_kondisi" id="fileInput" accept="image/jpeg,image/png,image/jpg" required>
+
                                 <div id="previewContainer" class="preview-container d-none">
                                     <div class="preview-wrapper">
                                         <img id="imagePreview" src="#" data-default-src="#" alt="Preview" class="img-thumbnail shadow-sm mb-2" style="max-height: 160px; border-radius: 8px;">
@@ -456,6 +509,17 @@ $has_uploaded_visual = !empty($asset_media);
                                     <small class="text-muted mt-1 d-block" style="font-size: 0.75rem;">Format: JPG/PNG. Maksimal ukuran file: 2MB. Pastikan foto memperlihatkan kelengkapan alat.</small>
                                 </div>
                             </div>
+
+                            <div class="camera-overlay d-none" id="cameraOverlayKondisi" aria-hidden="true">
+                                <div class="camera-box" role="dialog" aria-modal="true" aria-label="Ambil foto kondisi awal alat">
+                                    <video id="cameraVideoKondisi" autoplay playsinline muted></video>
+                                    <div class="camera-controls">
+                                        <button type="button" class="btn btn-submit px-4" id="btnJepretKondisi"><i class="bi bi-camera-fill me-1"></i> Jepret Foto</button>
+                                        <button type="button" class="btn btn-outline-light px-4" id="btnTutupKameraKondisi">Tutup Kamera</button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <label class="form-label fw-semibold text-muted small mt-3">Sesuai pengamatan fisik, kondisi saat ini:</label>
                             <select name="kondisi_saat_pinjam" class="form-select bg-white" required>
                                 <option value="Baik">Baik & Lengkap</option>
@@ -496,6 +560,13 @@ $has_uploaded_visual = !empty($asset_media);
             const imagePreview = document.getElementById('imagePreview');
             const fileNameDisplay = document.getElementById('fileName');
             const btnRemovePreview = document.getElementById('btnRemovePreview');
+            const btnGaleri = document.getElementById('btnGaleriKondisi');
+            const btnKamera = document.getElementById('btnKameraKondisi');
+            const cameraOverlay = document.getElementById('cameraOverlayKondisi');
+            const cameraVideo = document.getElementById('cameraVideoKondisi');
+            const btnJepret = document.getElementById('btnJepretKondisi');
+            const btnTutupKamera = document.getElementById('btnTutupKameraKondisi');
+            let cameraStream = null;
 
             if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
                 document.querySelectorAll('model-viewer[auto-rotate]').forEach(function (model) {
@@ -572,6 +643,13 @@ $has_uploaded_visual = !empty($asset_media);
             const defaultText = fileNameDisplay ? fileNameDisplay.getAttribute('data-default-text') : '';
 
             if (dropZone && fileInput) {
+                if (btnGaleri) {
+                    btnGaleri.addEventListener('click', function() {
+                        fileInput.removeAttribute('capture');
+                        fileInput.click();
+                    });
+                }
+
                 // Mencegah browser membuka file gambar di tab baru saat di-drag
                 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                     dropZone.addEventListener(eventName, preventDefaults, false);
@@ -604,6 +682,7 @@ $has_uploaded_visual = !empty($asset_media);
 
                 // Menangkap event CLICK 
                 fileInput.addEventListener('change', function() {
+                    this.removeAttribute('capture');
                     if (this.files && this.files[0]) {
                         updatePreview(this.files[0]);
                     }
@@ -612,8 +691,14 @@ $has_uploaded_visual = !empty($asset_media);
                 function updatePreview(file) {
                     // Validasi bahwa file adalah gambar
                     if (!file.type.match('image.*')) {
-                        alert('Format file ditolak! Pastikan Anda mengunggah format gambar yang didukung (JPG, PNG, WEBP).');
+                        alert('Format file ditolak! Gunakan gambar JPG atau PNG.');
                         fileInput.value = ''; // Reset input
+                        return;
+                    }
+
+                    if (file.size > 2 * 1024 * 1024) {
+                        alert('Ukuran foto melebihi 2MB. Silakan pilih atau ambil ulang foto dengan ukuran lebih kecil.');
+                        fileInput.value = '';
                         return;
                     }
 
@@ -648,6 +733,84 @@ $has_uploaded_visual = !empty($asset_media);
                         placeholderContainer.classList.add('d-block');
                     });
                 }
+
+                async function openCamera() {
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                        fileInput.setAttribute('capture', 'environment');
+                        fileInput.click();
+                        return;
+                    }
+
+                    try {
+                        cameraStream = await navigator.mediaDevices.getUserMedia({
+                            video: { facingMode: { ideal: 'environment' } },
+                            audio: false
+                        });
+                        cameraVideo.srcObject = cameraStream;
+                        cameraOverlay.classList.remove('d-none');
+                        cameraOverlay.setAttribute('aria-hidden', 'false');
+                        document.body.style.overflow = 'hidden';
+                        btnJepret.focus();
+                    } catch (error) {
+                        alert('Kamera tidak dapat diakses. Pastikan izin kamera aktif dan halaman dibuka melalui HTTPS atau localhost. Anda tetap dapat memilih foto dari galeri.');
+                    }
+                }
+
+                function closeCamera() {
+                    if (cameraStream) {
+                        cameraStream.getTracks().forEach(function(track) { track.stop(); });
+                        cameraStream = null;
+                    }
+                    cameraVideo.srcObject = null;
+                    cameraOverlay.classList.add('d-none');
+                    cameraOverlay.setAttribute('aria-hidden', 'true');
+                    document.body.style.overflow = '';
+                    if (btnKamera) btnKamera.focus();
+                }
+
+                function takeCameraPhoto() {
+                    if (!cameraStream || !cameraVideo.videoWidth || !cameraVideo.videoHeight) {
+                        alert('Kamera belum siap. Tunggu sebentar lalu coba jepret kembali.');
+                        return;
+                    }
+
+                    const maxDimension = 1280;
+                    const scale = Math.min(1, maxDimension / Math.max(cameraVideo.videoWidth, cameraVideo.videoHeight));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.max(1, Math.round(cameraVideo.videoWidth * scale));
+                    canvas.height = Math.max(1, Math.round(cameraVideo.videoHeight * scale));
+                    canvas.getContext('2d').drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(function(blob) {
+                        if (!blob) {
+                            alert('Foto gagal diproses. Silakan coba kembali.');
+                            return;
+                        }
+                        if (blob.size > 2 * 1024 * 1024) {
+                            alert('Hasil foto masih melebihi 2MB. Silakan coba kembali.');
+                            return;
+                        }
+
+                        const cameraFile = new File([blob], 'kondisi-awal-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+                        const transfer = new DataTransfer();
+                        transfer.items.add(cameraFile);
+                        fileInput.files = transfer.files;
+                        updatePreview(cameraFile);
+                        closeCamera();
+                    }, 'image/jpeg', 0.78);
+                }
+
+                if (btnKamera) btnKamera.addEventListener('click', openCamera);
+                if (btnJepret) btnJepret.addEventListener('click', takeCameraPhoto);
+                if (btnTutupKamera) btnTutupKamera.addEventListener('click', closeCamera);
+                if (cameraOverlay) {
+                    cameraOverlay.addEventListener('click', function(event) {
+                        if (event.target === cameraOverlay) closeCamera();
+                    });
+                }
+                document.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape' && cameraOverlay && !cameraOverlay.classList.contains('d-none')) closeCamera();
+                });
+                window.addEventListener('pagehide', closeCamera);
             }
         });
     </script>
