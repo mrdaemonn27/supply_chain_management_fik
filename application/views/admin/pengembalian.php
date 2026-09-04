@@ -30,7 +30,9 @@ $return_sort_dir = (string) ($filters['sort_dir'] ?? 'desc');
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     <link rel="stylesheet" href="<?= base_url('assets/css/approval-bulk-select.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/approval-bulk-select.css'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/loan-action-summary.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-action-summary.css'); ?>">
     <style>
         body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
@@ -158,12 +160,12 @@ $return_sort_dir = (string) ($filters['sort_dir'] ?? 'desc');
                         <tr><td colspan="7" class="text-center text-muted py-5">Belum ada transaksi aktif untuk pengembalian.</td></tr>
                     <?php else: foreach($peminjaman as $index => $p): ?>
                         <?php $is_late = !empty($p->tanggal_kembali_rencana) && strtotime($p->tanggal_kembali_rencana) < strtotime(date('Y-m-d')); ?>
-                        <tr data-loan-id="<?= (int) $p->id_peminjaman ?>">
+                        <tr data-loan-id="<?= (int) $p->id_peminjaman ?>" data-filter-peminjam="<?= html_escape(($p->nama_peminjam ?? '') . ' ' . ($p->nim_nip ?? '')) ?>" data-filter-barang="<?= html_escape(implode(', ', array_map(static function ($d) { return ($d->nama_aset ?? '-') . ' (' . (int) ($d->jumlah_pinjam ?? 0) . ')'; }, (array) ($p->detail_barang ?? [])))) ?>" data-filter-jumlah="<?= (int) ($p->total_jumlah ?? 0) ?>" data-filter-masa="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>">
                             <td class="approval-bulk-cell"><input type="checkbox" class="form-check-input approval-bulk-check" name="loan_ids[]" value="<?= (int) $p->id_peminjaman ?>" form="laboranReturnBulkForm" data-bulk-row aria-label="Pilih pengembalian <?= (int) $p->id_peminjaman ?>"></td>
                             <td class="ps-3 fw-semibold text-muted"><?= (($pagination['page'] ?? 1) - 1) * max(1, (int) ($pagination['per_page'] ?? count($peminjaman))) + $index + 1 ?></td>
                             <td class="ps-3"><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="fw-semibold"><?= (int)($p->total_jenis ?? 1) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?><?= html_escape($d->nama_aset) ?> (<?= (int)$d->jumlah_pinjam ?>), <?php endforeach; else: ?>- <?php endif; ?></div></td>
-                            <td><div><?= html_escape($p->tanggal_pinjam ?? '-') ?></div><div class="small <?= $is_late ? 'text-danger fw-semibold' : 'text-muted' ?>">s.d. <?= html_escape($p->tanggal_kembali_rencana ?? '-') ?><?= $is_late ? ' - Terlambat' : '' ?></div></td>
+                            <td><div><?= html_escape(tanggal_indonesia($p->tanggal_pinjam ?? null)) ?></div><div class="small <?= $is_late ? 'text-danger fw-semibold' : 'text-muted' ?>">s.d. <?= html_escape(tanggal_indonesia($p->tanggal_kembali_rencana ?? null)) ?><?= $is_late ? ' - Terlambat' : '' ?></div></td>
                             <td data-bulk-status><span class="soft-badge <?= $is_late ? 'status-Terlambat' : $status_class($p->status ?? '') ?>"><?= $is_late ? 'Terlambat' : html_escape($p->status ?? '-') ?></span><?php if (!empty($p->evidence_serah)): ?><div class="small mt-1"><?php foreach ($p->evidence_serah as $evidence): ?><a class="d-block" href="<?= base_url($evidence->nama_file) ?>" target="_blank" rel="noopener"><i class="bi bi-image me-1"></i><?= html_escape($evidence->original_name ?: 'Evidence serah terima') ?></a><?php endforeach; ?></div><?php endif; ?></td>
                             <td class="text-end pe-3">
                                 <div class="d-inline-flex flex-wrap justify-content-end gap-2">
@@ -224,12 +226,12 @@ $return_sort_dir = (string) ($filters['sort_dir'] ?? 'desc');
 
     <?php if(!empty($peminjaman)): foreach($peminjaman as $p): ?>
         <div class="modal fade" id="returnModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                 <form class="modal-content" method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/kembalikan/'.$p->id_peminjaman) ?>">
                     <input type="hidden" name="return_to" value="admin/pengembalian">
-                    <div class="modal-header"><h5 class="modal-title fw-bold">Terima Pengembalian</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-header"><h5 class="modal-title fw-bold">Konfirmasi Pengembalian</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
                     <div class="modal-body">
-                        <div class="mb-2"><div class="small text-muted">Peminjam</div><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div></div>
+                        <?php $loan_action_item = $p; include APPPATH . 'views/shared/loan_action_summary.php'; unset($loan_action_item); ?>
                         <label class="form-label small fw-semibold">Kondisi Saat Kembali</label>
                         <select name="kondisi_saat_kembali" class="form-select mb-3 return-condition" required>
                             <option value="Baik">Baik</option>
@@ -243,8 +245,9 @@ $return_sort_dir = (string) ($filters['sort_dir'] ?? 'desc');
                         <label class="form-label small fw-semibold mt-2">Ambil Foto Kamera HP</label>
                         <input type="file" name="foto_pengembalian_camera" class="form-control return-file" accept="image/*" capture="environment">
                         <div class="small text-muted mt-1">Evidence wajib untuk Rusak/Hilang. Maksimal 5MB.</div>
+                        <p class="loan-action-dialog-note mt-3"><i class="bi bi-info-circle"></i><span>Pastikan jumlah barang dan kondisi fisik sudah diperiksa sebelum menyetujui pengembalian.</span></p>
                     </div>
-                    <div class="modal-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button class="btn btn-success rounded-pill px-4" onclick="return confirm('Konfirmasi barang sudah diterima kembali?')">Terima Pengembalian</button></div>
+                    <div class="modal-footer loan-action-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button class="btn btn-success rounded-pill px-4"><i class="bi bi-check2-circle me-1"></i>Setujui Pengembalian</button></div>
                 </form>
             </div>
         </div>

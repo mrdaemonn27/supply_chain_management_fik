@@ -4,6 +4,10 @@ $session_role = strtolower((string) $this->session->userdata('role'));
 $display_nama = ($session_role === 'admin') ? 'Laboran' : $this->session->userdata('nama');
 $notif_items = isset($notifikasi) && is_array($notifikasi) ? $notifikasi : [];
 $notif_count = (int) ($unread_notifikasi ?? 0);
+$program_studi = isset($program_studi) && is_array($program_studi) ? $program_studi : [];
+$jenis_peminjam_options = isset($jenis_peminjam_options) && is_array($jenis_peminjam_options) ? $jenis_peminjam_options : [];
+$user_prodi = $user_prodi ?? null;
+$user_jenis = $user_jenis ?? null;
 $asset_media = [];
 $gallery_source = json_decode((string) ($aset->foto ?? ''), true);
 $gallery_filenames = is_array($gallery_source) ? $gallery_source : [($aset->foto ?? '')];
@@ -430,6 +434,40 @@ $has_uploaded_visual = !empty($asset_media);
                                 <input type="number" name="jumlah_pinjam" class="form-control" min="1" max="<?= $aset->jumlah_tersedia ?>" value="1" required>
                                 <small class="text-danger" style="font-size: 0.7rem;">Maksimal <?= $aset->jumlah_tersedia ?> unit</small>
                             </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-7">
+                                <label for="prodi" class="form-label fw-semibold text-muted small">Program Studi <span class="text-danger">*</span></label>
+                                <?php if ($user_prodi): ?>
+                                    <input type="text" id="prodi" class="form-control bg-light" value="<?= html_escape($user_prodi) ?>" readonly>
+                                <?php else: ?>
+                                    <select name="prodi" id="prodi" class="form-select" required>
+                                        <option value="" selected disabled>Pilih program studi</option>
+                                        <?php foreach ($program_studi as $program): ?>
+                                            <option value="<?= html_escape($program) ?>"><?= html_escape($program) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php endif; ?>
+                            </div>
+                            <div class="col-md-5">
+                                <label for="jenis_pengguna" class="form-label fw-semibold text-muted small">Status Peminjam <span class="text-danger">*</span></label>
+                                <?php if ($user_jenis): ?>
+                                    <input type="text" id="jenis_pengguna" class="form-control bg-light" value="<?= html_escape($user_jenis) ?>" readonly>
+                                <?php else: ?>
+                                    <select name="jenis_pengguna" id="jenis_pengguna" class="form-select" required>
+                                        <option value="" selected disabled>Pilih status</option>
+                                        <?php foreach ($jenis_peminjam_options as $jenis): ?>
+                                            <option value="<?= html_escape($jenis) ?>"><?= html_escape($jenis) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php endif; ?>
+                            </div>
+                            <?php if (!$user_prodi || !$user_jenis): ?>
+                                <div class="col-12">
+                                    <div class="alert alert-warning py-2 px-3 mb-0 small"><i class="bi bi-info-circle me-1"></i>Data ini disimpan ke akun Anda untuk menentukan Kaprodi yang berwenang.</div>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <div class="mb-4 borrowing-date-range" data-borrowing-date-range data-min-date="<?= date('Y-m-d') ?>">

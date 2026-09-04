@@ -25,7 +25,7 @@
     }
 
     function formatDate(date) {
-        return date ? new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(date) : 'Tanggal mulai';
+        return date ? new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date) : 'Tanggal mulai';
     }
 
     function formatMonth(date) {

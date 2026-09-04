@@ -9,6 +9,7 @@ $boleh_kembali = !empty($qr_valid) && in_array(($peminjaman->status ?? ''), ['Se
     <title><?= html_escape($title ?? 'Validasi Pengembalian') ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="<?= base_url('assets/css/loan-action-summary.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-action-summary.css'); ?>">
     <style>
         body { background: #f5f6f8; font-family: Arial, sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; color: #fff; border-bottom: 4px solid #ea5b1a; }
@@ -63,7 +64,7 @@ $boleh_kembali = !empty($qr_valid) && in_array(($peminjaman->status ?? ''), ['Se
             </div>
 
             <?php if($boleh_kembali): ?>
-                <form method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/kembalikan/'.$peminjaman->id_peminjaman) ?>">
+                <form id="qrReturnForm" method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/kembalikan/'.$peminjaman->id_peminjaman) ?>">
                     <input type="hidden" name="return_to" value="admin/pengembalian">
                     <input type="hidden" name="from_qr" value="1">
 
@@ -128,7 +129,7 @@ $boleh_kembali = !empty($qr_valid) && in_array(($peminjaman->status ?? ''), ['Se
                         </div>
                     </div>
 
-                    <button class="btn btn-fik rounded-pill px-4 mt-1" onclick="return confirm('Konfirmasi barang sudah diterima kembali?')"><i class="bi bi-check2-circle me-1"></i> Terima Pengembalian</button>
+                    <button id="openQrReturnConfirmation" type="button" class="btn btn-fik rounded-pill px-4 mt-1"><i class="bi bi-check2-circle me-1"></i> Periksa &amp; Konfirmasi</button>
                 </form>
             <?php else: ?>
                 <div class="table-responsive mb-3">
@@ -150,6 +151,25 @@ $boleh_kembali = !empty($qr_valid) && in_array(($peminjaman->status ?? ''), ['Se
             <?php endif; ?>
         </section>
     </main>
+
+    <?php if($boleh_kembali): ?>
+    <div class="modal fade" id="qrReturnConfirmation" tabindex="-1" aria-labelledby="qrReturnConfirmationTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header"><h2 id="qrReturnConfirmationTitle" class="modal-title h5 fw-bold">Konfirmasi Pengembalian</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+                <div class="modal-body">
+                    <?php $loan_action_item = $peminjaman; include APPPATH . 'views/shared/loan_action_summary.php'; unset($loan_action_item); ?>
+                    <div class="row g-2 mb-3">
+                        <div class="col-sm-6"><div class="border rounded-3 p-3 h-100"><div class="small text-muted">Unit yang diterima</div><div class="fw-bold" data-return-confirm-units>-</div></div></div>
+                        <div class="col-sm-6"><div class="border rounded-3 p-3 h-100"><div class="small text-muted">Kondisi akhir</div><div class="fw-bold" data-return-confirm-condition>-</div></div></div>
+                    </div>
+                    <p class="loan-action-dialog-note"><i class="bi bi-info-circle"></i><span>Pastikan jumlah, kondisi, catatan, dan bukti sudah sesuai. Persetujuan akan menyelesaikan transaksi pengembalian.</span></p>
+                </div>
+                <div class="modal-footer loan-action-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Kembali Periksa</button><button id="confirmQrReturn" type="button" class="btn btn-success rounded-pill px-4"><i class="bi bi-check2-circle me-1"></i>Setujui Pengembalian</button></div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
@@ -174,6 +194,30 @@ $boleh_kembali = !empty($qr_valid) && in_array(($peminjaman->status ?? ''), ['Se
         let selectedFiles = [];
 
         if (!fileInput) return;
+
+        const openConfirmation = document.getElementById('openQrReturnConfirmation');
+        const confirmButton = document.getElementById('confirmQrReturn');
+        const confirmationElement = document.getElementById('qrReturnConfirmation');
+        if (openConfirmation && confirmButton && confirmationElement && form) {
+            const confirmationModal = bootstrap.Modal.getOrCreateInstance(confirmationElement);
+            openConfirmation.addEventListener('click', () => {
+                if (!form.reportValidity()) return;
+                const condition = form.querySelector('.return-condition')?.value || '-';
+                const note = form.querySelector('.return-note')?.value.trim();
+                if ((condition === 'Rusak' || condition === 'Hilang') && (!note || selectedFiles.length === 0)) {
+                    alert('Untuk kondisi Rusak atau Hilang, catatan dan evidence wajib diisi.');
+                    return;
+                }
+                const units = Array.from(form.querySelectorAll('.jumlah-input')).reduce((total, input) => total + (parseInt(input.value || '0', 10) || 0), 0);
+                confirmationElement.querySelector('[data-return-confirm-units]').textContent = units + ' unit';
+                confirmationElement.querySelector('[data-return-confirm-condition]').textContent = condition;
+                confirmationModal.show();
+            });
+            confirmButton.addEventListener('click', () => {
+                confirmationModal.hide();
+                form.requestSubmit();
+            });
+        }
 
         function syncFileInput() {
             const dt = new DataTransfer();

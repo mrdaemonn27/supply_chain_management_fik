@@ -39,6 +39,50 @@ class Aset_model extends CI_Model {
     }
 
     /**
+     * Pencarian ringan untuk combobox distribusi. Hanya aset dengan stok yang
+     * dapat didistribusikan dikirim ke browser agar halaman tetap cepat saat
+     * master data berisi ribuan record.
+     */
+    public function search_for_distribution($keyword = '', $limit = 20) {
+        $keyword = trim((string) $keyword);
+        $this->db->select('aset.id_aset, aset.id_ruangan, aset.nama_aset, aset.kode_aset, aset.jumlah_tersedia, aset.kondisi, ruangan.nama_ruangan');
+        $this->db->from($this->table);
+        $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
+        $this->db->where('aset.jumlah_tersedia >', 0);
+        if ($keyword !== '') {
+            $this->db->group_start()
+                ->like('aset.nama_aset', $keyword)
+                ->or_like('aset.kode_aset', $keyword)
+                ->or_like('ruangan.nama_ruangan', $keyword)
+                ->group_end();
+        }
+        $this->db->order_by('aset.id_aset', 'DESC');
+        $this->db->limit(max(1, min(30, (int) $limit)));
+        return $this->db->get()->result();
+    }
+
+    /**
+     * Pencarian ringan untuk combobox maintenance. Semua aset dapat dirawat,
+     * termasuk aset yang belum ditempatkan atau stok tersedianya sedang nol.
+     */
+    public function search_for_maintenance($keyword = '', $limit = 20) {
+        $keyword = trim((string) $keyword);
+        $this->db->select('aset.id_aset, aset.id_ruangan, aset.nama_aset, aset.kode_aset, aset.jumlah_total, aset.kondisi, ruangan.nama_ruangan');
+        $this->db->from($this->table);
+        $this->db->join('ruangan', 'ruangan.id_ruangan = aset.id_ruangan', 'left');
+        if ($keyword !== '') {
+            $this->db->group_start()
+                ->like('aset.nama_aset', $keyword)
+                ->or_like('aset.kode_aset', $keyword)
+                ->or_like('ruangan.nama_ruangan', $keyword)
+                ->group_end();
+        }
+        $this->db->order_by('aset.id_aset', 'DESC');
+        $this->db->limit(max(1, min(30, (int) $limit)));
+        return $this->db->get()->result();
+    }
+
+    /**
      * Indeks ringan untuk pencarian barang pada beranda.
      *
      * Data lokasi tetap berupa satu baris per master aset supaya nama barang

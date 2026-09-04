@@ -11,6 +11,7 @@ class Auth extends CI_Controller {
 
     public function __construct() {
         parent::__construct();
+        $this->load->helper('fik_prodi');
         $this->load->model('User_model');
     }
 
@@ -63,6 +64,8 @@ class Auth extends CI_Controller {
                 'username'  => $user->nim_nip,
                 'nama'      => $display_name,
                 'role'      => $user->role,
+                'prodi'     => fik_normalize_prodi($user->prodi ?? null),
+                'jenis_pengguna' => fik_normalize_jenis_peminjam($user->jenis_pengguna ?? null),
                 'logged_in' => TRUE
             );
             $this->session->set_userdata($session_data);
@@ -91,8 +94,10 @@ class Auth extends CI_Controller {
         $email = trim($this->input->post('email', TRUE));
         $password = $this->input->post('password', TRUE);
         $password_confirm = $this->input->post('password_confirm', TRUE);
+        $prodi = fik_normalize_prodi($this->input->post('prodi', TRUE));
+        $jenis_pengguna = fik_normalize_jenis_peminjam($this->input->post('jenis_pengguna', TRUE));
 
-        if ($nim_nip === '' || $nama_lengkap === '' || $email === '' || $password === '' || $password_confirm === '') {
+        if ($nim_nip === '' || $nama_lengkap === '' || $email === '' || $password === '' || $password_confirm === '' || !$prodi || !$jenis_pengguna) {
             $this->session->set_flashdata('error', 'Semua field wajib diisi.');
             redirect('auth/signup');
         }
@@ -118,6 +123,8 @@ class Auth extends CI_Controller {
             'email' => $email,
             'password' => password_hash($password, PASSWORD_BCRYPT),
             'role' => 'user',
+            'prodi' => $prodi,
+            'jenis_pengguna' => $jenis_pengguna,
             'created_at' => date('Y-m-d H:i:s')
         );
 

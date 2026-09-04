@@ -15,7 +15,7 @@ class Peminjaman_model extends CI_Model {
     private $table_blokir = 'blokir_pengguna';
     private $table_settings = 'peminjaman_settings';
     private $last_expired_count = 0;
-    private $workflow_schema_version = 2;
+    private $workflow_schema_version = 3;
 
     public function __construct() {
         parent::__construct();
@@ -49,6 +49,10 @@ class Peminjaman_model extends CI_Model {
 
             if (!$this->db->field_exists('id_user', $this->table_peminjaman)) {
                 $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `id_user` int(11) DEFAULT NULL AFTER `id_peminjam`");
+            }
+            if (!$this->db->field_exists('prodi', $this->table_peminjaman)) {
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD `prodi` varchar(120) DEFAULT NULL AFTER `id_user`");
+                $this->db->query("ALTER TABLE `{$this->table_peminjaman}` ADD INDEX `idx_peminjaman_prodi_status` (`prodi`, `status`)");
             }
 
             if (!$this->db->field_exists('status_kaprodi', $this->table_peminjaman)) {
@@ -102,6 +106,12 @@ class Peminjaman_model extends CI_Model {
             if ($aset_condition && stripos((string) $aset_condition->Type, 'enum') !== false) {
                 $this->db->query("ALTER TABLE `aset` MODIFY `kondisi` varchar(50) DEFAULT 'Baik'");
             }
+        }
+
+        if ($this->db->table_exists($this->table_peminjam)
+            && !$this->db->field_exists('prodi', $this->table_peminjam)) {
+            $this->db->query("ALTER TABLE `{$this->table_peminjam}` ADD `prodi` varchar(120) DEFAULT NULL AFTER `jenis`");
+            $this->db->query("ALTER TABLE `{$this->table_peminjam}` ADD INDEX `idx_peminjam_prodi` (`prodi`)");
         }
 
         $this->ensure_stock_schema();
@@ -686,6 +696,7 @@ class Peminjaman_model extends CI_Model {
             COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman)) as group_id,
             MIN(p.id_peminjaman) as id_peminjaman,
             MAX(p.id_user) as id_user,
+            MAX(p.prodi) as prodi,
             MAX(p.tanggal_pinjam) as tanggal_pinjam,
             MAX(p.tanggal_kembali_rencana) as tanggal_kembali_rencana,
             MAX(p.tanggal_kembali_actual) as tanggal_kembali_actual,
@@ -704,6 +715,7 @@ class Peminjaman_model extends CI_Model {
             MAX(p.created_at) as created_at,
             MAX(peminjam.nama_peminjam) as nama_peminjam,
             MAX(peminjam.nim_nip) as nim_nip,
+            MAX(peminjam.jenis) as jenis_peminjam,
             COUNT(p.id_peminjaman) as total_jenis,
             SUM(p.jumlah_pinjam) as total_jumlah
         ');
@@ -864,6 +876,9 @@ class Peminjaman_model extends CI_Model {
         }
         if (!empty($filters['exclude_status']) && is_array($filters['exclude_status'])) {
             $this->db->where_not_in('p.status', $filters['exclude_status']);
+        }
+        if (!empty($filters['prodi'])) {
+            $this->db->where('p.prodi', (string) $filters['prodi']);
         }
 
         foreach ((array) ($filters['multi_filters'] ?? []) as $filter) {
@@ -1061,7 +1076,9 @@ class Peminjaman_model extends CI_Model {
         $this->db->select('
             p.*,
             peminjam.nama_peminjam,
-            peminjam.nim_nip
+            peminjam.nim_nip,
+            peminjam.jenis as jenis_peminjam,
+            peminjam.prodi as prodi_peminjam
         ');
         $this->db->from($this->table_peminjaman . ' as p');
         $this->db->join('peminjam', 'peminjam.id_peminjam = p.id_peminjam', 'left');
@@ -2274,21 +2291,32 @@ class Peminjaman_model extends CI_Model {
         return $this->db->get()->row();
     }
 
-    public function get_or_create_peminjam($nim_nip, $nama_lengkap) {
+    public function get_or_create_peminjam($nim_nip, $nama_lengkap, $prodi = null, $jenis = null) {
         $peminjam = $this->db->get_where($this->table_peminjam, ['nim_nip' => $nim_nip])->row();
         
         if (!$peminjam) {
             $this->db->insert($this->table_peminjam, [
                 'nama_peminjam' => $nama_lengkap,
                 'nim_nip'       => $nim_nip,
-                'jenis'         => 'Mahasiswa'
+                'jenis'         => $jenis ?: 'Mahasiswa',
+                'prodi'         => $prodi ?: null
             ]);
             return $this->db->insert_id();
         }
 
+        $updates = [];
         if ($nama_lengkap && $peminjam->nama_peminjam !== $nama_lengkap) {
+            $updates['nama_peminjam'] = $nama_lengkap;
+        }
+        if ($prodi && ($peminjam->prodi ?? null) !== $prodi) {
+            $updates['prodi'] = $prodi;
+        }
+        if ($jenis && ($peminjam->jenis ?? null) !== $jenis) {
+            $updates['jenis'] = $jenis;
+        }
+        if ($updates) {
             $this->db->where('id_peminjam', $peminjam->id_peminjam);
-            $this->db->update($this->table_peminjam, ['nama_peminjam' => $nama_lengkap]);
+            $this->db->update($this->table_peminjam, $updates);
         }
 
         return $peminjam->id_peminjam;

@@ -134,7 +134,8 @@
             transition: color .2s ease, opacity .2s ease;
         }
 
-        .form-control {
+        .form-control,
+        .form-select {
             position: relative;
             z-index: 1;
             height: 50px;
@@ -147,11 +148,16 @@
             transition: box-shadow .2s ease, background .2s ease, transform .2s ease;
         }
 
+        .form-select {
+            padding-right: 44px;
+        }
+
         .input-wrap.has-password .form-control {
             padding-right: 54px;
         }
 
-        .form-control:focus {
+        .form-control:focus,
+        .form-select:focus {
             background: #fff;
             box-shadow: 0 0 0 3px rgba(234,91,26,.17), 0 10px 26px rgba(17,24,39,.08);
             transform: translateY(-1px);
@@ -537,6 +543,26 @@
                             <label for="email" class="visually-hidden">Email</label>
                             <i class="bi bi-envelope"></i>
                             <input type="email" name="email" id="email" class="form-control" placeholder="email@domain.com" required>
+                        </div>
+                        <div class="input-wrap">
+                            <label for="jenis_pengguna" class="visually-hidden">Status pengguna</label>
+                            <i class="bi bi-person-badge"></i>
+                            <select name="jenis_pengguna" id="jenis_pengguna" class="form-select" required>
+                                <option value="" selected disabled>Pilih status pengguna</option>
+                                <?php foreach (fik_jenis_peminjam() as $jenis): ?>
+                                    <option value="<?= html_escape($jenis) ?>"><?= html_escape($jenis) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        <div class="input-wrap">
+                            <label for="prodi" class="visually-hidden">Program studi</label>
+                            <i class="bi bi-mortarboard"></i>
+                            <select name="prodi" id="prodi" class="form-select" required>
+                                <option value="" selected disabled>Pilih program studi</option>
+                                <?php foreach (fik_program_studi() as $program): ?>
+                                    <option value="<?= html_escape($program) ?>"><?= html_escape($program) ?></option>
+                                <?php endforeach; ?>
+                            </select>
                         </div>
                         <div class="input-wrap has-password">
                             <label for="password" class="visually-hidden">Password</label>

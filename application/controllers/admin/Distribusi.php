@@ -10,6 +10,7 @@ class Distribusi extends CI_Controller {
         $this->load->model('Distribusi_model');
         $this->load->model('Aset_model');
         $this->load->model('admin/Ruangan_model');
+        $this->load->model('kaur/Kaur_model');
         $this->guard_laboran();
     }
 
@@ -26,6 +27,10 @@ class Distribusi extends CI_Controller {
     }
 
     public function index() {
+        // Sekali jalan untuk pengajuan lama yang sudah disetujui sebelum alur
+        // otomatis tersedia. Pengajuan baru tersinkron saat Kaur menekan ACC.
+        $this->Kaur_model->sync_approved_inventory();
+
         $fields = (array) $this->input->get('filter_field', true);
         $values = (array) $this->input->get('filter_value', true);
         $filters = [];
@@ -42,10 +47,27 @@ class Distribusi extends CI_Controller {
         $data['distribusi'] = $this->Distribusi_model->get_all($per_page, ($page - 1) * $per_page, $filters);
         $data['filter_rows'] = $filters;
         $data['pagination'] = compact('page', 'per_page', 'total', 'total_pages');
-        $data['aset'] = $this->Aset_model->get_all_aset_ordered('nama_aset', 'ASC');
         $data['ruangan'] = $this->Ruangan_model->get_all();
         $data['operator_name'] = (string) ($this->session->userdata('nama_lengkap') ?: $this->session->userdata('nama') ?: $this->session->userdata('username') ?: 'Petugas Laboratorium');
         $this->load->view('admin/distribusi', $data);
+    }
+
+    public function cari_aset() {
+        $keyword = trim((string) $this->input->get('q', true));
+        $rows = $this->Aset_model->search_for_distribution($keyword, 20);
+        $results = array_map(static function ($asset) {
+            return [
+                'id' => (int) $asset->id_aset,
+                'name' => (string) $asset->nama_aset,
+                'code' => (string) $asset->kode_aset,
+                'room_id' => $asset->id_ruangan !== null ? (int) $asset->id_ruangan : null,
+                'room' => trim((string) ($asset->nama_ruangan ?? '')) ?: 'Belum ditempatkan',
+                'stock' => (int) $asset->jumlah_tersedia,
+                'condition' => (string) ($asset->kondisi ?: '-'),
+            ];
+        }, $rows);
+
+        return $this->json_response(['success' => true, 'results' => $results]);
     }
 
     public function simpan() {
@@ -69,13 +91,13 @@ class Distribusi extends CI_Controller {
         $asal = $id_ruangan_asal > 0 ? $this->Ruangan_model->get_by_id($id_ruangan_asal) : null;
         $tujuan = $this->Ruangan_model->get_by_id($id_ruangan_tujuan);
 
-        if (!$aset || !$asal || !$tujuan) {
+        if (!$aset || !$tujuan || ($id_ruangan_asal > 0 && !$asal)) {
             $this->db->trans_rollback();
-            $this->session->set_flashdata('error', 'Aset, ruangan asal, atau ruangan tujuan tidak ditemukan.');
+            $this->session->set_flashdata('error', 'Aset atau ruangan tujuan tidak ditemukan.');
             redirect('admin/distribusi');
         }
 
-        if ($id_ruangan_asal === $id_ruangan_tujuan) {
+        if ($id_ruangan_asal > 0 && $id_ruangan_asal === $id_ruangan_tujuan) {
             $this->db->trans_rollback();
             $this->session->set_flashdata('error', 'Ruangan tujuan harus berbeda dari ruangan asal.');
             redirect('admin/distribusi');
@@ -89,7 +111,7 @@ class Distribusi extends CI_Controller {
 
         $saved = $this->Distribusi_model->insert([
             'id_aset' => $id_aset,
-            'id_ruangan_asal' => $id_ruangan_asal,
+            'id_ruangan_asal' => $id_ruangan_asal > 0 ? $id_ruangan_asal : null,
             'id_ruangan_tujuan' => $id_ruangan_tujuan,
             'jumlah' => $jumlah,
             'kondisi_aset' => (string) ($aset->kondisi ?? ''),

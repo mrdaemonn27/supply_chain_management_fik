@@ -484,9 +484,26 @@
 
 @media (max-width: 575.98px) {
     .scm-responsive-table tbody td {
-        grid-template-columns: minmax(6.35rem, 37%) minmax(0, 1fr);
-        gap: .6rem;
-        padding: .58rem .68rem !important;
+        grid-template-columns: minmax(0, 1fr);
+        gap: .28rem;
+        padding: .65rem .72rem !important;
+    }
+
+    .scm-responsive-table tbody td::before {
+        font-size: .65rem;
+    }
+
+    .scm-responsive-table .scm-col-action > form,
+    .scm-responsive-table .scm-col-action > div,
+    .scm-responsive-table .scm-col-action .action-grid,
+    .scm-responsive-table .scm-col-action .btn-group {
+        width: 100% !important;
+    }
+
+    .scm-responsive-table .scm-col-action .btn,
+    .scm-responsive-table .scm-col-action button,
+    .scm-responsive-table .scm-col-action [role="button"] {
+        flex: 1 1 8.5rem;
     }
 }
 

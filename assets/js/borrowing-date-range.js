@@ -30,8 +30,8 @@
     function formatDate(date) {
         if (!date) return "Pilih tanggal";
         return new Intl.DateTimeFormat("id-ID", {
-            day: "numeric",
-            month: "short",
+            day: "2-digit",
+            month: "2-digit",
             year: "numeric"
         }).format(date);
     }

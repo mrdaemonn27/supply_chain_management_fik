@@ -218,8 +218,10 @@ class Pengembalian extends CI_Controller {
             }
             $this->Peminjaman_model->create_notifikasi('kaur', null, 'Barang sudah dikembalikan',
                 ($locked->nama_peminjam ?? 'Peminjam') . ' sudah mengembalikan barang ke Laboran.', site_url('kaur/dashboard/peminjaman'));
-            $this->Peminjaman_model->create_notifikasi('kaprodi', null, 'Barang sudah dikembalikan',
-                ($locked->nama_peminjam ?? 'Peminjam') . ' sudah mengembalikan barang dan telah dikonfirmasi Laboran.', site_url('kaprodi/peminjaman'));
+            if (!empty($locked->id_approver_kaprodi)) {
+                $this->Peminjaman_model->create_notifikasi(null, $locked->id_approver_kaprodi, 'Barang sudah dikembalikan',
+                    ($locked->nama_peminjam ?? 'Peminjam') . ' sudah mengembalikan barang dan telah dikonfirmasi Laboran.', site_url('kaprodi/peminjaman'));
+            }
         }
 
         $message = $processed . ' pengembalian berhasil ditandai kembali dengan kondisi Baik.';

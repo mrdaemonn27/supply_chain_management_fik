@@ -35,6 +35,8 @@
  * @since	Version 1.0.0
  * @filesource
  */
+	// Seluruh tanggal dan waktu aplikasi menggunakan zona Indonesia Barat.
+	date_default_timezone_set('Asia/Jakarta');
 
 /*
  *---------------------------------------------------------------

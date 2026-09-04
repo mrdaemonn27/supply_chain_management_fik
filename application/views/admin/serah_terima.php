@@ -9,6 +9,7 @@ $boleh_serah = !empty($qr_valid) && ($peminjaman->status ?? '') === 'Disetujui (
     <title><?= html_escape($title ?? 'Serah Terima') ?></title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="<?= base_url('assets/css/loan-action-summary.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-action-summary.css'); ?>">
     <style>
         body { background: #f5f6f8; font-family: Arial, sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; color: #fff; border-bottom: 4px solid #ea5b1a; }
@@ -61,13 +62,13 @@ $boleh_serah = !empty($qr_valid) && ($peminjaman->status ?? '') === 'Disetujui (
             </div>
 
             <div class="row g-3 mb-3">
-                <div class="col-md-4"><div class="small text-muted">Tanggal Pinjam</div><div class="fw-semibold"><?= html_escape($peminjaman->tanggal_pinjam ?? '-') ?></div></div>
-                <div class="col-md-4"><div class="small text-muted">Rencana Kembali</div><div class="fw-semibold"><?= html_escape($peminjaman->tanggal_kembali_rencana ?? '-') ?></div></div>
+                <div class="col-md-4"><div class="small text-muted">Tanggal Pinjam</div><div class="fw-semibold"><?= html_escape(tanggal_indonesia($peminjaman->tanggal_pinjam ?? null)) ?></div></div>
+                <div class="col-md-4"><div class="small text-muted">Rencana Kembali</div><div class="fw-semibold"><?= html_escape(tanggal_indonesia($peminjaman->tanggal_kembali_rencana ?? null)) ?></div></div>
                 <div class="col-md-4"><div class="small text-muted">Keperluan</div><div class="fw-semibold"><?= html_escape($peminjaman->keperluan ?? '-') ?></div></div>
             </div>
 
             <?php if($boleh_serah): ?>
-                <form method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/proses_serah/'.rawurlencode($peminjaman->group_id)) ?>">
+                <form id="handoverForm" method="post" enctype="multipart/form-data" action="<?= base_url('index.php/admin/peminjaman/proses_serah/'.rawurlencode($peminjaman->group_id)) ?>">
 
                     <div class="table-responsive mb-3">
                         <table class="table table-bordered align-middle">
@@ -118,7 +119,7 @@ $boleh_serah = !empty($qr_valid) && ($peminjaman->status ?? '') === 'Disetujui (
                         </div>
                     </div>
 
-                    <button class="btn btn-fik rounded-pill px-4" onclick="return confirm('Serahkan barang ke peminjam dan kurangi stok?')"><i class="bi bi-check2-circle me-1"></i> Serahkan Barang ke Peminjam</button>
+                    <button id="openHandoverConfirmation" type="button" class="btn btn-fik rounded-pill px-4"><i class="bi bi-check2-circle me-1"></i> Periksa &amp; Konfirmasi</button>
                 </form>
             <?php else: ?>
                 <div class="table-responsive mb-3">
@@ -141,6 +142,23 @@ $boleh_serah = !empty($qr_valid) && ($peminjaman->status ?? '') === 'Disetujui (
         </section>
     </main>
 
+    <?php if($boleh_serah): ?>
+    <div class="modal fade" id="handoverConfirmation" tabindex="-1" aria-labelledby="handoverConfirmationTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header"><h2 id="handoverConfirmationTitle" class="modal-title h5 fw-bold">Konfirmasi Serah Terima</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+                <div class="modal-body">
+                    <?php $loan_action_item = $peminjaman; include APPPATH . 'views/shared/loan_action_summary.php'; unset($loan_action_item); ?>
+                    <div class="border rounded-3 p-3 mb-3"><div class="small text-muted">Unit yang akan diserahkan</div><div class="fw-bold" data-handover-confirm-units>-</div></div>
+                    <p class="loan-action-dialog-note"><i class="bi bi-info-circle"></i><span>Pastikan barang dan jumlah unit sudah sesuai. Setelah disetujui, status berubah menjadi sedang dipinjam.</span></p>
+                </div>
+                <div class="modal-footer loan-action-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Kembali Periksa</button><button id="confirmHandover" type="button" class="btn btn-success rounded-pill px-4"><i class="bi bi-check2-circle me-1"></i>Setujui Serah Terima</button></div>
+            </div>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
     (function () {
         // Batasi jumlah input agar tidak melebihi jumlah pinjam awal
@@ -163,6 +181,23 @@ $boleh_serah = !empty($qr_valid) && ($peminjaman->status ?? '') === 'Disetujui (
         let selectedFiles = [];
 
         if (!fileInput) return;
+
+        const openConfirmation = document.getElementById('openHandoverConfirmation');
+        const confirmButton = document.getElementById('confirmHandover');
+        const confirmationElement = document.getElementById('handoverConfirmation');
+        if (openConfirmation && confirmButton && confirmationElement && form) {
+            const confirmationModal = bootstrap.Modal.getOrCreateInstance(confirmationElement);
+            openConfirmation.addEventListener('click', () => {
+                if (!form.reportValidity()) return;
+                const units = Array.from(form.querySelectorAll('.jumlah-input')).reduce((total, input) => total + (parseInt(input.value || '0', 10) || 0), 0);
+                confirmationElement.querySelector('[data-handover-confirm-units]').textContent = units + ' unit';
+                confirmationModal.show();
+            });
+            confirmButton.addEventListener('click', () => {
+                confirmationModal.hide();
+                form.requestSubmit();
+            });
+        }
 
         function syncFileInput() {
             const dt = new DataTransfer();

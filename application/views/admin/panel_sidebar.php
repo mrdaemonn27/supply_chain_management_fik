@@ -46,11 +46,12 @@ $sidebar_items = [
     body.scm-admin-shell > .topbar, body.scm-admin-shell > .admin-navbar { min-width: 0; }
     body.scm-admin-shell > main { min-width: 0; }
     @media (max-width: 767.98px) {
-        body.scm-admin-shell { padding-left: 68px; }
-        .scm-admin-sidebar { width: 68px; padding: 16px 8px; }
-        .scm-admin-brand { justify-content: center; padding: 0 0 20px; }
-        .scm-admin-brand > span:last-child, .scm-admin-sidebar-label, .scm-admin-sidebar-link span, .scm-admin-sidebar-status { display: none; }
-        .scm-admin-sidebar-link { justify-content: center; padding: 10px 0; }
+        body.scm-admin-shell { padding-left: 0; padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+        .scm-admin-sidebar { inset: auto 0 0 0; width: 100%; height: calc(64px + env(safe-area-inset-bottom)); overflow-x: auto; overflow-y: hidden; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); border-top: 1px solid #e3e6e8; border-right: 0; }
+        .scm-admin-brand, .scm-admin-sidebar-label, .scm-admin-sidebar-status { display: none; }
+        .scm-admin-sidebar-nav { display: flex; width: max-content; min-width: 100%; gap: 4px; }
+        .scm-admin-sidebar-link { width: 52px; min-width: 52px; min-height: 50px; flex: 0 0 52px; justify-content: center; padding: 8px 0; }
+        .scm-admin-sidebar-link span { display: none; }
         .scm-admin-sidebar-link i { width: auto; flex-basis: auto; }
     }
 </style>

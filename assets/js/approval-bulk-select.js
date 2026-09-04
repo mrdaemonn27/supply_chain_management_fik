@@ -18,6 +18,8 @@
         var noun = root.dataset.bulkNoun || 'pengajuan';
         var successLabel = root.dataset.bulkSuccessLabel || '';
         var confirmMessage = root.dataset.bulkConfirm || '';
+        var confirmLabel = root.dataset.bulkConfirmLabel || 'Setujui Proses';
+        var reloadOnSuccess = root.dataset.bulkReloadOnSuccess === '1';
         var busy = false;
         if (!form || !toolbar || !selectAll) return;
 
@@ -92,8 +94,80 @@
 
         function updateActionableCount(value) {
             if (!Number.isFinite(Number(value))) return;
-            document.querySelectorAll('[data-bulk-actionable-count]').forEach(function (element) {
+            root.querySelectorAll('[data-bulk-actionable-count]').forEach(function (element) {
                 element.textContent = String(Math.max(0, Number(value)));
+            });
+        }
+
+        function confirmBulkAction(selected, message) {
+            if (!window.bootstrap || !bootstrap.Modal) {
+                return Promise.resolve(window.confirm(message));
+            }
+            var modalElement = document.getElementById('bulkActionConfirmationModal');
+            if (!modalElement) {
+                modalElement = document.createElement('div');
+                modalElement.id = 'bulkActionConfirmationModal';
+                modalElement.className = 'modal fade';
+                modalElement.tabIndex = -1;
+                modalElement.setAttribute('aria-hidden', 'true');
+                modalElement.innerHTML = '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><div><div class="bulk-confirm-eyebrow">Konfirmasi proses</div><h2 class="modal-title h5 fw-bold mb-0">Periksa Data Terpilih</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body"><p class="bulk-confirm-message"></p><div class="bulk-confirm-list"></div><p class="bulk-confirm-note"><i class="bi bi-info-circle"></i><span>Pastikan peminjam, barang, jumlah, dan periode sudah sesuai sebelum dilanjutkan.</span></p></div><div class="modal-footer bulk-confirm-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button type="button" class="btn btn-success rounded-pill px-4" data-bulk-confirm-submit><i class="bi bi-check2-circle me-1"></i>Setujui Proses</button></div></div></div>';
+                document.body.appendChild(modalElement);
+            }
+
+            var list = modalElement.querySelector('.bulk-confirm-list');
+            modalElement.querySelector('.bulk-confirm-message').textContent = message;
+            var confirmSubmit = modalElement.querySelector('[data-bulk-confirm-submit]');
+            confirmSubmit.replaceChildren();
+            var confirmIcon = document.createElement('i');
+            confirmIcon.className = 'bi bi-check2-circle me-1';
+            confirmSubmit.append(confirmIcon, document.createTextNode(confirmLabel));
+            list.replaceChildren();
+            selected.forEach(function (check, index) {
+                var row = check.closest('tr');
+                var item = document.createElement('article');
+                item.className = 'bulk-confirm-item';
+                var borrower = row?.dataset.filterPeminjam || '';
+                var goods = row?.dataset.filterBarang || '';
+                var quantity = row?.dataset.filterJumlah || '';
+                var period = row?.dataset.filterMasa || '';
+                if (!borrower && row) {
+                    var cells = Array.from(row.querySelectorAll('td')).filter(function (cell) {
+                        return !cell.matches('.approval-bulk-cell') && !cell.querySelector('[data-bulk-action]');
+                    });
+                    borrower = cells[1]?.innerText.trim() || cells[0]?.innerText.trim() || ('Data #' + check.value);
+                    goods = cells[2]?.innerText.trim() || '';
+                    period = cells[3]?.innerText.trim() || '';
+                }
+                var title = document.createElement('div');
+                title.className = 'bulk-confirm-item__title';
+                title.textContent = (index + 1) + '. ' + (borrower || ('Transaksi #' + check.value));
+                var meta = document.createElement('div');
+                meta.className = 'bulk-confirm-item__meta';
+                [goods, quantity ? quantity + ' unit' : '', period].filter(Boolean).forEach(function (value) {
+                    var span = document.createElement('span');
+                    span.textContent = value;
+                    meta.appendChild(span);
+                });
+                item.append(title, meta);
+                list.appendChild(item);
+            });
+
+            return new Promise(function (resolve) {
+                var modal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                var submit = modalElement.querySelector('[data-bulk-confirm-submit]');
+                var settled = false;
+                var finish = function (result) {
+                    if (settled) return;
+                    settled = true;
+                    submit.removeEventListener('click', approve);
+                    modalElement.removeEventListener('hidden.bs.modal', cancel);
+                    resolve(result);
+                };
+                var approve = function () { finish(true); modal.hide(); };
+                var cancel = function () { finish(false); };
+                submit.addEventListener('click', approve, { once: true });
+                modalElement.addEventListener('hidden.bs.modal', cancel, { once: true });
+                modal.show();
             });
         }
 
@@ -155,7 +229,7 @@
             }
             if (action !== 'reject') {
                 var message = confirmMessage || ('Setujui semua ' + noun + ' yang dipilih?');
-                if (!window.confirm(message)) return;
+                if (!await confirmBulkAction(selected, message)) return;
             }
 
             var ids = selected.map(function (check) { return check.value; });
@@ -194,6 +268,9 @@
                 if (rejectReason) rejectReason.value = '';
                 var modalElement = rejectReason ? rejectReason.closest('.modal') : null;
                 if (modalElement && window.bootstrap) bootstrap.Modal.getInstance(modalElement)?.hide();
+                if (reloadOnSuccess && processedTotal > 0) {
+                    window.setTimeout(function () { window.location.reload(); }, 900);
+                }
             } catch (error) {
                 var payload = error.payload || {};
                 var message = error.name === 'AbortError'

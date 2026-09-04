@@ -220,7 +220,7 @@ $recent_activity = isset($overview['recent_activity']) && is_array($overview['re
                             <?php else: foreach ($recent_activity as $activity): ?>
                                 <a class="laboran-activity-item" href="<?= base_url('index.php/' . ltrim((string) ($activity['link'] ?? 'admin/dashboard'), '/')) ?>">
                                     <span class="laboran-activity-icon"><i class="bi <?= html_escape($activity['icon'] ?? 'bi-activity') ?>"></i></span>
-                                    <span class="flex-grow-1"><span class="laboran-activity-title d-block"><?= html_escape($activity['title'] ?? 'Aktivitas') ?></span><span class="laboran-activity-description d-block"><?= html_escape($activity['description'] ?? '') ?></span><span class="laboran-activity-meta"><span class="laboran-activity-time"><i class="bi bi-clock me-1"></i><?= !empty($activity['time']) ? date('d/m/Y H:i', strtotime($activity['time'])) : '-' ?></span><span class="laboran-activity-status"><?= html_escape($activity['status'] ?? '') ?></span></span></span>
+                                    <span class="flex-grow-1"><span class="laboran-activity-title d-block"><?= html_escape($activity['title'] ?? 'Aktivitas') ?></span><span class="laboran-activity-description d-block"><?= html_escape($activity['description'] ?? '') ?></span><span class="laboran-activity-meta"><span class="laboran-activity-time"><i class="bi bi-clock me-1"></i><?= !empty($activity['time']) ? html_escape(waktu_indonesia($activity['time'])) : '-' ?></span><span class="laboran-activity-status"><?= html_escape($activity['status'] ?? '') ?></span></span></span>
                                 </a>
                             <?php endforeach; endif; ?>
                         </div>

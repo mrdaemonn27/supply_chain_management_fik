@@ -1129,7 +1129,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                                 >
                                     <div class="fw-semibold small"><?= html_escape($notification->judul) ?></div>
                                     <div class="small text-muted text-wrap"><?= html_escape($notification->pesan) ?></div>
-                                    <div class="small text-muted mt-1"><?= date('d/m/Y H:i', strtotime($notification->created_at)) ?></div>
+                                    <div class="small text-muted mt-1"><?= html_escape(waktu_indonesia($notification->created_at)) ?></div>
                                 </a>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -1170,7 +1170,8 @@ if (!function_exists('render_kaprodi_client_filter')) {
             </div>
             <div class="col-lg-auto">
                 <div class="kp-context">
-                    <span><i class="bi bi-calendar3 me-1"></i><?= date('d F Y') ?></span>
+                    <span><i class="bi bi-mortarboard me-1"></i><?= html_escape($kaprodi_prodi ?? '-') ?></span>
+                    <span><i class="bi bi-calendar3 me-1"></i><?= tanggal_indonesia(date('Y-m-d')) ?></span>
                 </div>
             </div>
         </div>
@@ -1300,7 +1301,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
                                     data-bs-toggle="modal"
                                     data-bs-target="#kaprodiApproval<?= (int) $p->id_peminjaman ?>"
                                 >
-                                    <i class="bi bi-eye me-1"></i>Detail
+                                    <i class="bi bi-sliders me-1"></i>Proses
                                 </button>
                             </td>
                         </tr>
@@ -1442,6 +1443,9 @@ if (!function_exists('render_kaprodi_client_filter')) {
     $number = $p->group_id ?? $p->id_peminjaman ?? '-';
     $status = $p->status ?? '-';
     $can_kaprodi_act = scm_loan_can_act($p, 'kaprodi');
+    $modal_total_units = 0;
+    foreach (($p->detail_barang ?? []) as $modal_detail) $modal_total_units += (int) ($modal_detail->jumlah_pinjam ?? 0);
+    $modal_loan_days = durasi_pinjam_hari($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null);
     ?>
     <div
         class="modal fade kp-loan-modal"
@@ -1480,6 +1484,11 @@ if (!function_exists('render_kaprodi_client_filter')) {
                                 <div class="kp-meta-value">
                                     <?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>
                                 </div>
+                                <div class="kp-secondary-text"><?= $modal_loan_days > 0 ? $modal_loan_days . ' hari' : '-' ?></div>
+                            </div>
+                            <div class="kp-meta-box">
+                                <div class="kp-meta-label">Barang</div>
+                                <div class="kp-meta-value"><?= count((array) ($p->detail_barang ?? [])) ?> jenis / <?= $modal_total_units ?> unit</div>
                             </div>
                         </div>
                     </div>
@@ -1544,7 +1553,6 @@ if (!function_exists('render_kaprodi_client_filter')) {
                         type="submit"
                         formaction="<?= base_url('index.php/kaprodi/peminjaman/tolak/' . $p->id_peminjaman) ?>"
                         class="btn btn-outline-danger"
-                        onclick="return confirm('Tolak pengajuan ini? Pastikan alasan sudah diisi.')"
                         <?= $can_kaprodi_act ? '' : 'disabled'; ?>
                     >
                         <i class="bi bi-x-lg me-1"></i>Tolak
@@ -1552,7 +1560,6 @@ if (!function_exists('render_kaprodi_client_filter')) {
                     <button
                         type="submit"
                         class="btn btn-success"
-                        onclick="return confirm('Setujui dan teruskan ke Laboran?')"
                         <?= $can_kaprodi_act ? '' : 'disabled'; ?>
                     >
                         <i class="bi bi-check2 me-1"></i>Setujui
@@ -1564,6 +1571,7 @@ if (!function_exists('render_kaprodi_client_filter')) {
 <?php endforeach; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="<?= base_url('assets/js/loan-progress.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/loan-progress.js'); ?>"></script>
 <script src="<?= base_url('assets/js/approval-bulk-select.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/approval-bulk-select.js'); ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {

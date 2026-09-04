@@ -25,12 +25,7 @@ if ($selected_status !== '') {
 ksort($status_options, SORT_NATURAL | SORT_FLAG_CASE);
 
 $format_date = static function ($value) {
-    $value = trim((string) $value);
-    if ($value === '') {
-        return '-';
-    }
-    $timestamp = strtotime($value);
-    return $timestamp ? date('d M Y', $timestamp) : $value;
+    return tanggal_indonesia($value);
 };
 ?>
 <!DOCTYPE html>

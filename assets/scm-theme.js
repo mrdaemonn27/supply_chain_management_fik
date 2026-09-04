@@ -98,6 +98,12 @@
         updateButtons(document.documentElement.classList.contains('scm-theme-dark') ? 'dark' : 'light');
     }
 
+    function localizeDateTimeInputs() {
+        document.querySelectorAll('input[type="date"], input[type="time"], input[type="datetime-local"]').forEach(function (input) {
+            input.setAttribute('lang', 'id-ID');
+        });
+    }
+
     window.SCMTheme = {
         apply: function (theme) { return applyTheme(theme, true); },
         current: function () { return document.documentElement.classList.contains('scm-theme-dark') ? 'dark' : 'light'; },
@@ -107,9 +113,13 @@
     applyTheme(readStoredTheme(), false);
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', bindToggles, { once: true });
+        document.addEventListener('DOMContentLoaded', function () {
+            bindToggles();
+            localizeDateTimeInputs();
+        }, { once: true });
     } else {
         bindToggles();
+        localizeDateTimeInputs();
     }
 
     window.addEventListener('storage', function (event) {

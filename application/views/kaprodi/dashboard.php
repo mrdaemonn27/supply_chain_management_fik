@@ -759,7 +759,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                 <a class="dropdown-item rounded-3 py-2 <?= empty($n->is_read) ? 'bg-light' : '' ?>" href="<?= html_escape($notif_link) ?>">
                                     <div class="fw-semibold small"><?= html_escape($n->judul) ?></div>
                                     <div class="small text-muted text-wrap"><?= html_escape($n->pesan) ?></div>
-                                    <div class="small text-muted mt-1"><?= date('d/m/Y H:i', strtotime($n->created_at)) ?></div>
+                                    <div class="small text-muted mt-1"><?= html_escape(waktu_indonesia($n->created_at)) ?></div>
                                 </a>
                             <?php endforeach; endif; ?>
                         </div>
@@ -805,7 +805,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                     ['label' => 'Direvisi', 'value' => (int) $dashboard_stats['direvisi'], 'icon' => 'bi-pencil-square', 'note' => 'Perlu diperbaiki', 'muted' => true, 'currency' => false],
                     ['label' => 'Ditolak', 'value' => (int) $dashboard_stats['ditolak'], 'icon' => 'bi-x-circle', 'note' => 'Proses berhenti', 'muted' => true, 'currency' => false],
                     ['label' => 'Total Nilai Pengajuan', 'value' => (float) $dashboard_stats['total_nilai_pengajuan'], 'icon' => 'bi-wallet2', 'note' => 'Estimasi sebelum negosiasi', 'muted' => false, 'currency' => true],
-                    ['label' => 'Pengajuan Bulan Ini', 'value' => (int) $dashboard_stats['pengajuan_bulan_ini'], 'icon' => 'bi-calendar-plus', 'note' => 'Periode ' . date('F Y'), 'muted' => false, 'currency' => false],
+                    ['label' => 'Pengajuan Bulan Ini', 'value' => (int) $dashboard_stats['pengajuan_bulan_ini'], 'icon' => 'bi-calendar-plus', 'note' => 'Periode ' . date('m/Y'), 'muted' => false, 'currency' => false],
                 ];
                 ?>
                 <div class="kaprodi-stat-grid">
@@ -847,7 +847,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                             <?php else: foreach ($dashboard_activity as $activity): ?>
                                 <a class="kaprodi-activity-item" href="<?= html_escape($activity['link'] ?? '#') ?>">
                                     <span class="kaprodi-activity-icon"><i class="bi <?= html_escape($activity['icon'] ?? 'bi-bell') ?>"></i></span>
-                                    <span class="flex-grow-1"><span class="kaprodi-activity-title d-block"><?= html_escape($activity['title'] ?? 'Aktivitas') ?></span><span class="kaprodi-activity-description d-block"><?= html_escape($activity['description'] ?? '') ?></span><span class="kaprodi-activity-meta"><span class="kaprodi-activity-time"><i class="bi bi-clock me-1"></i><?= !empty($activity['time']) ? date('d/m/Y H:i', strtotime($activity['time'])) : '-' ?></span><span class="kaprodi-activity-status"><?= html_escape($activity['status'] ?? '') ?></span></span></span>
+                                    <span class="flex-grow-1"><span class="kaprodi-activity-title d-block"><?= html_escape($activity['title'] ?? 'Aktivitas') ?></span><span class="kaprodi-activity-description d-block"><?= html_escape($activity['description'] ?? '') ?></span><span class="kaprodi-activity-meta"><span class="kaprodi-activity-time"><i class="bi bi-clock me-1"></i><?= !empty($activity['time']) ? html_escape(waktu_indonesia($activity['time'])) : '-' ?></span><span class="kaprodi-activity-status"><?= html_escape($activity['status'] ?? '') ?></span></span></span>
                                 </a>
                             <?php endforeach; endif; ?>
                         </div>
@@ -869,7 +869,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
             <div>
                 <h1 class="h3 fw-bold mb-0">Pengajuan Barang dan Jasa</h1>
             </div>
-            <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?= date('d F Y') ?></div>
+            <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?= tanggal_indonesia(date('Y-m-d')) ?></div>
         </div>
 
         <ul class="nav nav-tabs mb-3" id="kaprodiTabs" role="tablist">
@@ -1105,7 +1105,7 @@ $notif_count = (int) ($unread_notifikasi ?? 0);
                                             <?php endforeach; ?>
                                         </td>
                                         <td><span class="status-pill <?= status_class_kaprodi($p->status) ?>"><?= html_escape($p->status) ?></span></td>
-                                        <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($p->created_at)) ?></td>
+                                        <td class="small text-muted"><?= html_escape(waktu_indonesia($p->created_at)) ?></td>
                                         <td class="text-end"><a href="<?= base_url('index.php/kaprodi/pengajuan/export_excel/'.$p->id_pengajuan) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Preview</a></td>
                                     </tr>
                                 <?php endforeach; endif; ?>

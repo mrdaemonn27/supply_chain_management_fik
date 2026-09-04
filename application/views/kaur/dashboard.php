@@ -1149,7 +1149,7 @@ function kaur_module_url($module) {
         .kaur-loan-modal .modal-header { align-items: flex-start; padding: 18px 20px 16px; border-bottom: 1px solid var(--scm-border); background: var(--scm-surface); }
         .kaur-loan-modal__eyebrow, .kaur-loan-modal__section-title { color: var(--scm-muted); font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
         .kaur-loan-modal .modal-title { margin-top: 3px; color: var(--scm-text); font-size: 1.05rem; }
-        .kaur-loan-modal__metadata { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+        .kaur-loan-modal__metadata { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
         .kaur-loan-modal__metadata-item { min-width: 0; }
         .kaur-loan-modal__metadata-label { color: var(--scm-muted); font-size: .64rem; }
         .kaur-loan-modal__metadata-value { margin-top: 2px; overflow-wrap: anywhere; color: var(--scm-text); font-size: .74rem; font-weight: 600; }
@@ -1330,7 +1330,7 @@ function kaur_module_url($module) {
                 <?php if (!$is_overview): ?>
                     <a href="<?= kaur_module_url('overview') ?>" class="btn btn-sm btn-outline-secondary rounded-pill px-3"><i class="bi bi-grid me-1"></i> Panel Kaur</a>
                 <?php endif; ?>
-                <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?= date('d F Y') ?></div>
+                <div class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?= tanggal_indonesia(date('Y-m-d')) ?></div>
             </div>
         </div>
 
@@ -1416,7 +1416,7 @@ function kaur_module_url($module) {
                         <?php if (empty($dashboard_activity)): ?>
                             <div class="text-muted small py-4 text-center">Belum ada aktivitas terbaru.</div>
                         <?php else: foreach ($dashboard_activity as $activity): ?>
-                            <?php $activity_time = !empty($activity['time']) ? date('d M Y, H:i', strtotime($activity['time'])) : '-'; ?>
+                            <?php $activity_time = !empty($activity['time']) ? waktu_indonesia($activity['time']) : '-'; ?>
                             <div class="kaur-activity-item">
                                 <span class="kaur-activity-icon"><i class="bi <?= html_escape($activity['icon'] ?? 'bi-activity') ?>"></i></span>
                                 <div class="kaur-activity-copy">
@@ -1511,7 +1511,7 @@ function kaur_module_url($module) {
                             <td><div class="kaur-loan-person"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="kaur-loan-meta"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="kaur-loan-assets"><div class="kaur-loan-assets__summary"><?= (int)($p->total_jenis ?? count($p->detail_barang ?? [])) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="kaur-loan-assets__detail"><?php if (!empty($p->detail_barang)): foreach (($p->detail_barang ?? []) as $d): ?><?= html_escape($d->nama_aset ?? '-') ?> (<?= (int)($d->jumlah_pinjam ?? 0) ?>), <?php endforeach; else: ?>-<?php endif; ?></div></div></td>
                             <td><span class="kaur-loan-dates" tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><span class="kaur-loan-dates__start"><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></span><span class="kaur-loan-dates__end">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></span></span></td>
-                            <td data-bulk-status><?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?><button type="button" class="kaur-loan-approval-detail mt-2" data-bs-toggle="modal" data-bs-target="#kaurApprovalTimelineModal<?= (int)$p->id_peminjaman ?>">Lihat Detail <i class="bi bi-arrow-right" aria-hidden="true"></i></button></td>
+                            <td data-bulk-status><?php $loan_progress_item = $p; $loan_progress_compact = true; $loan_progress_detail_target = '#kaurApprovalTimelineModal' . (int) $p->id_peminjaman; include APPPATH . 'views/shared/loan_progress.php'; unset($loan_progress_detail_target); ?></td>
                             <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary kaur-loan-manage-btn" data-bulk-action <?= $can_kaur_act ? 'data-bs-toggle="modal" data-bs-target="#loanApprovalModal'.(int)$p->id_peminjaman.'"' : 'disabled title="Aksi tersedia saat memasuki tahap Kaur"'; ?>><i class="bi bi-patch-check me-1"></i>Proses</button></td>
                         </tr>
                     <?php endforeach; endif; ?>
@@ -1556,7 +1556,7 @@ function kaur_module_url($module) {
                 $kaur_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
             ?>
             <div class="modal fade kaur-approval-detail-modal" id="kaurApprovalTimelineModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-labelledby="kaurApprovalTimelineTitle<?= (int)$p->id_peminjaman ?>" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="modal-header">
                             <div>
@@ -1582,6 +1582,7 @@ function kaur_module_url($module) {
                 </div>
             </div>
             <div class="modal fade kaur-loan-modal" id="loanApprovalModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true">
+                <?php $kaur_modal_total_units = 0; foreach (($p->detail_barang ?? []) as $kaur_modal_detail) $kaur_modal_total_units += (int) ($kaur_modal_detail->jumlah_pinjam ?? 0); $kaur_modal_days = durasi_pinjam_hari($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null); ?>
                 <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                     <form class="modal-content" method="post" action="<?= base_url('index.php/kaur/peminjaman/setujui/'.$p->id_peminjaman) ?>">
                         <div class="modal-header">
@@ -1593,7 +1594,8 @@ function kaur_module_url($module) {
                                 <div class="kaur-loan-modal__metadata">
                                     <div class="kaur-loan-modal__metadata-item"><div class="kaur-loan-modal__metadata-label">Nama Peminjam</div><div class="kaur-loan-modal__metadata-value"><?= html_escape($p->nama_peminjam ?? '-') ?></div></div>
                                     <div class="kaur-loan-modal__metadata-item"><div class="kaur-loan-modal__metadata-label">User ID / NIM / NIP</div><div class="kaur-loan-modal__metadata-value"><?= html_escape($p->nim_nip ?? '-') ?></div></div>
-                                    <div class="kaur-loan-modal__metadata-item"><div class="kaur-loan-modal__metadata-label">Periode</div><div class="kaur-loan-modal__metadata-value"><?= masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null) ?></div></div>
+                                    <div class="kaur-loan-modal__metadata-item"><div class="kaur-loan-modal__metadata-label">Periode</div><div class="kaur-loan-modal__metadata-value"><?= masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null) ?><br><?= $kaur_modal_days > 0 ? $kaur_modal_days . ' hari' : '-' ?></div></div>
+                                    <div class="kaur-loan-modal__metadata-item"><div class="kaur-loan-modal__metadata-label">Barang</div><div class="kaur-loan-modal__metadata-value"><?= count((array) ($p->detail_barang ?? [])) ?> jenis / <?= $kaur_modal_total_units ?> unit</div></div>
                                 </div>
                             </div>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
@@ -1630,8 +1632,8 @@ function kaur_module_url($module) {
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Tutup</button>
-                            <button formaction="<?= base_url('index.php/kaur/peminjaman/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-3" onclick="return confirm('Tolak peminjaman ini?')" <?= $can_kaur_act ? '' : 'disabled'; ?>><i class="bi bi-x-lg me-1"></i> Tolak</button>
-                            <button formaction="<?= base_url('index.php/kaur/peminjaman/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-3" onclick="return confirm('Setujui peminjaman ini? QR akan menunggu finalisasi Laboran.')" <?= $can_kaur_act ? '' : 'disabled'; ?>><i class="bi bi-check2-circle me-1"></i> Setujui</button>
+                            <button formaction="<?= base_url('index.php/kaur/peminjaman/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-3" <?= $can_kaur_act ? '' : 'disabled'; ?>><i class="bi bi-x-lg me-1"></i> Tolak</button>
+                            <button formaction="<?= base_url('index.php/kaur/peminjaman/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-3" <?= $can_kaur_act ? '' : 'disabled'; ?>><i class="bi bi-check2-circle me-1"></i> Setujui &amp; Teruskan</button>
                         </div>
                     </form>
                 </div>
@@ -1735,7 +1737,7 @@ function kaur_module_url($module) {
                                     <?php endforeach; ?>
                                 </td>
                                 <td><span class="status-pill <?= status_class_kaur($p->status) ?>"><?= html_escape($p->status) ?></span></td>
-                                <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($p->created_at)) ?></td>
+                                <td class="small text-muted"><?= html_escape(waktu_indonesia($p->created_at)) ?></td>
                                 <td class="text-end"><a href="<?= base_url('index.php/kaur/pengajuan/export_excel/'.$p->id_pengajuan) ?>" class="btn btn-sm btn-outline-success rounded-pill px-3"><i class="bi bi-file-earmark-excel me-1"></i> Excel</a></td>
                             </tr>
                         <?php endforeach; endif; ?>
@@ -1989,7 +1991,7 @@ function kaur_module_url($module) {
                         <tr>
                             <td class="kaur-row-number"><?= table_row_number_kaur($approval_index, $page ?? 1, $per_page ?? '10') ?></td>
                             <td class="fw-semibold"><?= html_escape($p->kode_pengajuan) ?></td>
-                            <td class="small text-muted"><?= date('d/m/Y H:i', strtotime($p->created_at)) ?></td>
+                            <td class="small text-muted"><?= html_escape(waktu_indonesia($p->created_at)) ?></td>
                             <td><?= html_escape($p->nama_prodi) ?></td>
                             <td><span class="approval-badge"><?= html_escape($p->jenis_pengajuan ?? 'Barang') ?></span></td>
                             <td><?= html_escape($vendor_label) ?></td>
@@ -2201,7 +2203,7 @@ function kaur_module_url($module) {
                                 <td><div class="fw-semibold"><?= html_escape($b->nama_prodi ?? '-') ?></div><div class="small text-muted"><?= html_escape($b->nama_pengajuan ?? '-') ?></div></td>
                                 <td><span class="bast-badge"><?= html_escape($b->jenis_pengajuan ?? 'Barang') ?></span></td>
                                 <td><?= html_escape($b->nomor_bast ?? '-') ?></td>
-                                <td class="small text-muted"><?= !empty($b->tanggal_bast) ? date('d/m/Y', strtotime($b->tanggal_bast)) : '-' ?></td>
+                                <td class="small text-muted"><?= !empty($b->tanggal_bast) ? html_escape(tanggal_indonesia($b->tanggal_bast)) : '-' ?></td>
                                 <td class="text-end">
                                     <div class="bast-actions">
                                         <?php if (!empty($b->file_bast)): ?>
@@ -2387,6 +2389,7 @@ function kaur_module_url($module) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= base_url('assets/js/loan-progress.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/loan-progress.js'); ?>"></script>
     <script src="<?= base_url('assets/js/approval-bulk-select.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/approval-bulk-select.js'); ?>"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script>

@@ -14,6 +14,20 @@ class User_model extends CI_Model {
     {
         parent::__construct();
         $this->load->database();
+        $this->ensure_academic_identity_schema();
+    }
+
+    private function ensure_academic_identity_schema()
+    {
+        if (!$this->db->table_exists($this->table)) return;
+
+        if (!$this->db->field_exists('prodi', $this->table)) {
+            $this->db->query("ALTER TABLE `{$this->table}` ADD `prodi` varchar(120) DEFAULT NULL AFTER `role`");
+            $this->db->query("ALTER TABLE `{$this->table}` ADD INDEX `idx_users_role_prodi` (`role`, `prodi`)");
+        }
+        if (!$this->db->field_exists('jenis_pengguna', $this->table)) {
+            $this->db->query("ALTER TABLE `{$this->table}` ADD `jenis_pengguna` varchar(20) DEFAULT NULL AFTER `prodi`");
+        }
     }
 
     /* ==========================================================
@@ -50,6 +64,16 @@ class User_model extends CI_Model {
     {
         return $this->db
                     ->where($this->primaryKey, $id_user)
+                    ->get($this->table)
+                    ->row();
+    }
+
+    public function get_kaprodi_by_prodi($prodi)
+    {
+        return $this->db
+                    ->where('role', 'kaprodi')
+                    ->where('prodi', $prodi)
+                    ->order_by('id_user', 'ASC')
                     ->get($this->table)
                     ->row();
     }

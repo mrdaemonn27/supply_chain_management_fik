@@ -194,7 +194,7 @@ $role_label = $role_label ?? 'Kaur Laboratorium';
         </tr>
         <tr><td colspan="11" class="no-border">&nbsp;</td></tr>
         <tr>
-            <td colspan="5" class="no-border">Bandung, <?= date('d F Y') ?></td>
+            <td colspan="5" class="no-border">Bandung, <?= tanggal_indonesia(date('Y-m-d')) ?></td>
             <td colspan="2" class="no-border"></td>
             <td colspan="4" class="no-border">Status: <?= ba_excel_escape($pengajuan->status ?? '-') ?></td>
         </tr>

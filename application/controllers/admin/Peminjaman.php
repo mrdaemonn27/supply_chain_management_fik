@@ -15,11 +15,17 @@ class Peminjaman extends CI_Controller {
 
     private function guard_laboran() {
         if (!$this->session->userdata('logged_in')) {
+            if (scm_is_ajax()) {
+                scm_json_abort(['success' => false, 'message' => 'Sesi Anda berakhir. Silakan login kembali.', 'redirect' => site_url('auth')], 401);
+            }
             $this->session->set_flashdata('error', 'Silakan login terlebih dahulu.');
             redirect('auth');
         }
 
         if (!in_array(strtolower((string) $this->session->userdata('role')), ['admin', 'laboran'], true)) {
+            if (scm_is_ajax()) {
+                scm_json_abort(['success' => false, 'message' => 'Anda tidak memiliki izin untuk memfinalkan QR peminjaman.'], 403);
+            }
             $this->session->set_flashdata('error', 'Akses ditolak.');
             redirect('dashboard');
         }
@@ -119,6 +125,22 @@ class Peminjaman extends CI_Controller {
             ($page - 1) * $per_page
         );
 
+        // Antrean finalisasi QR dipisahkan dari approval Laboran agar kedua
+        // jenis tindakan dapat dipilih banyak tanpa mencampur status workflow.
+        $qr_filters = $filters;
+        $qr_filters['status'] = 'Disetujui (Menunggu Finalisasi QR)';
+        $qr_filters['sort_by'] = '';
+        $qr_filters['action_role'] = 'finalisasi_qr';
+        $qr_page = max(1, (int) $this->input->get('qr_page', true));
+        $qr_total = $this->Peminjaman_model->count_visible_peminjaman($qr_filters);
+        $qr_total_pages = max(1, (int) ceil($qr_total / $per_page));
+        $qr_page = min($qr_page, $qr_total_pages);
+        $qr_rows = $this->Peminjaman_model->get_visible_peminjaman(
+            $qr_filters,
+            $per_page,
+            ($qr_page - 1) * $per_page
+        );
+
         $data['title'] = 'Data Peminjaman';
         $data['filters'] = $filters;
         $data['filter_rows'] = $filter_rows;
@@ -126,6 +148,13 @@ class Peminjaman extends CI_Controller {
         $data['status_options'] = array_merge([''], $allowed_status);
         $data['peminjaman'] = $visible_rows;
         $data['approval_actionable'] = $this->Peminjaman_model->count_actionable_peminjaman('laboran', $filters);
+        $data['qr_finalization'] = $qr_rows;
+        $data['qr_pagination'] = [
+            'page' => $qr_page,
+            'per_page' => $per_page,
+            'total' => $qr_total,
+            'total_pages' => $qr_total_pages,
+        ];
         $data['pagination'] = [
             'page' => $page,
             'per_page' => $per_page,
@@ -286,27 +315,87 @@ class Peminjaman extends CI_Controller {
             redirect('admin/peminjaman');
         }
 
-        if (($peminjaman->status ?? '') !== 'Disetujui (Menunggu Finalisasi QR)'
-            || ($peminjaman->status_kaprodi ?? 'Pending') !== 'Disetujui'
-            || ($peminjaman->status_laboran ?? 'Pending') !== 'Disetujui'
-            || ($peminjaman->status_kaur ?? 'Pending') !== 'Disetujui') {
+        if (!$this->can_finalize_qr($peminjaman)) {
             $this->session->set_flashdata('error', 'QR hanya bisa difinalkan setelah ACC berurutan dari Kaprodi, Laboran, dan Kaur.');
             redirect('admin/peminjaman');
         }
 
         $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
         $ok = $this->Peminjaman_model->finalize_qr($group_id, $this->session->userdata('id_user'));
-        if ($ok && !empty($peminjaman->id_user)) {
-            $this->Peminjaman_model->create_notifikasi(
-                null,
-                $peminjaman->id_user,
-                'QR transaksi aktif',
-                'Data peminjaman sudah final. QR yang sama digunakan saat pengambilan dan pengembalian barang.',
-                site_url('peminjaman/riwayat')
-            );
-        }
+        if ($ok) $this->notify_qr_finalized($peminjaman);
 
         $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'QR peminjaman berhasil difinalkan dan data transaksi dikunci.' : 'Gagal memfinalkan QR.');
+        redirect('admin/peminjaman');
+    }
+
+    public function bulk_finalkan_qr() {
+        $ajax = scm_is_ajax();
+        if (strtoupper((string) $this->input->method()) !== 'POST') {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Metode request tidak diizinkan.'], 405);
+                return;
+            }
+            redirect('admin/peminjaman');
+        }
+
+        $ids = $this->bulk_ids();
+        if (empty($ids)) {
+            if ($ajax) {
+                scm_json_response(['success' => false, 'message' => 'Pilih minimal satu transaksi untuk finalisasi QR.'], 422);
+                return;
+            }
+            $this->session->set_flashdata('error', 'Pilih minimal satu transaksi untuk finalisasi QR.');
+            redirect('admin/peminjaman');
+        }
+
+        $processed = 0;
+        $skipped = 0;
+        $processed_ids = [];
+        $skipped_ids = [];
+        foreach ($ids as $id) {
+            $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id);
+            if (!$peminjaman || !$this->can_finalize_qr($peminjaman)) {
+                $skipped++;
+                $skipped_ids[] = $id;
+                continue;
+            }
+
+            $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
+            $ok = $this->Peminjaman_model->finalize_qr($group_id, $this->session->userdata('id_user'));
+            if ($ok) {
+                $processed++;
+                $processed_ids[] = $id;
+                $this->notify_qr_finalized($peminjaman);
+            } else {
+                $skipped++;
+                $skipped_ids[] = $id;
+            }
+        }
+
+        $message = $processed . ' transaksi berhasil difinalkan dan QR telah diaktifkan.';
+        if ($skipped > 0) {
+            $message .= ' ' . $skipped . ' dilewati karena status atau persetujuannya sudah berubah.';
+        }
+
+        if ($ajax) {
+            scm_json_response([
+                'success' => $processed > 0,
+                'partial' => $processed > 0 && $skipped > 0,
+                'message' => $message,
+                'action' => 'finalize',
+                'status' => 'Disetujui (Menunggu Pengambilan)',
+                'processed' => $processed,
+                'skipped' => $skipped,
+                'processed_ids' => $processed_ids,
+                'skipped_ids' => $skipped_ids,
+                'actionable_remaining' => $this->Peminjaman_model->count_visible_peminjaman([
+                    'status' => 'Disetujui (Menunggu Finalisasi QR)',
+                ]),
+            ], $processed > 0 ? 200 : 409);
+            return;
+        }
+
+        $this->session->set_flashdata($processed > 0 ? 'success' : 'error', $message);
         redirect('admin/peminjaman');
     }
 
@@ -481,6 +570,34 @@ class Peminjaman extends CI_Controller {
         }
         $this->session->set_flashdata('success', count($files) . ' foto dokumentasi serah terima berhasil disimpan.');
         redirect('admin/pengembalian');
+    }
+
+    private function can_finalize_qr($peminjaman) {
+        return $peminjaman
+            && ($peminjaman->status ?? '') === 'Disetujui (Menunggu Finalisasi QR)'
+            && ($peminjaman->status_kaprodi ?? 'Pending') === 'Disetujui'
+            && ($peminjaman->status_laboran ?? 'Pending') === 'Disetujui'
+            && ($peminjaman->status_kaur ?? 'Pending') === 'Disetujui';
+    }
+
+    private function notify_qr_finalized($peminjaman) {
+        if (empty($peminjaman->id_user)) return;
+        $this->Peminjaman_model->create_notifikasi(
+            null,
+            $peminjaman->id_user,
+            'QR transaksi aktif',
+            'Data peminjaman sudah final. QR yang sama digunakan saat pengambilan dan pengembalian barang.',
+            site_url('peminjaman/riwayat')
+        );
+    }
+
+    private function bulk_ids() {
+        $ids = $this->input->post('loan_ids', true);
+        if (!is_array($ids)) return [];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static function ($id) {
+            return $id > 0;
+        })));
+        return array_slice($ids, 0, 25);
     }
 
     private function qr_message_for($peminjaman) {

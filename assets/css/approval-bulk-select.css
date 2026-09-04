@@ -50,6 +50,14 @@
 .approval-row-processed { opacity: .72; }
 .approval-row-processed td { background: rgba(25, 135, 84, .035) !important; }
 .approval-bulk-result { display: inline-flex; width: auto !important; min-width: 0 !important; }
+.bulk-confirm-eyebrow { color: #7c8794; font-size: .66rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.bulk-confirm-message { margin-bottom: .85rem; color: #374151; font-size: .84rem; }
+.bulk-confirm-list { display: grid; gap: .55rem; max-height: min(42vh, 360px); overflow-y: auto; }
+.bulk-confirm-item { padding: .75rem .85rem; border: 1px solid #e5e7eb; border-radius: 10px; background: #f8fafc; }
+.bulk-confirm-item__title { color: #1f2937; font-size: .8rem; font-weight: 700; overflow-wrap: anywhere; }
+.bulk-confirm-item__meta { display: flex; flex-wrap: wrap; gap: .3rem .8rem; margin-top: .3rem; color: #6b7280; font-size: .7rem; }
+.bulk-confirm-item__meta span { overflow-wrap: anywhere; }
+.bulk-confirm-note { display: flex; align-items: flex-start; gap: .5rem; margin: .85rem 0 0; padding: .7rem; border-radius: 10px; color: #7c2d12; background: #fff7ed; font-size: .74rem; }
 .loan-pagination .page-link,
 .kaur-submission-pagination .page-link,
 .kaur-return-pagination .page-link,
@@ -85,4 +93,6 @@
 @media (max-width: 575.98px) {
     .approval-bulk-toolbar > .btn { flex: 1 1 auto; }
     .approval-bulk-toolbar__count { flex: 1 0 100%; }
+    .bulk-confirm-footer { display: grid; grid-template-columns: 1fr; }
+    .bulk-confirm-footer .btn { width: 100%; margin: 0; }
 }

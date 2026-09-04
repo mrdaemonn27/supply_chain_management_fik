@@ -35,7 +35,7 @@ function acc_excel_items($items) {
             <td colspan="14" class="title"><?= acc_excel_cell($title ?? 'Laporan Pengajuan Sampai Tahap ACC') ?></td>
         </tr>
         <tr>
-            <td colspan="14" class="meta">Dicetak: <?= date('d/m/Y H:i') ?> WIB</td>
+            <td colspan="14" class="meta">Dicetak: <?= waktu_indonesia(date('Y-m-d H:i:s')) ?></td>
         </tr>
         <tr>
             <th>No</th>
@@ -71,8 +71,8 @@ function acc_excel_items($items) {
                 <td><?= acc_excel_rp($row->summary['subtotal_penawaran'] ?? 0) ?></td>
                 <td><?= acc_excel_rp($row->summary['total_penawaran'] ?? 0) ?></td>
                 <td><?= acc_excel_cell($row->catatan_approval) ?></td>
-                <td><?= acc_excel_cell($row->created_at) ?></td>
-                <td><?= acc_excel_cell($row->updated_at) ?></td>
+                <td><?= acc_excel_cell(waktu_indonesia($row->created_at)) ?></td>
+                <td><?= acc_excel_cell(waktu_indonesia($row->updated_at)) ?></td>
             </tr>
         <?php endforeach; endif; ?>
     </table>

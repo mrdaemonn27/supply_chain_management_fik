@@ -183,7 +183,7 @@ $history_query['per_page'] = $history_per_page;
         <div class="scm-pagination-top history-list-summary" aria-label="Pengaturan jumlah riwayat">
             <div class="scm-pagination-top__summary">
                 <label for="historyPageSize">Tampilkan:</label>
-                <select id="historyPageSize" class="form-select form-select-sm" aria-label="Jumlah riwayat per halaman" onchange="var u=new URL(window.location.href);u.searchParams.set('per_page',this.value);u.searchParams.set('page','1');window.location.assign(u.toString());">
+                <select id="historyPageSize" name="per_page" class="form-select form-select-sm" aria-label="Jumlah riwayat per halaman">
                     <?php foreach ([10, 25, 50, 100] as $size): ?><option value="<?= $size ?>" <?= $history_per_page === $size ? 'selected' : '' ?>><?= $size ?></option><?php endforeach; ?>
                 </select>
                 <span>Total item: <span id="historyTotalItems"><?= number_format($history_total, 0, ',', '.') ?></span></span>
@@ -214,7 +214,7 @@ $history_query['per_page'] = $history_per_page;
                         <tr data-history-row data-search="<?= html_escape($search_label) ?>" data-filter-all="<?= html_escape($search_label) ?>" data-filter-barang="<?= html_escape($r->nama_aset ?? '') ?>" data-filter-kode="<?= html_escape($r->kode_aset ?? '') ?>" data-filter-status="<?= html_escape($r->status ?? '') ?>" data-filter-tanggal="<?= html_escape($history_dates) ?>">
                             <td>
                                 <div class="fw-semibold text-dark"><?= tanggal_indonesia($r->created_at) ?></div>
-                                <div class="text-muted small"><?= date('H:i', strtotime($r->created_at)) ?> WIB</div>
+                                <div class="text-muted small"><?= html_escape(jam_indonesia($r->created_at)) ?></div>
                             </td>
                             <td>
                                 <div class="fw-bold text-dark"><?= $r->nama_aset ?></div>
@@ -318,10 +318,28 @@ $history_query['per_page'] = $history_per_page;
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="<?= base_url('assets/js/loan-progress.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/loan-progress.js'); ?>"></script>
     <script>
         AOS.init({ once: true, offset: 20 });
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));
         const historyFilterRoot = document.getElementById('historyMultiFilter');
+
+        // Server-side page size selector.
+        // Harus berada DI LUAR blok client-mode karena halaman riwayat memakai mode server.
+        const historyServerPageSize = document.getElementById('historyPageSize');
+        historyServerPageSize?.addEventListener('change', function () {
+            const allowedPageSizes = ['10', '25', '50', '100'];
+            const selectedPageSize = allowedPageSizes.includes(this.value) ? this.value : '10';
+            const url = new URL(window.location.href);
+
+            // Pertahankan filter/sort yang sedang aktif, ubah hanya ukuran halaman.
+            url.searchParams.set('per_page', selectedPageSize);
+            // Saat ukuran halaman berubah, selalu kembali ke halaman pertama.
+            url.searchParams.set('page', '1');
+
+            window.location.href = url.toString();
+        });
+
         if (historyFilterRoot?.dataset.mode === 'client') {
             const rows = Array.from(document.querySelectorAll('[data-history-row]'));
             const emptyRow = document.querySelector('.history-empty-filter');

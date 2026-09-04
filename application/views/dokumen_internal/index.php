@@ -127,7 +127,7 @@ function internal_icon($file) {
                                     </td>
                                     <td><span class="soft-badge"><?= html_escape($d->kategori) ?></span></td>
                                     <td><?= $d->is_active ? '<span class="text-success fw-semibold">Aktif</span>' : '<span class="text-muted">Nonaktif</span>' ?></td>
-                                    <td><div><?= html_escape($d->uploader ?: '-') ?></div><div class="small text-muted"><?= html_escape($d->created_at) ?></div></td>
+                                    <td><div><?= html_escape($d->uploader ?: '-') ?></div><div class="small text-muted"><?= html_escape(waktu_indonesia($d->created_at)) ?></div></td>
                                     <td class="text-end pe-3">
                                         <div class="d-inline-flex flex-wrap justify-content-end gap-1">
                                             <?php if($d->is_active): ?>

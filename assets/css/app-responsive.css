@@ -1,0 +1,193 @@
+/* Shared responsive safeguards for every authenticated SCM page. */
+html,
+body {
+    max-width: 100%;
+}
+
+body {
+    overflow-x: clip;
+}
+
+img,
+video,
+canvas,
+svg,
+model-viewer,
+iframe {
+    max-width: 100%;
+}
+
+main,
+section,
+article,
+form,
+fieldset,
+.container,
+.container-fluid,
+.row,
+.card,
+.card-body,
+.card-header,
+.modal-content,
+.input-group {
+    min-width: 0;
+}
+
+input,
+select,
+textarea,
+.form-control,
+.form-select,
+.input-group {
+    max-width: 100%;
+}
+
+.dropdown-menu {
+    max-width: calc(100vw - 1.5rem);
+}
+
+.modal-dialog-scrollable .modal-body {
+    overscroll-behavior: contain;
+}
+
+.pagination {
+    max-width: 100%;
+}
+
+@media (max-width: 991.98px) {
+    .navbar .navbar-collapse {
+        max-width: 100%;
+    }
+
+    .navbar .navbar-nav {
+        min-width: 0;
+    }
+
+    .modal-dialog:not(.modal-fullscreen) {
+        width: auto;
+        max-width: calc(100vw - 1.5rem);
+        margin: .75rem auto;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .container,
+    .container-fluid {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .row > [class*="col-"] {
+        min-width: 0;
+    }
+
+    body.scm-admin-shell > .topbar .topbar-actions,
+    body.scm-admin-shell > .admin-navbar .topbar-actions,
+    body.scm-admin-shell > .topbar [class*="header-actions"],
+    body.scm-admin-shell > .admin-navbar [class*="header-actions"] {
+        display: flex;
+        width: 100%;
+        max-width: 100%;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: .5rem !important;
+    }
+
+    body.scm-admin-shell > .topbar .topbar-actions > *,
+    body.scm-admin-shell > .admin-navbar .topbar-actions > * {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    body.scm-admin-shell .d-flex.justify-content-between,
+    body.scm-admin-shell .d-flex.justify-content-end,
+    body.scm-admin-shell .modal-footer,
+    body.scm-admin-shell .card-footer {
+        flex-wrap: wrap;
+        gap: .65rem;
+    }
+
+    body.scm-admin-shell .d-flex.justify-content-between > .btn,
+    body.scm-admin-shell .d-flex.justify-content-between > button,
+    body.scm-admin-shell .d-flex.justify-content-between > a,
+    body.scm-admin-shell .modal-footer > .btn,
+    body.scm-admin-shell .modal-footer > button,
+    body.scm-admin-shell .modal-footer > a {
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    .modal-dialog:not(.modal-fullscreen) {
+        max-width: calc(100vw - 1rem);
+        margin: .5rem auto;
+    }
+
+    .modal-content {
+        max-height: calc(100svh - 1rem);
+    }
+
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: .9rem;
+        padding-right: .9rem;
+    }
+
+    .modal-footer {
+        justify-content: stretch;
+    }
+
+    .modal-footer > .btn,
+    .modal-footer > button,
+    .modal-footer > a {
+        flex: 1 1 9rem;
+    }
+
+    .dropdown-menu-end {
+        right: 0;
+        left: auto;
+    }
+
+    [class*="pagination-footer"],
+    [class*="pagination-summary"] {
+        min-width: 0;
+        max-width: 100%;
+        white-space: normal !important;
+    }
+
+    [class*="pagination-footer"] nav {
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+    }
+}
+
+@media (max-width: 575.98px) {
+    body.scm-admin-shell > main,
+    body.scm-admin-shell > .container,
+    body.scm-admin-shell > .container-fluid {
+        padding-left: .75rem !important;
+        padding-right: .75rem !important;
+    }
+
+    body.scm-admin-shell .card-body {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+
+    body.scm-admin-shell .drop-zone {
+        padding: 1.5rem .85rem !important;
+    }
+
+    body.scm-admin-shell .d-flex.justify-content-between > .btn,
+    body.scm-admin-shell .d-flex.justify-content-between > button,
+    body.scm-admin-shell .d-flex.justify-content-between > a {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+}
+
+@supports not (overflow: clip) {
+    body { overflow-x: hidden; }
+}

@@ -174,7 +174,12 @@ class Pengajuan extends CI_Controller {
         ];
         $status = $map[$aksi] ?? 'Disetujui';
         $catatan = trim($this->input->post('catatan_approval', true));
-        $ok = $this->Kaur_model->update_kaprodi_status($id_pengajuan, $status, $catatan);
+        $approval_result = $status === 'Disetujui'
+            ? $this->Kaur_model->finalize_kaprodi_approval($id_pengajuan, $catatan)
+            : null;
+        $ok = $status === 'Disetujui'
+            ? $approval_result !== false
+            : $this->Kaur_model->update_kaprodi_status($id_pengajuan, $status, $catatan);
         if ($ok) {
             $this->Peminjaman_model->create_notifikasi(
                 null,
@@ -187,7 +192,14 @@ class Pengajuan extends CI_Controller {
             );
         }
 
-        $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? 'Status pengajuan berhasil diperbarui.' : 'Gagal memperbarui status.');
+        $success_message = 'Status pengajuan berhasil diperbarui.';
+        if ($ok && $status === 'Disetujui') {
+            $inventory_count = (int) ($approval_result['inventory_count'] ?? 0);
+            $success_message = $inventory_count > 0
+                ? "Pengajuan disetujui. {$inventory_count} master aset baru sudah siap didistribusikan oleh Laboran."
+                : 'Pengajuan disetujui. Master aset pengadaan sudah siap didistribusikan oleh Laboran.';
+        }
+        $this->session->set_flashdata($ok ? 'success' : 'error', $ok ? $success_message : 'Gagal memperbarui status atau menyiapkan master aset.');
         redirect('kaur/dashboard/approval');
     }
 

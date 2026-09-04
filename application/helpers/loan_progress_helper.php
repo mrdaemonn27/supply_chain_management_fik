@@ -14,14 +14,14 @@ if (!function_exists('scm_loan_progress')) {
         $kaur = (string) ($loan->status_kaur ?? 'Pending');
 
         $steps = [
-            'Diajukan',
-            'Kaprodi',
-            'Laboran',
-            'Kaur',
-            'Finalisasi QR',
-            'Dipinjam',
-            'Pengembalian',
-            'Selesai',
+            ['label' => 'Pengajuan Dibuat', 'description' => 'Peminjam mengirim pengajuan barang.'],
+            ['label' => 'Persetujuan Kaprodi', 'description' => 'Kaprodi memeriksa dan menyetujui pengajuan.'],
+            ['label' => 'Verifikasi Laboran', 'description' => 'Laboran memeriksa barang, stok, dan kelayakan peminjaman.'],
+            ['label' => 'Persetujuan Kaur', 'description' => 'Kaur memberikan persetujuan akhir peminjaman.'],
+            ['label' => 'Finalisasi QR', 'description' => 'Laboran mengunci transaksi dan mengaktifkan QR.'],
+            ['label' => 'Pengambilan Barang', 'description' => 'Barang diserahterimakan kepada peminjam.'],
+            ['label' => 'Peminjaman & Pengembalian', 'description' => 'Barang sedang digunakan dan menunggu dikembalikan.'],
+            ['label' => 'Selesai', 'description' => 'Barang telah diterima kembali dan transaksi selesai.'],
         ];
 
         $current_index = 0;
@@ -118,7 +118,7 @@ if (!function_exists('scm_loan_progress')) {
         }
 
         $progress_steps = [];
-        foreach ($steps as $index => $label) {
+        foreach ($steps as $index => $step) {
             if ($tone === 'complete') {
                 $state = 'is-complete';
             } elseif ($rejected_index !== null && $index === $rejected_index) {
@@ -130,7 +130,19 @@ if (!function_exists('scm_loan_progress')) {
             } else {
                 $state = 'is-pending';
             }
-            $progress_steps[] = ['label' => $label, 'state' => $state];
+            $state_label = [
+                'is-complete' => 'Selesai',
+                'is-current' => 'Sedang diproses',
+                'is-pending' => 'Belum dimulai',
+                'is-rejected' => 'Ditolak',
+            ][$state];
+            $progress_steps[] = [
+                'number' => $index + 1,
+                'label' => $step['label'],
+                'description' => $step['description'],
+                'state' => $state,
+                'state_label' => $state_label,
+            ];
         }
 
         return [

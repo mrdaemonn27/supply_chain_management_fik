@@ -3,11 +3,20 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 #[\AllowDynamicProperties]
 class Peminjaman extends CI_Controller {
+    private $kaprodi_prodi;
+
     public function __construct() {
         parent::__construct();
-        $this->load->helper(['loan_progress', 'scm_ajax', 'scm_pagination', 'scm_sort']);
+        $this->load->helper(['loan_progress', 'scm_ajax', 'scm_pagination', 'scm_sort', 'fik_prodi']);
         $this->load->model('Peminjaman_model');
+        $this->load->model('User_model');
         $this->guard_kaprodi();
+        $account = $this->User_model->get_user_by_id($this->session->userdata('id_user'));
+        $this->kaprodi_prodi = fik_normalize_prodi($account->prodi ?? null);
+        if (!$this->kaprodi_prodi) {
+            $this->session->set_flashdata('error', 'Akun Kaprodi belum terhubung ke program studi. Hubungi administrator.');
+            redirect('kaprodi/dashboard');
+        }
     }
 
     private function guard_kaprodi() {
@@ -29,7 +38,7 @@ class Peminjaman extends CI_Controller {
     public function index() {
         $approval_sort = in_array($this->input->get('sort_by', true), ['number', 'peminjam', 'barang', 'lab', 'masa', 'status'], true) ? $this->input->get('sort_by', true) : '';
         $approval_dir = strtolower((string) $this->input->get('sort_dir', true)) === 'asc' ? 'asc' : 'desc';
-        $filters = ['multi_filters' => $this->read_filters(), 'action_role' => 'kaprodi', 'sort_by' => $approval_sort, 'sort_dir' => $approval_dir];
+        $filters = ['multi_filters' => $this->read_filters(), 'action_role' => 'kaprodi', 'prodi' => $this->kaprodi_prodi, 'sort_by' => $approval_sort, 'sort_dir' => $approval_dir];
         $per_page = $this->read_per_page();
         $page = max(1, (int) $this->input->get('page'));
         $total = $this->Peminjaman_model->count_visible_peminjaman($filters);
@@ -39,7 +48,7 @@ class Peminjaman extends CI_Controller {
         $return_page = max(1, (int) $this->input->get('return_page'));
         $return_sort = in_array($this->input->get('return_sort', true), ['peminjam', 'barang', 'masa', 'status'], true) ? $this->input->get('return_sort', true) : 'masa';
         $return_dir = strtolower((string) $this->input->get('return_dir', true)) === 'asc' ? 'asc' : 'desc';
-        $return_filters = ['sort_by' => $return_sort, 'sort_dir' => $return_dir];
+        $return_filters = ['prodi' => $this->kaprodi_prodi, 'sort_by' => $return_sort, 'sort_dir' => $return_dir];
         $return_total = $this->Peminjaman_model->count_pengembalian_readonly($return_filters);
         $return_total_pages = max(1, (int) ceil($return_total / $per_page));
         if ($return_page > $return_total_pages) $return_page = $return_total_pages;
@@ -61,8 +70,9 @@ class Peminjaman extends CI_Controller {
             'return_total_pages' => $return_total_pages,
             'return_sort' => $return_sort,
             'return_dir' => $return_dir,
-            'notifikasi' => $this->Peminjaman_model->get_notifikasi('kaprodi', null, 20),
-            'unread_notifikasi' => $this->Peminjaman_model->count_notifikasi_unread('kaprodi', null),
+            'kaprodi_prodi' => $this->kaprodi_prodi,
+            'notifikasi' => $this->Peminjaman_model->get_notifikasi(null, $this->session->userdata('id_user'), 20),
+            'unread_notifikasi' => $this->Peminjaman_model->count_notifikasi_unread(null, $this->session->userdata('id_user')),
         ];
         $this->load->view('kaprodi/peminjaman', $data);
     }
@@ -87,8 +97,8 @@ class Peminjaman extends CI_Controller {
 
     public function setujui($id_peminjaman) {
         $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id_peminjaman);
-        if (!$peminjaman || !scm_loan_can_act($peminjaman, 'kaprodi')) {
-            $this->session->set_flashdata('error', 'Pengajuan tidak ditemukan atau sudah diproses.');
+        if (!$peminjaman || !$this->is_loan_in_scope($peminjaman) || !scm_loan_can_act($peminjaman, 'kaprodi')) {
+            $this->session->set_flashdata('error', 'Pengajuan tidak ditemukan, bukan dari prodi Anda, atau sudah diproses.');
             redirect('kaprodi/peminjaman');
         }
 
@@ -111,7 +121,7 @@ class Peminjaman extends CI_Controller {
 
     public function tolak($id_peminjaman) {
         $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id_peminjaman);
-        if (!$peminjaman || ($peminjaman->status ?? '') !== 'Menunggu ACC Kaprodi'
+        if (!$peminjaman || !$this->is_loan_in_scope($peminjaman) || ($peminjaman->status ?? '') !== 'Menunggu ACC Kaprodi'
             || ($peminjaman->status_kaprodi ?? 'Pending') !== 'Pending') {
             $this->session->set_flashdata('error', 'Pengajuan tidak ditemukan atau sudah diproses.');
             redirect('kaprodi/peminjaman');
@@ -175,7 +185,7 @@ class Peminjaman extends CI_Controller {
         $skipped_ids = [];
         foreach ($ids as $id) {
             $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id);
-            if (!$peminjaman || !scm_loan_can_act($peminjaman, 'kaprodi')) {
+            if (!$peminjaman || !$this->is_loan_in_scope($peminjaman) || !scm_loan_can_act($peminjaman, 'kaprodi')) {
                 $skipped++;
                 $skipped_ids[] = $id;
                 continue;
@@ -231,7 +241,7 @@ class Peminjaman extends CI_Controller {
                 'skipped' => $skipped,
                 'processed_ids' => $processed_ids,
                 'skipped_ids' => $skipped_ids,
-                'actionable_remaining' => $this->Peminjaman_model->count_actionable_peminjaman('kaprodi'),
+                'actionable_remaining' => $this->Peminjaman_model->count_actionable_peminjaman('kaprodi', ['prodi' => $this->kaprodi_prodi]),
             ], $processed > 0 ? 200 : 409);
             return;
         }
@@ -246,5 +256,10 @@ class Peminjaman extends CI_Controller {
             return $id > 0;
         })));
         return array_slice($ids, 0, 25);
+    }
+
+    private function is_loan_in_scope($peminjaman) {
+        return $this->kaprodi_prodi
+            && fik_normalize_prodi($peminjaman->prodi ?? $peminjaman->prodi_peminjam ?? null) === $this->kaprodi_prodi;
     }
 }

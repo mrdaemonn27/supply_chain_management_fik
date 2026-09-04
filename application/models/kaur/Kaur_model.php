@@ -215,15 +215,26 @@ class Kaur_model extends CI_Model {
         if (!$this->db->table_exists($this->inventoryLinkTable)) {
             $this->db->query("CREATE TABLE `pengadaan_inventory_link` (
                 `id_link` int(11) NOT NULL AUTO_INCREMENT,
-                `id_bast` int(11) NOT NULL,
+                `id_bast` int(11) DEFAULT NULL,
                 `id_pengajuan` int(11) NOT NULL,
                 `id_item` int(11) NOT NULL,
                 `id_aset` int(11) NOT NULL,
                 `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
                 PRIMARY KEY (`id_link`),
                 UNIQUE KEY `uniq_bast_item` (`id_bast`, `id_item`),
+                UNIQUE KEY `uniq_pengajuan_item` (`id_pengajuan`, `id_item`),
                 KEY `idx_inventory_pengajuan` (`id_pengajuan`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+        } else {
+            $id_bast_column = $this->db->query("SHOW COLUMNS FROM `{$this->inventoryLinkTable}` LIKE 'id_bast'")->row();
+            if ($id_bast_column && strtoupper((string) $id_bast_column->Null) !== 'YES') {
+                $this->db->query("ALTER TABLE `{$this->inventoryLinkTable}` MODIFY `id_bast` int(11) DEFAULT NULL");
+            }
+
+            $duplicate_links = $this->db->query("SELECT 1 FROM `{$this->inventoryLinkTable}` GROUP BY `id_pengajuan`, `id_item` HAVING COUNT(*) > 1 LIMIT 1")->row();
+            if (!$duplicate_links && !$this->index_exists($this->inventoryLinkTable, 'uniq_pengajuan_item')) {
+                $this->db->query("ALTER TABLE `{$this->inventoryLinkTable}` ADD UNIQUE KEY `uniq_pengajuan_item` (`id_pengajuan`, `id_item`)");
+            }
         }
     }
 
@@ -235,6 +246,21 @@ class Kaur_model extends CI_Model {
         $this->ensure_column('aset', 'qr_code', "`qr_code` varchar(120) DEFAULT NULL AFTER `kode_aset`");
         $this->ensure_column('aset', 'qr_url', "`qr_url` text DEFAULT NULL AFTER `qr_code`");
         $this->ensure_column('aset', 'sumber_bast_id', "`sumber_bast_id` int(11) DEFAULT NULL AFTER `qr_url`");
+        $this->ensure_column('aset', 'sumber_pengajuan_id', "`sumber_pengajuan_id` int(11) DEFAULT NULL AFTER `sumber_bast_id`");
+        $this->ensure_column('aset', 'sumber_pengajuan_item_id', "`sumber_pengajuan_item_id` int(11) DEFAULT NULL AFTER `sumber_pengajuan_id`");
+
+        // Aset hasil pengadaan belum mempunyai lokasi sampai Laboran melakukan
+        // distribusi pertama. Foreign key tetap valid karena NULL diizinkan.
+        $room_column = $this->db->query("SHOW COLUMNS FROM `aset` LIKE 'id_ruangan'")->row();
+        if ($room_column && strtoupper((string) $room_column->Null) !== 'YES') {
+            $this->db->query('ALTER TABLE `aset` MODIFY `id_ruangan` int(11) DEFAULT NULL');
+        }
+    }
+
+    private function index_exists($table, $index) {
+        return $this->db
+            ->query("SHOW INDEX FROM `{$table}` WHERE Key_name = ?", [$index])
+            ->num_rows() > 0;
     }
 
     private function ensure_column($table, $field, $definition) {
@@ -765,6 +791,59 @@ class Kaur_model extends CI_Model {
         return $this->db->update($this->kaprodiTable, $data);
     }
 
+    /**
+     * Persetujuan final Kaur dan pembuatan master aset harus atomik. Dengan
+     * begitu pengajuan tidak pernah terlihat sudah disetujui tanpa aset yang
+     * siap didistribusikan oleh Laboran.
+     */
+    public function finalize_kaprodi_approval($id_pengajuan, $catatan = null) {
+        $this->db->trans_begin();
+
+        $locked = $this->db
+            ->query("SELECT `id_pengajuan` FROM `{$this->kaprodiTable}` WHERE `id_pengajuan` = ? LIMIT 1 FOR UPDATE", [(int) $id_pengajuan])
+            ->row();
+        if (!$locked || !$this->update_kaprodi_status($id_pengajuan, 'Disetujui', $catatan)) {
+            $this->db->trans_rollback();
+            return false;
+        }
+
+        $inventory_count = $this->sync_inventory_from_approval($id_pengajuan);
+        if ($inventory_count === false || $this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+            return false;
+        }
+
+        $this->db->trans_commit();
+        return ['inventory_count' => (int) $inventory_count];
+    }
+
+    /**
+     * Menangani data lama yang sudah berstatus Disetujui tetapi sebelumnya
+     * masih menunggu BAST untuk masuk ke master aset.
+     */
+    public function sync_approved_inventory() {
+        $rows = $this->db
+            ->select('p.id_pengajuan')
+            ->distinct()
+            ->from($this->kaprodiTable . ' p')
+            ->join($this->kaprodiItemTable . ' i', 'i.id_pengajuan = p.id_pengajuan')
+            ->join($this->inventoryLinkTable . ' l', 'l.id_pengajuan = p.id_pengajuan AND l.id_item = i.id_item', 'left')
+            ->where('p.status', 'Disetujui')
+            ->where_in('p.jenis_pengajuan', ['Barang', 'Barang dan Jasa'])
+            ->where('l.id_link IS NULL', null, false)
+            ->get()
+            ->result();
+
+        $created = 0;
+        foreach ($rows as $row) {
+            $result = $this->sync_inventory_from_approval((int) $row->id_pengajuan);
+            if ($result !== false) {
+                $created += (int) $result;
+            }
+        }
+        return $created;
+    }
+
     public function save_anggaran($data) {
         $this->db->insert($this->anggaranTable, $data);
         return $this->db->insert_id();
@@ -850,86 +929,106 @@ class Kaur_model extends CI_Model {
     }
 
     private function process_inventory_from_bast($id_bast, $id_pengajuan) {
-        $pengajuan = $this->get_kaprodi_by_id($id_pengajuan);
-        if (!$pengajuan || !in_array($pengajuan->jenis_pengajuan, ['Barang', 'Barang dan Jasa'], true)) {
-            $this->db->where('id_bast', $id_bast)->update($this->bastTable, ['inventory_processed_at' => date('Y-m-d H:i:s')]);
-            return true;
-        }
-
-        $id_ruangan = $this->get_default_ruangan_id();
-        if (!$id_ruangan || !$this->db->table_exists('aset')) {
+        $result = $this->sync_inventory_from_approval($id_pengajuan, $id_bast);
+        if ($result === false) {
             return false;
-        }
-
-        foreach ($pengajuan->items as $item) {
-            if (($item->jenis_item ?? 'Barang') !== 'Barang') {
-                continue;
-            }
-            // Item yang statusnya Ditolak tidak jadi diadakan, jangan dimasukkan ke inventory.
-            if (($item->latest_negosiasi->status ?? null) === 'Ditolak') {
-                continue;
-            }
-            $exists = $this->db
-                ->where('id_bast', $id_bast)
-                ->where('id_item', $item->id_item)
-                ->get($this->inventoryLinkTable)
-                ->row();
-            if ($exists) {
-                continue;
-            }
-
-            $latest = $item->latest_negosiasi;
-            $qty = $latest && (float) $latest->volume_negosiasi > 0 ? (int) ceil((float) $latest->volume_negosiasi) : (int) ceil((float) $item->vol);
-            $qty = max(1, $qty);
-            $kode = 'INV-' . str_pad((string) $id_bast, 4, '0', STR_PAD_LEFT) . '-' . str_pad((string) $item->id_item, 4, '0', STR_PAD_LEFT);
-
-            $aset = [
-                'id_ruangan' => $id_ruangan,
-                'nama_aset' => $item->uraian_barang,
-                'kode_aset' => $kode,
-                'deskripsi' => 'Inventaris otomatis dari BAST pengajuan ' . $pengajuan->kode_pengajuan,
-                'jumlah_total' => $qty,
-                'jumlah_tersedia' => $qty,
-                'kondisi' => 'Baik',
-                'total_peminjaman' => 0,
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s'),
-            ];
-            if ($this->db->field_exists('sumber_bast_id', 'aset')) {
-                $aset['sumber_bast_id'] = $id_bast;
-            }
-
-            $this->db->insert('aset', $aset);
-            $id_aset = $this->db->insert_id();
-            $qr_code = 'ASET-' . $id_aset . '-' . strtoupper(substr(md5($kode), 0, 6));
-            $qr_url = site_url('peminjaman/detail_barang/' . $id_aset);
-
-            $qr_update = [];
-            if ($this->db->field_exists('qr_code', 'aset')) {
-                $qr_update['qr_code'] = $qr_code;
-            }
-            if ($this->db->field_exists('qr_url', 'aset')) {
-                $qr_update['qr_url'] = $qr_url;
-            }
-            if (!empty($qr_update)) {
-                $this->db->where('id_aset', $id_aset)->update('aset', $qr_update);
-            }
-
-            $this->db->insert($this->inventoryLinkTable, [
-                'id_bast' => $id_bast,
-                'id_pengajuan' => $id_pengajuan,
-                'id_item' => $item->id_item,
-                'id_aset' => $id_aset,
-            ]);
         }
 
         $this->db->where('id_bast', $id_bast)->update($this->bastTable, ['inventory_processed_at' => date('Y-m-d H:i:s')]);
         return true;
     }
 
-    private function get_default_ruangan_id() {
-        $row = $this->db->order_by('id_ruangan', 'ASC')->limit(1)->get('ruangan')->row();
-        return $row ? (int) $row->id_ruangan : null;
+    /**
+     * Membuat satu master aset untuk setiap item barang berstatus Deal.
+     * id_ruangan sengaja NULL sampai distribusi pertama dilakukan Laboran.
+     */
+    private function sync_inventory_from_approval($id_pengajuan, $id_bast = null) {
+        $pengajuan = $this->get_kaprodi_by_id($id_pengajuan);
+        if (!$pengajuan || !$this->db->table_exists('aset')) {
+            return false;
+        }
+        if (!in_array($pengajuan->jenis_pengajuan, ['Barang', 'Barang dan Jasa'], true)) {
+            return 0;
+        }
+
+        $created = 0;
+        foreach ($pengajuan->items as $item) {
+            if (($item->jenis_item ?? 'Barang') !== 'Barang' || ($item->latest_negosiasi->status ?? null) !== 'Deal') {
+                continue;
+            }
+
+            $link = $this->db
+                ->where('id_pengajuan', (int) $id_pengajuan)
+                ->where('id_item', (int) $item->id_item)
+                ->get($this->inventoryLinkTable)
+                ->row();
+            if ($link) {
+                if ($id_bast && empty($link->id_bast)) {
+                    $this->db->where('id_link', $link->id_link)->update($this->inventoryLinkTable, ['id_bast' => (int) $id_bast]);
+                    if ($this->db->field_exists('sumber_bast_id', 'aset')) {
+                        $this->db->where('id_aset', $link->id_aset)->update('aset', ['sumber_bast_id' => (int) $id_bast]);
+                    }
+                }
+                continue;
+            }
+
+            $latest = $item->latest_negosiasi;
+            $qty = max(1, (int) ceil((float) $latest->volume_negosiasi));
+            $kode = 'INV-P' . str_pad((string) $id_pengajuan, 4, '0', STR_PAD_LEFT) . '-I' . str_pad((string) $item->id_item, 4, '0', STR_PAD_LEFT);
+
+            // Pulihkan secara idempoten bila aset sempat terbentuk tetapi link
+            // gagal tersimpan pada instalasi lama.
+            $existing_asset = $this->db->where('kode_aset', $kode)->get('aset')->row();
+            if ($existing_asset) {
+                $id_aset = (int) $existing_asset->id_aset;
+            } else {
+                $aset = [
+                    'id_ruangan' => null,
+                    'nama_aset' => $item->uraian_barang,
+                    'kode_aset' => $kode,
+                    'deskripsi' => 'Inventaris otomatis dari persetujuan pengajuan ' . $pengajuan->kode_pengajuan,
+                    'jumlah_total' => $qty,
+                    'jumlah_tersedia' => $qty,
+                    'kondisi' => 'Baik',
+                    'total_peminjaman' => 0,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ];
+                if ($this->db->field_exists('jumlah_reserved', 'aset')) $aset['jumlah_reserved'] = 0;
+                if ($this->db->field_exists('jumlah_dipinjam', 'aset')) $aset['jumlah_dipinjam'] = 0;
+                if ($this->db->field_exists('sumber_bast_id', 'aset')) $aset['sumber_bast_id'] = $id_bast ? (int) $id_bast : null;
+                if ($this->db->field_exists('sumber_pengajuan_id', 'aset')) $aset['sumber_pengajuan_id'] = (int) $id_pengajuan;
+                if ($this->db->field_exists('sumber_pengajuan_item_id', 'aset')) $aset['sumber_pengajuan_item_id'] = (int) $item->id_item;
+
+                if (!$this->db->insert('aset', $aset)) {
+                    return false;
+                }
+                $id_aset = (int) $this->db->insert_id();
+                $created++;
+            }
+
+            $qr_update = [];
+            if ($this->db->field_exists('qr_code', 'aset')) {
+                $qr_update['qr_code'] = 'ASET-' . $id_aset . '-' . strtoupper(substr(md5($kode), 0, 6));
+            }
+            if ($this->db->field_exists('qr_url', 'aset')) {
+                $qr_update['qr_url'] = site_url('peminjaman/detail_barang/' . $id_aset);
+            }
+            if (!empty($qr_update)) {
+                $this->db->where('id_aset', $id_aset)->update('aset', $qr_update);
+            }
+
+            if (!$this->db->insert($this->inventoryLinkTable, [
+                'id_bast' => $id_bast ? (int) $id_bast : null,
+                'id_pengajuan' => (int) $id_pengajuan,
+                'id_item' => (int) $item->id_item,
+                'id_aset' => $id_aset,
+            ])) {
+                return false;
+            }
+        }
+
+        return $created;
     }
 
     public function get_laporan_negosiasi_deal($filters = [], $limit = null, $offset = 0) {

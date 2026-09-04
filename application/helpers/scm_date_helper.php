@@ -3,7 +3,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 
 if (!function_exists('tanggal_indonesia')) {
     /**
-     * Mengubah tanggal database menjadi format Indonesia, misalnya 12 Agustus 2026.
+     * Mengubah tanggal database menjadi format numerik Indonesia: dd/mm/yyyy.
+     * Jika waktu diminta, hasilnya dd/mm/yyyy HH:mm WIB.
      */
     function tanggal_indonesia($date_string, $with_time = false) {
         if (empty($date_string) || $date_string === '0000-00-00' || $date_string === '0000-00-00 00:00:00') {
@@ -15,19 +16,47 @@ if (!function_exists('tanggal_indonesia')) {
             return '-';
         }
 
-        $bulan = [
-            1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-        ];
-        $label = date('j', $timestamp) . ' ' . $bulan[(int) date('n', $timestamp)] . ' ' . date('Y', $timestamp);
+        $label = date('d/m/Y', $timestamp);
+        return $with_time ? $label . ' ' . date('H:i', $timestamp) . ' WIB' : $label;
+    }
+}
 
-        return $with_time ? $label . ', ' . date('H:i', $timestamp) : $label;
+if (!function_exists('waktu_indonesia')) {
+    /**
+     * Format tanggal dan jam yang seragam untuk seluruh tampilan aplikasi.
+     */
+    function waktu_indonesia($date_string) {
+        return tanggal_indonesia($date_string, true);
+    }
+}
+
+if (!function_exists('jam_indonesia')) {
+    function jam_indonesia($date_string) {
+        if (empty($date_string) || $date_string === '0000-00-00 00:00:00') {
+            return '-';
+        }
+        $timestamp = strtotime((string) $date_string);
+        return $timestamp ? date('H:i', $timestamp) . ' WIB' : '-';
     }
 }
 
 if (!function_exists('masa_pinjam_indonesia')) {
     function masa_pinjam_indonesia($tanggal_pinjam, $tanggal_kembali) {
         return tanggal_indonesia($tanggal_pinjam) . ' s.d. ' . tanggal_indonesia($tanggal_kembali);
+    }
+}
+
+if (!function_exists('durasi_pinjam_hari')) {
+    /**
+     * Menghitung lama peminjaman secara inklusif (hari pinjam dan hari kembali dihitung).
+     */
+    function durasi_pinjam_hari($tanggal_pinjam, $tanggal_kembali) {
+        $mulai = DateTime::createFromFormat('!Y-m-d', substr((string) $tanggal_pinjam, 0, 10));
+        $selesai = DateTime::createFromFormat('!Y-m-d', substr((string) $tanggal_kembali, 0, 10));
+        if (!$mulai || !$selesai || $selesai < $mulai) {
+            return 0;
+        }
+        return (int) $mulai->diff($selesai)->days + 1;
     }
 }
 

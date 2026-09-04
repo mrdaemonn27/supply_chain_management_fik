@@ -21,6 +21,7 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
     <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     <link rel="stylesheet" href="<?= base_url('assets/css/loan-progress.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-progress.css'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/approval-bulk-select.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/approval-bulk-select.css'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/loan-action-summary.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-action-summary.css'); ?>">
     <style>
         body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
@@ -297,7 +298,7 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
 
     <?php foreach($pengajuan as $p): $can_laboran_act = scm_loan_can_act($p, 'laboran'); ?>
         <div class="modal fade" id="processModal<?= (int)$p->id_peminjaman ?>" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                 <form class="modal-content" method="post" action="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>">
                     <div class="modal-header">
                         <h5 class="modal-title fw-bold">Aksi Peminjaman</h5>
@@ -305,17 +306,15 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
                     </div>
                     <div class="modal-body">
                         <?php if (!$can_laboran_act): ?><div class="alert alert-info small">Pengajuan ini tetap terlihat untuk pemantauan. Aksi Laboran akan aktif setelah disetujui Kaprodi.</div><?php endif; ?>
-                        <div class="mb-3">
-                            <div class="small text-muted">Peminjam</div>
-                            <div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?> - <?= html_escape($p->nim_nip ?? '-') ?></div>
-                        </div>
+                        <?php $loan_action_item = $p; include APPPATH . 'views/shared/loan_action_summary.php'; unset($loan_action_item); ?>
+                        <p class="loan-action-dialog-note mb-3"><i class="bi bi-info-circle"></i><span>Periksa barang, jumlah unit, peminjam, dan periode sebelum menentukan keputusan.</span></p>
                         <label class="form-label small fw-semibold">Catatan Laboran</label>
                         <textarea name="catatan_laboran" class="form-control" rows="3" placeholder="Catatan pengecekan stok atau alasan penolakan." <?= $can_laboran_act ? '' : 'disabled'; ?>></textarea>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer loan-action-footer">
                         <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button>
-                        <button formaction="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-4" onclick="return confirm('Tolak pengajuan ini?')" <?= $can_laboran_act ? '' : 'disabled'; ?>><i class="bi bi-x-lg me-1"></i> Tolak</button>
-                        <button formaction="<?= base_url('index.php/admin/approval/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-4" onclick="return confirm('Teruskan pengajuan ini ke Kaur?')" <?= $can_laboran_act ? '' : 'disabled'; ?>><i class="bi bi-send-check me-1"></i> Teruskan ke Kaur</button>
+                        <button formaction="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-4" <?= $can_laboran_act ? '' : 'disabled'; ?>><i class="bi bi-x-lg me-1"></i> Tolak</button>
+                        <button formaction="<?= base_url('index.php/admin/approval/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-4" <?= $can_laboran_act ? '' : 'disabled'; ?>><i class="bi bi-send-check me-1"></i> Setujui &amp; Teruskan</button>
                     </div>
                 </form>
             </div>
@@ -324,6 +323,7 @@ $total_pages = max(1, (int) ($total_pages ?? 1));
     <?php endforeach; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= base_url('assets/js/loan-progress.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/loan-progress.js'); ?>"></script>
     <script src="<?= base_url('assets/js/approval-bulk-select.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/approval-bulk-select.js'); ?>"></script>
     <script>
         document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => new bootstrap.Tooltip(el));

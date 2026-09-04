@@ -25,7 +25,7 @@ function excel_cell($value) {
             <td colspan="17" class="title"><?= excel_cell($title ?? 'Laporan Pengajuan Sampai Tahap ACC') ?></td>
         </tr>
         <tr>
-            <td colspan="17" class="meta">Dicetak: <?= date('d/m/Y H:i') ?> WIB</td>
+            <td colspan="17" class="meta">Dicetak: <?= waktu_indonesia(date('Y-m-d H:i:s')) ?></td>
         </tr>
         <tr>
             <th>No</th>
@@ -59,14 +59,14 @@ function excel_cell($value) {
                 <td><?= excel_cell($row->daftar_barang) ?></td>
                 <td><?= (int) ($row->total_jenis ?? 0) ?></td>
                 <td><?= (int) ($row->total_jumlah ?? 0) ?></td>
-                <td><?= excel_cell($row->tanggal_pinjam) ?></td>
-                <td><?= excel_cell($row->tanggal_kembali_rencana) ?></td>
+                <td><?= excel_cell(tanggal_indonesia($row->tanggal_pinjam)) ?></td>
+                <td><?= excel_cell(tanggal_indonesia($row->tanggal_kembali_rencana)) ?></td>
                 <td><?= excel_cell($row->keperluan) ?></td>
                 <td><?= excel_cell($row->status) ?></td>
                 <td><?= excel_cell($row->status_laboran) ?></td>
-                <td><?= excel_cell($row->tgl_approve_laboran) ?></td>
+                <td><?= excel_cell(waktu_indonesia($row->tgl_approve_laboran)) ?></td>
                 <td><?= excel_cell($row->status_kaur) ?></td>
-                <td><?= excel_cell($row->tgl_approve_kaur) ?></td>
+                <td><?= excel_cell(waktu_indonesia($row->tgl_approve_kaur)) ?></td>
                 <td><?= excel_cell($row->kondisi_saat_kembali) ?></td>
                 <td>
                     Laboran: <?= excel_cell($row->catatan_laboran) ?><br>

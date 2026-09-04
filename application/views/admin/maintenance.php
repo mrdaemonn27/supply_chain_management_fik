@@ -18,6 +18,8 @@ $maintenance_condition_class = static function ($condition) {
     $normalized = preg_replace('/[^a-z0-9]+/i', '-', $normalized);
     return trim('maintenance-condition--' . $normalized, '-');
 };
+$maintenance_asset_search_url = base_url('index.php/admin/maintenance/cari_aset');
+$system_date = date('Y-m-d');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -28,6 +30,7 @@ $maintenance_condition_class = static function ($condition) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <?php include APPPATH . 'views/shared/theme_assets.php'; ?>
     <style>
         body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
@@ -143,6 +146,21 @@ $maintenance_condition_class = static function ($condition) {
         .maintenance-drawer .form-control, .maintenance-drawer .form-select { min-height: 40px; font-size: .8rem; }
         .maintenance-drawer textarea.form-control { min-height: auto; }
         .maintenance-drawer .btn-fik { min-height: 40px; }
+        .maintenance-asset-combobox { position: relative; }
+        .maintenance-asset-combobox__input-wrap { position: relative; }
+        .maintenance-asset-combobox__input { min-height: 46px !important; padding-right: 2.65rem; }
+        .maintenance-asset-combobox__icon { position: absolute; top: 50%; right: .95rem; color: #8a94a3; pointer-events: none; transform: translateY(-50%); }
+        .maintenance-asset-combobox__list { position: absolute; z-index: 1085; top: calc(100% + .4rem); right: 0; left: 0; max-height: min(320px, 42vh); overflow-y: auto; padding: .35rem; border: 1px solid #dbe1e8; border-radius: 10px; background: #fff; box-shadow: 0 14px 34px rgba(15, 23, 42, .16); }
+        .maintenance-asset-combobox__list[hidden] { display: none; }
+        .maintenance-asset-combobox__option { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; gap: .3rem .75rem; padding: .72rem .75rem; border: 0; border-radius: 7px; color: #273142; background: transparent; text-align: left; }
+        .maintenance-asset-combobox__option:hover, .maintenance-asset-combobox__option.is-active { color: #b84410; background: #fff1e9; }
+        .maintenance-asset-combobox__name { overflow: hidden; font-size: .8rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+        .maintenance-asset-combobox__condition { color: #667085; font-size: .68rem; white-space: nowrap; }
+        .maintenance-asset-combobox__meta { grid-column: 1 / -1; color: #8a94a3; font-size: .68rem; }
+        .maintenance-asset-combobox__empty { padding: 1rem .75rem; color: #6b7280; font-size: .75rem; text-align: center; }
+        .maintenance-form-hint { margin-top: .35rem; color: #8a94a3; font-size: .7rem; line-height: 1.45; }
+        .maintenance-date-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .85rem; }
+        .maintenance-system-date { color: #667085; background: #f4f6f8 !important; cursor: not-allowed; }
         .maintenance-pagination-footer {
             display: grid;
             grid-template-columns: minmax(0, auto) 1fr minmax(0, auto);
@@ -187,6 +205,13 @@ $maintenance_condition_class = static function ($condition) {
             .maintenance-toolbar { grid-template-columns: 1fr; align-items: stretch; }
             .maintenance-pagination-footer { grid-template-columns: 1fr; justify-items: center; gap: .65rem; }
             .maintenance-pagination-footer nav { max-width: 100%; overflow-x: auto; padding-bottom: 2px; }
+            .maintenance-date-grid { grid-template-columns: 1fr; }
+            .maintenance-asset-combobox__list { position: fixed; top: auto; right: 12px; bottom: 12px; left: 12px; max-height: min(420px, 62vh); }
+        }
+        @media (max-width: 575.98px) {
+            .maintenance-drawer .offcanvas-body { padding: 1rem; }
+            .maintenance-asset-combobox__option { grid-template-columns: 1fr; }
+            .maintenance-asset-combobox__condition, .maintenance-asset-combobox__meta { grid-column: 1; }
         }
     </style>
 </head>
@@ -273,7 +298,7 @@ $maintenance_condition_class = static function ($condition) {
                                     <div class="fw-semibold"><?= html_escape($m->nama_aset) ?></div>
                                     <div class="small text-muted"><?= html_escape($m->kode_aset . ' - ' . $m->nama_ruangan) ?></div>
                                 </td>
-                                <td><?= html_escape($m->tanggal_maintenance) ?></td>
+                                <td><?= html_escape(tanggal_indonesia($m->tanggal_maintenance)) ?></td>
                                 <td>
                                     <span class="maintenance-condition <?= html_escape($maintenance_condition_class($condition)) ?>">
                                         <span class="maintenance-condition__dot" aria-hidden="true"></span>
@@ -346,19 +371,32 @@ $maintenance_condition_class = static function ($condition) {
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Tutup"></button>
         </div>
         <div class="offcanvas-body">
-            <form action="<?= base_url('index.php/admin/maintenance/simpan') ?>" method="post" class="vstack gap-3">
+            <form id="maintenanceForm" action="<?= base_url('index.php/admin/maintenance/simpan') ?>" method="post" class="vstack gap-3">
                 <div>
-                    <label class="form-label" for="maintenanceAsset">Aset</label>
-                    <select id="maintenanceAsset" name="id_aset" class="form-select" required>
-                        <option value="">Pilih aset</option>
-                        <?php foreach ($aset as $a): ?>
-                            <option value="<?= $a->id_aset ?>"><?= html_escape($a->nama_aset . ' - ' . $a->kode_aset) ?></option>
-                        <?php endforeach; ?>
-                    </select>
+                    <label class="form-label" for="maintenanceAssetSearch">Cari Aset</label>
+                    <div id="maintenanceAssetCombobox" class="maintenance-asset-combobox">
+                        <div class="maintenance-asset-combobox__input-wrap">
+                            <input id="maintenanceAssetSearch" type="text" class="form-control maintenance-asset-combobox__input" placeholder="Ketik nama, kode, atau lokasi aset" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="maintenanceAssetList" required>
+                            <i class="bi bi-search maintenance-asset-combobox__icon" aria-hidden="true"></i>
+                        </div>
+                        <input id="maintenanceAsset" type="hidden" name="id_aset" value="">
+                        <div id="maintenanceAssetList" class="maintenance-asset-combobox__list" role="listbox" aria-label="Hasil pencarian aset" hidden>
+                            <div class="maintenance-asset-combobox__empty">Ketik untuk mencari aset.</div>
+                        </div>
+                    </div>
+                    <div class="maintenance-form-hint">Pilih aset dari hasil pencarian agar data yang disimpan tetap tepat.</div>
                 </div>
-                <div>
-                    <label class="form-label" for="maintenanceDate">Tanggal Maintenance</label>
-                    <input id="maintenanceDate" type="date" name="tanggal_maintenance" class="form-control" value="<?= date('Y-m-d') ?>" required>
+                <div class="maintenance-date-grid">
+                    <div>
+                        <label class="form-label" for="maintenanceInputDate">Tanggal Input (Sistem)</label>
+                        <input id="maintenanceInputDate" type="date" class="form-control maintenance-system-date" value="<?= html_escape($system_date) ?>" readonly aria-readonly="true">
+                        <div class="maintenance-form-hint">Diisi otomatis sesuai tanggal sistem saat data disimpan.</div>
+                    </div>
+                    <div>
+                        <label class="form-label" for="maintenanceDate">Tanggal Maintenance</label>
+                        <input id="maintenanceDate" type="date" name="tanggal_maintenance" class="form-control" value="<?= html_escape($system_date) ?>" required>
+                        <div class="maintenance-form-hint">Pilih tanggal pelaksanaan maintenance.</div>
+                    </div>
                 </div>
                 <div>
                     <label class="form-label" for="maintenanceCondition">Kondisi Setelah</label>
@@ -384,6 +422,162 @@ $maintenance_condition_class = static function ($condition) {
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        const maintenanceForm = document.getElementById('maintenanceForm');
+        const maintenanceAssetCombobox = document.getElementById('maintenanceAssetCombobox');
+        const maintenanceAssetSearch = document.getElementById('maintenanceAssetSearch');
+        const maintenanceAssetInput = document.getElementById('maintenanceAsset');
+        const maintenanceAssetList = document.getElementById('maintenanceAssetList');
+        const maintenanceAssetSearchUrl = <?= json_encode($maintenance_asset_search_url) ?>;
+        let maintenanceAssetOptions = [];
+        let maintenanceSelectedAsset = null;
+        let maintenanceActiveAssetIndex = -1;
+        let maintenanceSearchTimer = null;
+        let maintenanceRequestNumber = 0;
+
+        const closeMaintenanceAssetList = function () {
+            if (!maintenanceAssetList || !maintenanceAssetSearch) return;
+            maintenanceAssetList.hidden = true;
+            maintenanceAssetSearch.setAttribute('aria-expanded', 'false');
+            maintenanceAssetSearch.removeAttribute('aria-activedescendant');
+            maintenanceActiveAssetIndex = -1;
+        };
+
+        const setActiveMaintenanceAsset = function (index) {
+            if (!maintenanceAssetOptions.length || !maintenanceAssetSearch) return;
+            maintenanceActiveAssetIndex = (index + maintenanceAssetOptions.length) % maintenanceAssetOptions.length;
+            maintenanceAssetOptions.forEach(function (option, optionIndex) {
+                const active = optionIndex === maintenanceActiveAssetIndex;
+                option.classList.toggle('is-active', active);
+                option.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            const activeOption = maintenanceAssetOptions[maintenanceActiveAssetIndex];
+            maintenanceAssetSearch.setAttribute('aria-activedescendant', activeOption.id);
+            activeOption.scrollIntoView({block: 'nearest'});
+        };
+
+        const chooseMaintenanceAsset = function (option) {
+            if (!option || !maintenanceAssetSearch || !maintenanceAssetInput) return;
+            maintenanceSelectedAsset = option;
+            maintenanceAssetInput.value = option.dataset.id || '';
+            maintenanceAssetSearch.value = (option.dataset.name || '') + ' — ' + (option.dataset.code || '');
+            maintenanceAssetSearch.setCustomValidity('');
+            closeMaintenanceAssetList();
+        };
+
+        const createMaintenanceAssetOption = function (asset, index) {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.id = 'maintenanceAssetOption' + index;
+            option.className = 'maintenance-asset-combobox__option';
+            option.setAttribute('role', 'option');
+            option.setAttribute('aria-selected', 'false');
+            option.dataset.id = String(asset.id || '');
+            option.dataset.name = String(asset.name || '');
+            option.dataset.code = String(asset.code || '');
+
+            const name = document.createElement('span');
+            name.className = 'maintenance-asset-combobox__name';
+            name.textContent = option.dataset.name;
+            const condition = document.createElement('span');
+            condition.className = 'maintenance-asset-combobox__condition';
+            condition.textContent = String(asset.condition || '-');
+            const meta = document.createElement('span');
+            meta.className = 'maintenance-asset-combobox__meta';
+            meta.textContent = option.dataset.code + ' · ' + String(asset.room || 'Belum ditempatkan') + ' · ' + String(asset.total || 0) + ' unit';
+            option.append(name, condition, meta);
+            return option;
+        };
+
+        const loadMaintenanceAssets = function () {
+            if (!maintenanceAssetSearch || !maintenanceAssetList) return;
+            const requestNumber = ++maintenanceRequestNumber;
+            const url = maintenanceAssetSearchUrl + (maintenanceAssetSearchUrl.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(maintenanceAssetSearch.value.trim());
+            maintenanceAssetList.innerHTML = '<div class="maintenance-asset-combobox__empty">Mencari aset...</div>';
+            maintenanceAssetList.hidden = false;
+            maintenanceAssetSearch.setAttribute('aria-expanded', 'true');
+
+            fetch(url, {headers: {'Accept': 'application/json'}})
+                .then(function (response) {
+                    if (!response.ok) throw new Error('Pencarian aset gagal.');
+                    return response.json();
+                })
+                .then(function (payload) {
+                    if (requestNumber !== maintenanceRequestNumber) return;
+                    const results = payload.success && Array.isArray(payload.results) ? payload.results : [];
+                    maintenanceAssetOptions = results.map(createMaintenanceAssetOption);
+                    maintenanceActiveAssetIndex = -1;
+                    maintenanceAssetList.replaceChildren();
+                    if (maintenanceAssetOptions.length) {
+                        maintenanceAssetOptions.forEach(function (option) { maintenanceAssetList.appendChild(option); });
+                    } else {
+                        const empty = document.createElement('div');
+                        empty.className = 'maintenance-asset-combobox__empty';
+                        empty.textContent = 'Aset tidak ditemukan.';
+                        maintenanceAssetList.appendChild(empty);
+                    }
+                })
+                .catch(function () {
+                    if (requestNumber !== maintenanceRequestNumber) return;
+                    maintenanceAssetOptions = [];
+                    maintenanceAssetList.innerHTML = '<div class="maintenance-asset-combobox__empty text-danger">Pencarian aset gagal. Coba lagi.</div>';
+                });
+        };
+
+        const scheduleMaintenanceAssetSearch = function (immediate) {
+            window.clearTimeout(maintenanceSearchTimer);
+            maintenanceSearchTimer = window.setTimeout(loadMaintenanceAssets, immediate ? 0 : 180);
+        };
+
+        if (maintenanceAssetSearch) {
+            maintenanceAssetSearch.addEventListener('focus', function () { scheduleMaintenanceAssetSearch(true); });
+            maintenanceAssetSearch.addEventListener('input', function () {
+                const selectedLabel = maintenanceSelectedAsset
+                    ? (maintenanceSelectedAsset.dataset.name || '') + ' — ' + (maintenanceSelectedAsset.dataset.code || '')
+                    : '';
+                if (!maintenanceSelectedAsset || maintenanceAssetSearch.value !== selectedLabel) {
+                    maintenanceSelectedAsset = null;
+                    maintenanceAssetInput.value = '';
+                }
+                maintenanceAssetSearch.setCustomValidity('');
+                scheduleMaintenanceAssetSearch(false);
+            });
+            maintenanceAssetSearch.addEventListener('keydown', function (event) {
+                if (event.key === 'ArrowDown') {
+                    event.preventDefault();
+                    setActiveMaintenanceAsset(maintenanceActiveAssetIndex + 1);
+                } else if (event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    setActiveMaintenanceAsset(maintenanceActiveAssetIndex - 1);
+                } else if (event.key === 'Enter' && maintenanceActiveAssetIndex >= 0) {
+                    event.preventDefault();
+                    chooseMaintenanceAsset(maintenanceAssetOptions[maintenanceActiveAssetIndex]);
+                } else if (event.key === 'Escape') {
+                    closeMaintenanceAssetList();
+                }
+            });
+        }
+
+        if (maintenanceAssetList) {
+            maintenanceAssetList.addEventListener('click', function (event) {
+                const option = event.target.closest('.maintenance-asset-combobox__option');
+                if (option) chooseMaintenanceAsset(option);
+            });
+        }
+
+        document.addEventListener('mousedown', function (event) {
+            if (maintenanceAssetCombobox && !maintenanceAssetCombobox.contains(event.target)) closeMaintenanceAssetList();
+        });
+
+        if (maintenanceForm) {
+            maintenanceForm.addEventListener('submit', function (event) {
+                if (maintenanceAssetInput.value && maintenanceSelectedAsset) return;
+                event.preventDefault();
+                maintenanceAssetSearch.setCustomValidity('Pilih aset dari hasil pencarian terlebih dahulu.');
+                maintenanceAssetSearch.reportValidity();
+                maintenanceAssetSearch.setCustomValidity('');
+            });
+        }
+
         const maintenancePageSize = document.getElementById('maintenancePageSize');
         if (maintenancePageSize) {
             maintenancePageSize.addEventListener('change', () => {

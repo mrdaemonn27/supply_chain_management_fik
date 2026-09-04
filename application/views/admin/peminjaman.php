@@ -18,6 +18,9 @@ $filter_fields = ['peminjam' => 'Peminjam / NIM', 'barang' => 'Nama barang / kod
 $filter_suggestions = isset($filter_suggestions) && is_array($filter_suggestions) ? $filter_suggestions : [];
 $approval_actionable = (int) ($approval_actionable ?? 0);
 $approval_page_actionable = count(array_filter((array) ($peminjaman ?? []), static function ($p) { return scm_loan_can_act($p, 'laboran'); }));
+$qr_finalization = isset($qr_finalization) && is_array($qr_finalization) ? $qr_finalization : [];
+$qr_pagination = isset($qr_pagination) && is_array($qr_pagination) ? $qr_pagination : ['page' => 1, 'total_pages' => 1, 'total' => count($qr_finalization), 'per_page' => 10];
+$qr_total = (int) ($qr_pagination['total'] ?? 0);
 $loan_sort = (string) ($filters['sort_by'] ?? '');
 $loan_sort_dir = (string) ($filters['sort_dir'] ?? 'desc');
 $export_params = [
@@ -43,6 +46,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="<?= base_url('assets/css/loan-progress.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-progress.css'); ?>">
     <link rel="stylesheet" href="<?= base_url('assets/css/approval-bulk-select.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/approval-bulk-select.css'); ?>">
+    <link rel="stylesheet" href="<?= base_url('assets/css/loan-action-summary.css'); ?>?v=<?= @filemtime(FCPATH . 'assets/css/loan-action-summary.css'); ?>">
     <style>
         body { background: #f5f6f8; font-family: 'Poppins', sans-serif; color: #202124; }
         .topbar { background: #1f1f1f; border-bottom: 4px solid #ea5b1a; color: #fff; }
@@ -112,6 +116,12 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         .loan-table th:nth-child(5), .loan-table td:nth-child(5) { min-width:175px; text-align:left; }
         .loan-table th:nth-child(6), .loan-table td:nth-child(6) { min-width:270px; }
         .loan-table th:nth-child(7), .loan-table td:nth-child(7) { min-width:210px; }
+        .qr-finalization-table { min-width: 1080px; }
+        .qr-finalization-table th:nth-child(3), .qr-finalization-table td:nth-child(3) { min-width:220px; }
+        .qr-finalization-table th:nth-child(4), .qr-finalization-table td:nth-child(4) { min-width:300px; text-align:left; }
+        .qr-finalization-table th:nth-child(5), .qr-finalization-table td:nth-child(5) { min-width:190px; text-align:left; }
+        .qr-finalization-table th:nth-child(6), .qr-finalization-table td:nth-child(6) { min-width:280px; }
+        .qr-finalization-table th:nth-child(7), .qr-finalization-table td:nth-child(7) { min-width:180px; }
         .loan-list-summary { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; padding:1rem; border-bottom:1px solid var(--loan-border); }
         .loan-list-summary h2 { margin:0; font-size:1rem; font-weight:700; }
         .loan-list-summary p { margin:.2rem 0 0; color:var(--loan-muted); font-size:.76rem; }
@@ -295,6 +305,101 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
             </form>
         </section>
 
+        <section class="panel-card p-0 loan-table-card mb-4"
+                 data-bulk-approval
+                 data-bulk-noun="transaksi"
+                 data-bulk-success-label="difinalkan dan QR diaktifkan"
+                 data-bulk-confirm="Finalkan QR untuk seluruh transaksi yang dipilih?"
+                 data-bulk-confirm-label="Setujui &amp; Finalkan QR"
+                 data-bulk-reload-on-success="1">
+            <div class="loan-list-summary">
+                <div><h2><i class="bi bi-qr-code me-2 text-fik-orange"></i>Finalisasi QR</h2><p>Pilih satu, beberapa, atau semua transaksi yang telah disetujui Kaprodi, Laboran, dan Kaur.</p></div>
+                <span class="badge rounded-pill text-bg-primary px-3 py-2"><span data-bulk-actionable-count><?= $qr_total ?></span> siap difinalkan</span>
+            </div>
+            <?php if (!empty($qr_finalization)): ?>
+            <form id="qrFinalizationBulkForm" method="post" action="<?= base_url('index.php/admin/peminjaman/bulk_finalkan_qr') ?>" class="approval-bulk-toolbar m-3" data-bulk-form data-bulk-toolbar hidden>
+                <input type="hidden" name="bulk_note" value="">
+                <span class="approval-bulk-toolbar__count" data-bulk-count>0 data terpilih</span>
+                <button type="submit" name="action" value="finalize" class="btn btn-sm btn-success rounded-pill px-3" data-bulk-approve-action><i class="bi bi-qr-code me-1"></i>Finalkan QR Terpilih</button>
+            </form>
+            <?php endif; ?>
+            <div class="table-responsive">
+                <table class="table table-hover loan-table qr-finalization-table">
+                    <thead><tr>
+                        <th class="approval-bulk-cell"><label class="approval-bulk-select-all" title="Pilih semua transaksi finalisasi QR pada halaman ini"><input type="checkbox" class="form-check-input approval-bulk-check" data-bulk-select-all <?= !empty($qr_finalization) ? '' : 'disabled' ?>><span>Pilih</span></label></th>
+                        <th>No</th>
+                        <th>Peminjam</th>
+                        <th>Barang</th>
+                        <th>Masa Pinjam</th>
+                        <th>Status</th>
+                        <th class="text-end pe-3">Aksi</th>
+                    </tr></thead>
+                    <tbody>
+                    <?php if (empty($qr_finalization)): ?>
+                        <tr><td colspan="7" class="text-center text-muted py-5"><i class="bi bi-check2-circle me-2"></i>Belum ada transaksi yang menunggu finalisasi QR.</td></tr>
+                    <?php else: foreach ($qr_finalization as $qr_index => $qr_item): ?>
+                        <?php
+                            $qr_goods_parts = [];
+                            foreach ((array) ($qr_item->detail_barang ?? []) as $qr_detail) {
+                                $qr_goods_parts[] = ($qr_detail->nama_aset ?? '-') . ' (' . (int) ($qr_detail->jumlah_pinjam ?? 0) . ')';
+                            }
+                            $qr_goods = implode(', ', $qr_goods_parts);
+                            $qr_period = masa_pinjam_indonesia($qr_item->tanggal_pinjam ?? null, $qr_item->tanggal_kembali_rencana ?? null);
+                            $qr_can_finalize = ($qr_item->status ?? '') === 'Disetujui (Menunggu Finalisasi QR)'
+                                && ($qr_item->status_kaprodi ?? 'Pending') === 'Disetujui'
+                                && ($qr_item->status_laboran ?? 'Pending') === 'Disetujui'
+                                && ($qr_item->status_kaur ?? 'Pending') === 'Disetujui';
+                        ?>
+                        <tr data-loan-id="<?= (int) $qr_item->id_peminjaman ?>"
+                            data-filter-peminjam="<?= html_escape(($qr_item->nama_peminjam ?? '-') . ' — ' . ($qr_item->nim_nip ?? '-')) ?>"
+                            data-filter-barang="<?= html_escape($qr_goods ?: '-') ?>"
+                            data-filter-jumlah="<?= (int) ($qr_item->total_jumlah ?? 0) ?>"
+                            data-filter-masa="<?= html_escape($qr_period) ?>">
+                            <td class="approval-bulk-cell"><input type="checkbox" class="form-check-input approval-bulk-check" name="loan_ids[]" value="<?= (int) $qr_item->id_peminjaman ?>" form="qrFinalizationBulkForm" data-bulk-row aria-label="Pilih finalisasi QR transaksi <?= (int) $qr_item->id_peminjaman ?>" <?= $qr_can_finalize ? '' : 'disabled title="Status persetujuan belum lengkap"' ?>></td>
+                            <td class="fw-semibold text-muted"><?= (((int) ($qr_pagination['page'] ?? 1) - 1) * max(1, (int) ($qr_pagination['per_page'] ?? 10))) + $qr_index + 1 ?></td>
+                            <td><div class="fw-semibold"><?= html_escape($qr_item->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($qr_item->nim_nip ?? '-') ?></div></td>
+                            <td><div class="fw-semibold"><?= (int) ($qr_item->total_jenis ?? 1) ?> jenis / <?= (int) ($qr_item->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?= html_escape($qr_goods ?: '-') ?></div></td>
+                            <td><div><?= tanggal_indonesia($qr_item->tanggal_pinjam ?? null) ?></div><div class="small text-muted">s.d. <?= tanggal_indonesia($qr_item->tanggal_kembali_rencana ?? null) ?></div></td>
+                            <td data-bulk-status><?php $loan_progress_item = $qr_item; $loan_progress_compact = true; $loan_progress_detail_target = '#qrQueueDetail' . (int) $qr_item->id_peminjaman; include APPPATH . 'views/shared/loan_progress.php'; unset($loan_progress_detail_target); ?></td>
+                            <td class="text-end pe-3"><button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" data-bulk-action data-bs-toggle="modal" data-bs-target="#qrQueueDetail<?= (int) $qr_item->id_peminjaman ?>"><i class="bi bi-eye me-1"></i>Lihat Detail</button></td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php if ((int) ($qr_pagination['total_pages'] ?? 1) > 1): ?>
+                <?php
+                    $qr_page = (int) ($qr_pagination['page'] ?? 1);
+                    $qr_total_pages = (int) ($qr_pagination['total_pages'] ?? 1);
+                    $qr_base_query = (array) $this->input->get();
+                    unset($qr_base_query['qr_page']);
+                ?>
+                <div class="loan-pagination-footer">
+                    <div class="loan-pagination-summary"><span>Total antrean: <?= number_format($qr_total, 0, ',', '.') ?></span></div>
+                    <div class="loan-pagination-status">Halaman <?= $qr_page ?> dari <?= $qr_total_pages ?></div>
+                    <nav aria-label="Pagination finalisasi QR"><ul class="pagination pagination-sm loan-pagination">
+                        <?php $qr_prev_query = http_build_query(array_merge($qr_base_query, ['qr_page' => max(1, $qr_page - 1)])); ?>
+                        <li class="page-item <?= $qr_page <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman?' . $qr_prev_query) ?>">Previous</a></li>
+                        <?php foreach ($compact_pagination_pages($qr_page, $qr_total_pages) as $qr_i): ?>
+                            <?php if (is_string($qr_i)): ?><li class="page-item disabled" aria-hidden="true"><span class="page-link">...</span></li>
+                            <?php else: $qr_page_query = http_build_query(array_merge($qr_base_query, ['qr_page' => $qr_i])); ?><li class="page-item <?= $qr_page === $qr_i ? 'active' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman?' . $qr_page_query) ?>"><?= $qr_i ?></a></li><?php endif; ?>
+                        <?php endforeach; ?>
+                        <?php $qr_next_query = http_build_query(array_merge($qr_base_query, ['qr_page' => min($qr_total_pages, $qr_page + 1)])); ?>
+                        <li class="page-item <?= $qr_page >= $qr_total_pages ? 'disabled' : '' ?>"><a class="page-link" href="<?= base_url('index.php/admin/peminjaman?' . $qr_next_query) ?>">Next</a></li>
+                    </ul></nav>
+                </div>
+            <?php endif; ?>
+            <?php foreach ($qr_finalization as $qr_item): ?>
+                <div class="modal fade loan-approval-modal" id="qrQueueDetail<?= (int) $qr_item->id_peminjaman ?>" tabindex="-1" aria-labelledby="qrQueueDetailLabel<?= (int) $qr_item->id_peminjaman ?>" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
+                        <div class="modal-header"><div><div class="small text-uppercase text-muted fw-semibold">Finalisasi QR</div><h2 class="modal-title h5 fw-bold mb-0" id="qrQueueDetailLabel<?= (int) $qr_item->id_peminjaman ?>">Periksa Detail Peminjaman</h2></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+                        <div class="modal-body"><?php $loan_action_item = $qr_item; include APPPATH . 'views/shared/loan_action_summary.php'; unset($loan_action_item); ?><p class="loan-action-dialog-note"><i class="bi bi-lock"></i><span>Setelah difinalkan, data transaksi dikunci dan QR aktif untuk pengambilan serta pengembalian.</span></p></div>
+                        <div class="modal-footer loan-action-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><a class="btn btn-fik rounded-pill px-4" href="<?= base_url('index.php/admin/peminjaman/finalkan_qr/' . (int) $qr_item->id_peminjaman) ?>"><i class="bi bi-qr-code me-1"></i>Setujui &amp; Finalkan QR</a></div>
+                    </div></div>
+                </div>
+            <?php endforeach; ?>
+        </section>
+
         <section class="panel-card p-0 loan-table-card" data-bulk-approval>
             <div class="loan-list-summary">
                 <div><h2>Seluruh Peminjaman</h2><p>Data tetap terlihat sampai proses selesai; aksi hanya aktif pada tahap Laboran.</p></div>
@@ -336,13 +441,13 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
                             <td><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="small text-muted"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="fw-semibold"><?= (int)($p->total_jenis ?? 1) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="small text-muted"><?php if(!empty($p->detail_barang)): foreach($p->detail_barang as $d): ?><?= html_escape($d->nama_aset) ?> (<?= (int)$d->jumlah_pinjam ?>), <?php endforeach; else: ?>- <?php endif; ?></div></td>
                             <td><span tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><div><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></div><div class="small text-muted">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></div></span></td>
-                            <td data-bulk-status><?php $loan_progress_item = $p; $loan_progress_compact = true; include APPPATH . 'views/shared/loan_progress.php'; ?><button type="button" class="loan-approval-detail-btn mt-2" data-bs-toggle="modal" data-bs-target="#approvalDetail<?= (int) $p->id_peminjaman ?>">Lihat Detail <i class="bi bi-arrow-right" aria-hidden="true"></i></button></td>
+                            <td data-bulk-status><?php $loan_progress_item = $p; $loan_progress_compact = true; $loan_progress_detail_target = '#approvalDetail' . (int) $p->id_peminjaman; include APPPATH . 'views/shared/loan_progress.php'; unset($loan_progress_detail_target); ?></td>
                             <td class="text-end pe-3">
                                 <div class="d-flex flex-wrap justify-content-end gap-2">
                                     <?php if ($can_laboran_act): ?>
                                         <button class="btn btn-sm btn-outline-primary rounded-pill px-3" type="button" data-bulk-action data-bs-toggle="modal" data-bs-target="#processModal<?= (int) $p->id_peminjaman ?>"><i class="bi bi-sliders me-1"></i>Proses</button>
                                     <?php elseif ($status === 'Disetujui (Menunggu Finalisasi QR)'): ?>
-                                        <a class="btn btn-sm btn-fik rounded-pill px-3" href="<?= base_url('index.php/admin/peminjaman/finalkan_qr/'.$p->id_peminjaman) ?>" onclick="return confirm('Finalkan QR dan kunci data transaksi ini?')"><i class="bi bi-qr-code me-1"></i>Finalkan QR</a>
+                                        <button class="btn btn-sm btn-fik rounded-pill px-3" type="button" data-bs-toggle="modal" data-bs-target="#finalQrModal<?= (int) $p->id_peminjaman ?>"><i class="bi bi-qr-code me-1"></i>Finalkan QR</button>
                                     <?php elseif ($status === 'Disetujui (Menunggu Pengambilan)'): ?>
                                         <a class="btn btn-sm btn-outline-success rounded-pill px-3" href="<?= base_url('index.php/admin/peminjaman/serah_terima/'.rawurlencode($p->group_id)) ?>"><i class="bi bi-box-arrow-up-right me-1"></i>Serah Barang</a>
                                     <?php else: ?>
@@ -412,7 +517,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         <?php foreach(($peminjaman ?? []) as $p): ?>
             <?php $can_laboran_act = scm_loan_can_act($p, 'laboran'); $loan_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $loan_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman'); $return_evidence_url = scm_upload_url($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); $return_evidence_exists = scm_upload_exists($p->foto_pengembalian ?? '', 'assets/uploads/bukti_pengembalian'); ?>
             <div class="modal fade loan-approval-modal" id="approvalDetail<?= (int) $p->id_peminjaman ?>" tabindex="-1" aria-labelledby="approvalDetailLabel<?= (int) $p->id_peminjaman ?>" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                     <div class="modal-content">
                         <div class="modal-header">
                             <div>
@@ -442,12 +547,23 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
             </div>
             <?php if ($can_laboran_act): ?>
             <div class="modal fade" id="processModal<?= (int) $p->id_peminjaman ?>" tabindex="-1" aria-labelledby="processModalLabel<?= (int) $p->id_peminjaman ?>" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
                     <form class="modal-content" method="post" action="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>">
                         <div class="modal-header"><h2 class="modal-title h5 fw-bold" id="processModalLabel<?= (int) $p->id_peminjaman ?>">Proses Peminjaman</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
-                        <div class="modal-body"><div class="mb-3"><div class="small text-muted">Peminjam</div><div class="fw-semibold"><?= html_escape($p->nama_peminjam ?? '-') ?> — <?= html_escape($p->nim_nip ?? '-') ?></div></div><label class="form-label small fw-semibold">Catatan Laboran</label><textarea name="catatan_laboran" class="form-control" rows="3" placeholder="Catatan pengecekan atau alasan penolakan."></textarea><div class="form-text">Alasan wajib diisi saat menolak.</div></div>
-                        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button formaction="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-4" onclick="return confirm('Tolak pengajuan ini?')"><i class="bi bi-x-lg me-1"></i>Tolak</button><button formaction="<?= base_url('index.php/admin/approval/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-4" onclick="return confirm('Teruskan pengajuan ini ke Kaur?')"><i class="bi bi-send-check me-1"></i>Setujui</button></div>
+                        <div class="modal-body"><?php $loan_action_item = $p; include APPPATH . 'views/shared/loan_action_summary.php'; unset($loan_action_item); ?><p class="loan-action-dialog-note mb-3"><i class="bi bi-info-circle"></i><span>Periksa ringkasan transaksi sebelum menyetujui atau menolak pengajuan.</span></p><label class="form-label small fw-semibold">Catatan Laboran</label><textarea name="catatan_laboran" class="form-control" rows="3" placeholder="Catatan pengecekan atau alasan penolakan."></textarea><div class="form-text">Alasan wajib diisi saat menolak.</div></div>
+                        <div class="modal-footer loan-action-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><button formaction="<?= base_url('index.php/admin/approval/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-4"><i class="bi bi-x-lg me-1"></i>Tolak</button><button formaction="<?= base_url('index.php/admin/approval/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-4"><i class="bi bi-send-check me-1"></i>Setujui &amp; Teruskan</button></div>
                     </form>
+                </div>
+            </div>
+            <?php endif; ?>
+            <?php if (($p->status ?? '') === 'Disetujui (Menunggu Finalisasi QR)'): ?>
+            <div class="modal fade" id="finalQrModal<?= (int) $p->id_peminjaman ?>" tabindex="-1" aria-labelledby="finalQrModalLabel<?= (int) $p->id_peminjaman ?>" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header"><h2 class="modal-title h5 fw-bold" id="finalQrModalLabel<?= (int) $p->id_peminjaman ?>">Finalisasi QR Peminjaman</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
+                        <div class="modal-body"><?php $loan_action_item = $p; include APPPATH . 'views/shared/loan_action_summary.php'; unset($loan_action_item); ?><p class="loan-action-dialog-note"><i class="bi bi-lock"></i><span>Setelah difinalkan, data transaksi dikunci dan QR aktif untuk proses pengambilan serta pengembalian.</span></p></div>
+                        <div class="modal-footer loan-action-footer"><button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Batal</button><a class="btn btn-fik rounded-pill px-4" href="<?= base_url('index.php/admin/peminjaman/finalkan_qr/'.$p->id_peminjaman) ?>"><i class="bi bi-qr-code me-1"></i>Setujui &amp; Finalkan QR</a></div>
+                    </div>
                 </div>
             </div>
             <?php endif; ?>
@@ -456,6 +572,7 @@ $export_url = base_url('index.php/admin/peminjaman/export_pengajuan_acc' . ($exp
         <?php endforeach; ?>
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= base_url('assets/js/loan-progress.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/loan-progress.js'); ?>"></script>
     <script src="<?= base_url('assets/js/approval-bulk-select.js'); ?>?v=<?= @filemtime(FCPATH . 'assets/js/approval-bulk-select.js'); ?>"></script>
     <script>
         (() => {

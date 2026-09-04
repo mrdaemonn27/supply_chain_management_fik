@@ -8,8 +8,7 @@ $previewType = static function ($filename) {
     return in_array(strtolower(pathinfo((string) $filename, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'], true) ? 'image' : 'document';
 };
 $formatDocumentDate = static function ($value) {
-    $timestamp = strtotime((string) $value);
-    return $timestamp ? date('d M Y · H:i', $timestamp) : (string) $value;
+    return waktu_indonesia($value);
 };
 $document_pagination = $pagination ?? ['page' => 1, 'per_page' => 10, 'total' => count($dokumen ?? []), 'total_pages' => 1];
 $document_page = (int) $document_pagination['page'];
@@ -233,7 +232,7 @@ $document_query['per_page'] = $document_per_page;
         <form action="<?= base_url('index.php/admin/dokumen/simpan') ?>" method="post" enctype="multipart/form-data" class="vstack gap-3">
             <div><label class="form-label" for="documentTitle">Judul Dokumen</label><input id="documentTitle" type="text" name="judul" class="form-control" required></div>
             <div><label class="form-label" for="documentType">Jenis</label><select id="documentType" name="jenis" class="form-select"><option>SOP</option><option>Bukti</option><option>Berita Acara</option><option selected>Lainnya</option></select></div>
-            <div><label class="form-label" for="documentRelation">Relasi Peminjaman</label><select id="documentRelation" name="id_peminjaman" class="form-select"><option value="">Tidak dikaitkan</option><?php foreach($peminjaman as $p): ?><option value="<?= $p->id_peminjaman ?>"><?= html_escape(($p->nama_peminjam ?? '-') . ' - ' . ($p->nama_aset ?? '-') . ' (' . ($p->tanggal_pinjam ?? '-') . ')') ?></option><?php endforeach; ?></select></div>
+            <div><label class="form-label" for="documentRelation">Relasi Peminjaman</label><select id="documentRelation" name="id_peminjaman" class="form-select"><option value="">Tidak dikaitkan</option><?php foreach($peminjaman as $p): ?><option value="<?= $p->id_peminjaman ?>"><?= html_escape(($p->nama_peminjam ?? '-') . ' - ' . ($p->nama_aset ?? '-') . ' (' . tanggal_indonesia($p->tanggal_pinjam ?? null) . ')') ?></option><?php endforeach; ?></select></div>
             <div>
                 <label class="form-label" for="documentFile">File</label>
                 <input id="documentFile" type="file" name="dokumen" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" required>

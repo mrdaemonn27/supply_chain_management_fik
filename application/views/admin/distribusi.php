@@ -10,15 +10,14 @@ $distribution_query = $_GET;
 $distribution_query['per_page'] = $distribution_per_page;
 
 $formatDistributionDate = static function ($value) {
-    $timestamp = strtotime((string) $value);
-    return $timestamp ? date('d M Y', $timestamp) : (string) $value;
+    return tanggal_indonesia($value);
 };
 
 $formatDistributionDateTime = static function ($value) {
-    $timestamp = strtotime((string) $value);
-    return $timestamp ? date('d M Y, H:i', $timestamp) : (string) $value;
+    return waktu_indonesia($value);
 };
 $trackingDetailUrl = base_url('index.php/admin/distribusi/detail/');
+$assetSearchUrl = base_url('index.php/admin/distribusi/cari_aset');
 
 $distributionOrigins = [];
 $distributionDestinations = [];
@@ -61,7 +60,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         .distribution-toolbar .form-control, .distribution-toolbar .form-select { min-height: 40px; }
         .distribution-toolbar .btn { min-height: 40px; white-space: nowrap; }
         .distribution-table-wrap { overflow-x: auto; }
-        .distribution-table { min-width: 1120px; margin: 0; }
+        .distribution-table { width: 100%; min-width: 100%; margin: 0; }
         .distribution-table thead th { padding: .78rem .75rem; color: #111827 !important; background: #f8f9fa; border-bottom: 1px solid #e5e7eb; font-size: .68rem; font-family: inherit; font-weight: 700 !important; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
         .distribution-table thead th, .distribution-table thead th * { color: #111827 !important; font-weight: 700 !important; }
         .distribution-table tbody td { padding: .9rem .75rem; color: #374151; border-color: #edf0f2; font-size: .78rem; vertical-align: middle; }
@@ -72,12 +71,16 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         .distribution-table .asset-name { color: #111827; font-size: .82rem; font-weight: 600; }
         .distribution-table .asset-meta, .distribution-table .distribution-note { color: #8a94a3; font-size: .7rem; }
         .distribution-table .distribution-note { display: -webkit-box; max-width: 300px; margin-top: .25rem; overflow: hidden; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-        .distribution-route { display: flex; align-items: center; gap: .45rem; min-width: 250px; color: #6b7280; }
-        .distribution-route .route-destination { color: #374151; font-weight: 600; }
-        .distribution-route i { color: #9ca3af; font-size: .9rem; }
+        .distribution-route { display: grid; grid-template-columns: minmax(0, 1fr) 1.75rem minmax(0, 1fr); align-items: center; gap: .4rem; min-width: 0; color: #6b7280; }
+        .distribution-route__point { min-width: 0; padding: .5rem .6rem; border: 1px solid #e6e9ee; border-radius: 8px; background: #fafbfc; }
+        .distribution-route__label { display: block; margin-bottom: .12rem; color: #8a94a3; font-size: .61rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+        .distribution-route__value { display: block; color: #374151; font-size: .75rem; font-weight: 600; line-height: 1.4; overflow-wrap: break-word; word-break: normal; }
+        .distribution-route__point--destination { border-color: #f3cfbd; background: #fff8f4; }
+        .distribution-route__point--destination .distribution-route__value { color: #b84410; }
+        .distribution-route__arrow { display: inline-flex; width: 1.75rem; height: 1.75rem; align-items: center; justify-content: center; border-radius: 50%; color: #ea5b1a; background: #fff1e9; font-size: .85rem; }
         .distribution-quantity { color: #111827; font-size: .82rem; font-weight: 600; text-align: center; }
         .distribution-date { white-space: nowrap; }
-        .distribution-staff { color: #4b5563; font-weight: 500; }
+        .distribution-staff { color: #4b5563; font-weight: 500; overflow-wrap: normal !important; word-break: normal !important; hyphens: none; }
         .distribution-condition { display: inline-flex; align-items: center; padding: .22rem .5rem; border: 1px solid #b8d7c3; border-radius: 999px; color: #167749; background: #f1fcf5; font-size: .68rem; font-weight: 700; white-space: nowrap; }
         .distribution-location { color: #374151; font-weight: 600; white-space: nowrap; }
         .distribution-location i { color: #ea5b1a; margin-right: .22rem; }
@@ -108,6 +111,18 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
         .distribution-asset-summary__name { color: #111827; font-size: .94rem; font-weight: 700; }
         .distribution-asset-summary__meta { margin-top: .18rem; color: #6b7280; font-size: .75rem; }
         .distribution-stock-info { padding: .7rem .8rem; border: 1px solid #e5e7eb; border-radius: 8px; background: #fafbfc; color: #4b5563; font-size: .76rem; }
+        .asset-combobox { position: relative; }
+        .asset-combobox__input-wrap { position: relative; }
+        .asset-combobox__input { min-height: 46px !important; padding-right: 2.6rem; }
+        .asset-combobox__icon { position: absolute; top: 50%; right: .9rem; color: #8a94a3; pointer-events: none; transform: translateY(-50%); }
+        .asset-combobox__list { position: absolute; z-index: 1085; top: calc(100% + .4rem); right: 0; left: 0; max-height: 280px; overflow-y: auto; padding: .35rem; border: 1px solid #dbe1e8; border-radius: 10px; background: #fff; box-shadow: 0 14px 34px rgba(15,23,42,.16); }
+        .asset-combobox__list[hidden] { display: none; }
+        .asset-combobox__option { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr) auto; gap: .3rem .8rem; padding: .7rem .75rem; border: 0; border-radius: 7px; color: #273142; background: transparent; text-align: left; }
+        .asset-combobox__option:hover, .asset-combobox__option.is-active { color: #b84410; background: #fff1e9; }
+        .asset-combobox__option-name { overflow: hidden; font-size: .8rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+        .asset-combobox__option-stock { color: #667085; font-size: .68rem; white-space: nowrap; }
+        .asset-combobox__option-meta { grid-column: 1 / -1; color: #8a94a3; font-size: .67rem; }
+        .asset-combobox__empty { padding: 1rem .75rem; color: #6b7280; font-size: .75rem; text-align: center; }
         .tracking-modal .modal-content { border: 0; border-radius: 10px; overflow: hidden; }
         .tracking-modal .modal-header { border-bottom: 3px solid #ea5b1a; background: #202124; color: #fff; }
         .tracking-modal .modal-title { font-size: 1rem; font-weight: 700; }
@@ -129,6 +144,26 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
             .distribution-toolbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .distribution-toolbar .toolbar-search { grid-column: 1 / -1; }
         }
+        @media (min-width: 1200px) {
+            .distribution-table-wrap { overflow-x: auto !important; scrollbar-gutter: stable; }
+            .distribution-table { width: max-content !important; min-width: 100% !important; table-layout: auto !important; }
+            .distribution-table .distribution-asset-column { width: 16% !important; }
+            .distribution-table .distribution-movement-column { width: 26% !important; }
+            .distribution-table .distribution-location-column { width: 13% !important; }
+            .distribution-table .distribution-staff-column,
+            .distribution-table td.distribution-staff { width: 132px !important; min-width: 132px !important; white-space: normal !important; }
+            .distribution-table th.distribution-action-column,
+            .distribution-table td.distribution-action { position: sticky; right: 0; z-index: 2; width: 142px !important; min-width: 142px !important; padding-left: .75rem !important; padding-right: 1.25rem !important; text-align: center !important; white-space: nowrap !important; background: #fff; box-shadow: -8px 0 14px rgba(15, 23, 42, .05); }
+            .distribution-table th.distribution-action-column { z-index: 3; background: #f8f9fa !important; }
+            .distribution-table tbody tr:hover td.distribution-action { background: #fffaf7; }
+            .distribution-table td.distribution-action .btn { display: inline-flex; width: auto !important; min-width: 110px !important; align-items: center; justify-content: center; white-space: nowrap !important; }
+        }
+        @media (max-width: 1199.98px) {
+            .distribution-table-wrap { overflow: visible; padding: .85rem; background: #f7f8fa; }
+            .distribution-route { grid-template-columns: 1fr; }
+            .distribution-route__arrow { width: 1.5rem; height: 1.5rem; margin-left: .55rem; transform: rotate(90deg); }
+            .distribution-route__point { width: 100%; }
+        }
         @media (max-width: 767.98px) {
             .topbar-actions { width: 100%; }
             .topbar-actions .btn { flex: 1; }
@@ -136,13 +171,19 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
             .distribution-page-heading .btn { align-self: flex-start; }
             .distribution-toolbar { grid-template-columns: 1fr; }
             .distribution-toolbar .toolbar-search { grid-column: auto; }
-            .distribution-table { min-width: 1120px; }
+            .distribution-table { min-width: 0; }
             .distribution-drawer { width: 100% !important; }
             .distribution-asset-summary { grid-template-columns: 1fr; }
             .distribution-pagination { align-items: stretch; flex-direction: column; }
             .distribution-pagination-left { justify-content: center; }
             .distribution-page-info { align-self: center; }
             .distribution-pagination nav { align-self: center; }
+        }
+        @media (max-width: 575.98px) {
+            .distribution-table-wrap { padding: .65rem; }
+            .distribution-route__point { padding: .45rem .5rem; }
+            .asset-combobox__option { grid-template-columns: 1fr; }
+            .asset-combobox__option-stock, .asset-combobox__option-meta { grid-column: 1; }
         }
     </style>
 </head>
@@ -205,14 +246,14 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                 <thead>
                     <tr>
                         <th class="distribution-index-column">No</th>
-                        <th class="ps-3">Aset</th>
+                        <th class="ps-3 distribution-asset-column">Aset</th>
                         <th>Kondisi</th>
-                        <th>Perpindahan</th>
-                        <th>Lokasi Terakhir</th>
+                        <th class="distribution-movement-column">Perpindahan</th>
+                        <th class="distribution-location-column">Lokasi Terakhir</th>
                         <th class="text-center">Jumlah</th>
                         <th>Waktu</th>
-                        <th>Petugas</th>
-                        <th class="pe-3 text-end">Aksi</th>
+                        <th class="distribution-staff-column">Petugas</th>
+                        <th class="distribution-action-column pe-3 text-center">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="distributionTableBody">
@@ -222,7 +263,7 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                     <?php
                     $assetName = (string) ($d->nama_aset ?? '-');
                     $assetCode = (string) ($d->kode_aset ?? '-');
-                    $origin = (string) ($d->ruangan_asal ?? '-');
+                    $origin = trim((string) ($d->ruangan_asal ?? '')) ?: 'Belum ditempatkan';
                     $destination = (string) ($d->ruangan_tujuan ?? '-');
                     $dateValue = (string) ($d->tanggal_distribusi ?? '');
                     $lastLocation = (string) ($d->lokasi_terakhir ?? '-');
@@ -231,10 +272,10 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
                     ?>
                     <tr class="distribution-data-row" data-filter-aset="<?= html_escape($assetName . ' ' . $assetCode) ?>" data-filter-asal="<?= html_escape($origin) ?>" data-filter-tujuan="<?= html_escape($destination) ?>" data-filter-lokasi_terakhir="<?= html_escape($lastLocation) ?>" data-filter-jumlah="<?= (int) $d->jumlah ?>" data-filter-tanggal="<?= html_escape($dateValue) ?>" data-filter-petugas="<?= html_escape($d->nama_petugas ?? '-') ?>">
                         <td class="distribution-index-column"><span class="distribution-index"><?= (($distribution_page - 1) * $distribution_per_page) + $distribution_index + 1 ?></span></td>
-                        <td class="ps-3"><div class="asset-name"><?= html_escape($assetName) ?></div><div class="asset-meta"><?= html_escape($assetCode) ?></div></td>
+                        <td class="ps-3 distribution-asset-column"><div class="asset-name"><?= html_escape($assetName) ?></div><div class="asset-meta"><?= html_escape($assetCode) ?></div></td>
                         <td><span class="distribution-condition"><?= html_escape($condition) ?></span></td>
-                        <td><div class="distribution-route"><span><?= html_escape($origin) ?></span><i class="bi bi-arrow-right" aria-hidden="true"></i><span class="route-destination"><?= html_escape($destination) ?></span></div><?php if (trim((string) ($d->keterangan ?? '')) !== ''): ?><div class="distribution-note" title="<?= html_escape($d->keterangan) ?>"><?= html_escape($d->keterangan) ?></div><?php endif; ?></td>
-                        <td><span class="distribution-location"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><?= html_escape($lastLocation) ?></span></td>
+                        <td class="distribution-movement-column"><div class="distribution-route"><span class="distribution-route__point"><small class="distribution-route__label">Dari</small><strong class="distribution-route__value"><?= html_escape($origin) ?></strong></span><i class="bi bi-arrow-right distribution-route__arrow" aria-hidden="true"></i><span class="distribution-route__point distribution-route__point--destination"><small class="distribution-route__label">Ke</small><strong class="distribution-route__value"><?= html_escape($destination) ?></strong></span></div><?php if (trim((string) ($d->keterangan ?? '')) !== ''): ?><div class="distribution-note" title="<?= html_escape($d->keterangan) ?>"><?= html_escape($d->keterangan) ?></div><?php endif; ?></td>
+                        <td class="distribution-location-column"><span class="distribution-location"><i class="bi bi-geo-alt-fill" aria-hidden="true"></i><?= html_escape($lastLocation) ?></span></td>
                         <td class="distribution-quantity"><?= (int) $d->jumlah ?></td>
                         <td class="distribution-date"><?= html_escape($formatDistributionDateTime($dateTimeValue)) ?></td>
                         <td class="distribution-staff"><?= html_escape($d->nama_petugas ?: 'Laboran') ?></td>
@@ -272,13 +313,18 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
     <div class="offcanvas-body">
         <form id="distributionForm" action="<?= base_url('index.php/admin/distribusi/simpan') ?>" method="post" class="vstack gap-3">
             <div>
-                <label class="form-label" for="distributionAsset">Pilih Aset</label>
-                <select id="distributionAsset" name="id_aset" class="form-select" required>
-                    <option value="">Pilih aset</option>
-                    <?php foreach ($aset as $a): ?>
-                        <option value="<?= (int) $a->id_aset ?>" data-code="<?= html_escape($a->kode_aset) ?>" data-room-id="<?= (int) $a->id_ruangan ?>" data-room="<?= html_escape($a->nama_ruangan) ?>" data-stock="<?= (int) $a->jumlah_tersedia ?>" data-condition="<?= html_escape($a->kondisi ?: '-') ?>"><?= html_escape($a->nama_aset . ' - ' . $a->kode_aset . ' (' . $a->nama_ruangan . ')') ?></option>
-                    <?php endforeach; ?>
-                </select>
+                <label class="form-label" for="distributionAssetSearch">Cari Aset</label>
+                <div id="distributionAssetCombobox" class="asset-combobox">
+                    <div class="asset-combobox__input-wrap">
+                        <input id="distributionAssetSearch" type="text" class="form-control asset-combobox__input" placeholder="Ketik nama, kode, atau lokasi aset" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="distributionAssetList" required>
+                        <i class="bi bi-search asset-combobox__icon" aria-hidden="true"></i>
+                    </div>
+                    <input id="distributionAsset" type="hidden" name="id_aset" value="">
+                    <div id="distributionAssetList" class="asset-combobox__list" role="listbox" aria-label="Hasil pencarian aset" hidden>
+                        <div class="asset-combobox__empty">Ketik untuk mencari aset.</div>
+                    </div>
+                </div>
+                <div class="form-hint">Pilih satu hasil pencarian agar detail aset terisi otomatis.</div>
             </div>
             <div class="row g-3">
                 <div class="col-sm-6"><label class="form-label" for="distributionAssetCode">Kode Aset</label><input id="distributionAssetCode" type="text" class="form-control" readonly placeholder="Terisi otomatis"></div>
@@ -287,11 +333,11 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
             <div id="distributionStockInfo" class="distribution-stock-info"><i class="bi bi-box-seam me-1" aria-hidden="true"></i>Pilih aset untuk melihat lokasi dan stok tersedia.</div>
             <div>
                 <label class="form-label" for="distributionOrigin">Lokasi / Ruangan Asal</label>
-                <select id="distributionOrigin" name="id_ruangan_asal" class="form-select" required>
-                    <option value="">Pilih ruangan asal</option>
+                <select id="distributionOrigin" name="id_ruangan_asal" class="form-select">
+                    <option value="">Belum ditempatkan (distribusi pertama)</option>
                     <?php foreach ($ruangan as $r): ?><option value="<?= (int) $r['id_ruangan'] ?>"><?= html_escape($r['nama_ruangan']) ?></option><?php endforeach; ?>
                 </select>
-                <div class="form-hint">Lokasi terakhir aset terisi otomatis dan dapat disesuaikan oleh petugas yang memiliki akses distribusi.</div>
+                <div class="form-hint">Boleh kosong untuk barang baru yang belum pernah ditempatkan di ruangan.</div>
             </div>
             <div><label class="form-label" for="distributionRoom">Lokasi / Ruangan Tujuan</label><select id="distributionRoom" name="id_ruangan_tujuan" class="form-select" required><option value="">Pilih ruangan tujuan</option><?php foreach ($ruangan as $r): ?><option value="<?= (int) $r['id_ruangan'] ?>"><?= html_escape($r['nama_ruangan']) ?></option><?php endforeach; ?></select></div>
             <div class="row g-3">
@@ -326,7 +372,11 @@ ksort($distributionDestinations, SORT_NATURAL | SORT_FLAG_CASE);
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const assetSelect = document.getElementById('distributionAsset');
+    const assetIdInput = document.getElementById('distributionAsset');
+    const assetSearch = document.getElementById('distributionAssetSearch');
+    const assetCombobox = document.getElementById('distributionAssetCombobox');
+    const assetList = document.getElementById('distributionAssetList');
+    let assetOptions = [];
     const originSelect = document.getElementById('distributionOrigin');
     const targetSelect = document.getElementById('distributionRoom');
     const amountInput = document.getElementById('distributionAmount');
@@ -337,7 +387,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const trackingModalElement = document.getElementById('trackingModal');
     const trackingContent = document.getElementById('trackingModalContent');
     const trackingBaseUrl = <?= json_encode($trackingDetailUrl) ?>;
+    const assetSearchUrl = <?= json_encode($assetSearchUrl) ?>;
     const trackingModal = trackingModalElement && window.bootstrap ? new bootstrap.Modal(trackingModalElement) : null;
+    let selectedAsset = null;
+    let activeAssetIndex = -1;
+    let assetSearchTimer = null;
+    let assetRequestNumber = 0;
 
     const escapeHtml = function (value) {
         return String(value == null ? '' : value).replace(/[&<>'"]/g, function (character) {
@@ -347,11 +402,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const formatDateTime = function (value) {
         if (!value) return 'Tidak tercatat';
-        const date = new Date(String(value).replace(' ', 'T'));
+        const normalized = String(value).trim();
+        const hasZone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized);
+        const date = new Date(normalized.replace(' ', 'T') + (hasZone ? '' : '+07:00'));
         if (Number.isNaN(date.getTime())) return String(value);
         return new Intl.DateTimeFormat('id-ID', {
-            day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-        }).format(date).replace('.', ':');
+            timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+        }).format(date).replace('.', ':') + ' WIB';
     };
 
     const refreshTargetOptions = function () {
@@ -362,21 +419,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (targetSelect.value && targetSelect.value === originSelect.value) targetSelect.value = '';
     };
 
-    const populateAssetDetails = function () {
-        if (!assetSelect) return;
-        const selected = assetSelect.options[assetSelect.selectedIndex];
-        const hasAsset = Boolean(selected && selected.value);
-        const stock = hasAsset ? Math.max(parseInt(selected.dataset.stock || '0', 10), 0) : 0;
+    const populateAssetDetails = function (option) {
+        const hasAsset = Boolean(option && option.dataset.id);
+        const stock = hasAsset ? Math.max(parseInt(option.dataset.stock || '0', 10), 0) : 0;
 
-        assetCode.value = hasAsset ? selected.dataset.code || '' : '';
-        conditionInput.value = hasAsset ? selected.dataset.condition || '-' : '';
+        selectedAsset = hasAsset ? option : null;
+        assetIdInput.value = hasAsset ? option.dataset.id : '';
+        assetCode.value = hasAsset ? option.dataset.code || '' : '';
+        conditionInput.value = hasAsset ? option.dataset.condition || '-' : '';
         amountInput.max = stock > 0 ? String(stock) : '';
         if (stock > 0 && parseInt(amountInput.value || '1', 10) > stock) amountInput.value = String(stock);
         if (!amountInput.value || parseInt(amountInput.value, 10) < 1) amountInput.value = '1';
 
         if (hasAsset) {
-            originSelect.value = selected.dataset.roomId || '';
-            stockInfo.innerHTML = '<i class="bi bi-box-seam me-1" aria-hidden="true"></i>Lokasi terakhir: <strong>' + escapeHtml(selected.dataset.room || '-') + '</strong> &middot; Stok tersedia: <strong>' + stock + '</strong>';
+            originSelect.value = option.dataset.roomId && option.dataset.roomId !== '0' ? option.dataset.roomId : '';
+            stockInfo.innerHTML = '<i class="bi bi-box-seam me-1" aria-hidden="true"></i>Lokasi terakhir: <strong>' + escapeHtml(option.dataset.room || 'Belum ditempatkan') + '</strong> &middot; Stok tersedia: <strong>' + stock + '</strong>';
         } else {
             originSelect.value = '';
             stockInfo.innerHTML = '<i class="bi bi-box-seam me-1" aria-hidden="true"></i>Pilih aset untuk melihat lokasi dan stok tersedia.';
@@ -384,15 +441,145 @@ document.addEventListener('DOMContentLoaded', function () {
         refreshTargetOptions();
     };
 
-    if (assetSelect) assetSelect.addEventListener('change', populateAssetDetails);
+    const visibleAssetOptions = function () {
+        return assetOptions;
+    };
+
+    const markActiveAsset = function (index) {
+        const visible = visibleAssetOptions();
+        if (!visible.length) return;
+        activeAssetIndex = (index + visible.length) % visible.length;
+        assetOptions.forEach(function (option) {
+            const active = option === visible[activeAssetIndex];
+            option.classList.toggle('is-active', active);
+            option.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        visible[activeAssetIndex].scrollIntoView({block: 'nearest'});
+    };
+
+    const createAssetOption = function (asset) {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.className = 'asset-combobox__option';
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', 'false');
+        option.dataset.id = String(asset.id || '');
+        option.dataset.name = String(asset.name || '');
+        option.dataset.code = String(asset.code || '');
+        option.dataset.roomId = asset.room_id == null ? '' : String(asset.room_id);
+        option.dataset.room = String(asset.room || 'Belum ditempatkan');
+        option.dataset.stock = String(asset.stock || 0);
+        option.dataset.condition = String(asset.condition || '-');
+
+        const name = document.createElement('span');
+        name.className = 'asset-combobox__option-name';
+        name.textContent = option.dataset.name;
+        const stock = document.createElement('span');
+        stock.className = 'asset-combobox__option-stock';
+        stock.textContent = option.dataset.stock + ' tersedia';
+        const meta = document.createElement('span');
+        meta.className = 'asset-combobox__option-meta';
+        meta.textContent = option.dataset.code + ' · ' + option.dataset.room;
+        option.append(name, stock, meta);
+        return option;
+    };
+
+    const requestAssetOptions = function () {
+        if (!assetSearch || !assetList) return;
+        const requestNumber = ++assetRequestNumber;
+        const url = assetSearchUrl + (assetSearchUrl.includes('?') ? '&' : '?') + 'q=' + encodeURIComponent(assetSearch.value.trim());
+        assetList.replaceChildren();
+        const loading = document.createElement('div');
+        loading.className = 'asset-combobox__empty';
+        loading.textContent = 'Mencari aset...';
+        assetList.appendChild(loading);
+        assetList.hidden = false;
+        assetSearch.setAttribute('aria-expanded', 'true');
+
+        fetch(url, {headers: {'Accept': 'application/json'}})
+            .then(function (response) { return response.json(); })
+            .then(function (payload) {
+                if (requestNumber !== assetRequestNumber) return;
+                const results = payload.success && Array.isArray(payload.results) ? payload.results : [];
+                assetOptions = results.map(createAssetOption);
+                assetList.replaceChildren();
+                if (assetOptions.length) {
+                    assetOptions.forEach(function (option) { assetList.appendChild(option); });
+                } else {
+                    const empty = document.createElement('div');
+                    empty.className = 'asset-combobox__empty';
+                    empty.textContent = 'Aset tidak ditemukan.';
+                    assetList.appendChild(empty);
+                }
+            })
+            .catch(function () {
+                if (requestNumber !== assetRequestNumber) return;
+                assetOptions = [];
+                assetList.innerHTML = '<div class="asset-combobox__empty text-danger">Pencarian aset gagal. Coba lagi.</div>';
+            });
+    };
+
+    const filterAssetOptions = function (immediate) {
+        if (!assetSearch || !assetList) return;
+        activeAssetIndex = -1;
+        assetList.hidden = false;
+        assetSearch.setAttribute('aria-expanded', 'true');
+        window.clearTimeout(assetSearchTimer);
+        assetSearchTimer = window.setTimeout(requestAssetOptions, immediate ? 0 : 180);
+    };
+
+    const closeAssetList = function () {
+        if (!assetList || !assetSearch) return;
+        assetList.hidden = true;
+        assetSearch.setAttribute('aria-expanded', 'false');
+        activeAssetIndex = -1;
+    };
+
+    const chooseAsset = function (option) {
+        if (!option) return;
+        assetSearch.value = (option.dataset.name || '') + ' — ' + (option.dataset.code || '');
+        assetSearch.setCustomValidity('');
+        populateAssetDetails(option);
+        closeAssetList();
+    };
+
+    if (assetSearch) {
+        assetSearch.addEventListener('focus', function () { filterAssetOptions(true); });
+        assetSearch.addEventListener('input', function () {
+            if (selectedAsset && assetSearch.value !== (selectedAsset.dataset.name || '') + ' — ' + (selectedAsset.dataset.code || '')) {
+                populateAssetDetails(null);
+            }
+            filterAssetOptions(false);
+        });
+        assetSearch.addEventListener('keydown', function (event) {
+            const visible = visibleAssetOptions();
+            if (event.key === 'ArrowDown') { event.preventDefault(); markActiveAsset(activeAssetIndex + 1); }
+            else if (event.key === 'ArrowUp') { event.preventDefault(); markActiveAsset(activeAssetIndex - 1); }
+            else if (event.key === 'Enter' && activeAssetIndex >= 0) { event.preventDefault(); chooseAsset(visible[activeAssetIndex]); }
+            else if (event.key === 'Escape') closeAssetList();
+        });
+    }
+    if (assetList) {
+        assetList.addEventListener('click', function (event) {
+            const option = event.target.closest('.asset-combobox__option');
+            if (option) chooseAsset(option);
+        });
+    }
+    document.addEventListener('mousedown', function (event) {
+        if (assetCombobox && !assetCombobox.contains(event.target)) closeAssetList();
+    });
     if (originSelect) originSelect.addEventListener('change', refreshTargetOptions);
     if (distributionForm) {
         distributionForm.addEventListener('submit', function (event) {
-            const selected = assetSelect.options[assetSelect.selectedIndex];
-            const stock = selected && selected.value ? parseInt(selected.dataset.stock || '0', 10) : 0;
+            const stock = selectedAsset ? parseInt(selectedAsset.dataset.stock || '0', 10) : 0;
             const amount = parseInt(amountInput.value || '0', 10);
             let message = '';
-            if (originSelect.value && targetSelect.value && originSelect.value === targetSelect.value) {
+            if (!assetIdInput.value || !selectedAsset) {
+                message = 'Pilih aset dari hasil pencarian terlebih dahulu.';
+                assetSearch.setCustomValidity(message);
+                assetSearch.reportValidity();
+                assetSearch.setCustomValidity('');
+            } else if (originSelect.value && targetSelect.value && originSelect.value === targetSelect.value) {
                 message = 'Ruangan tujuan harus berbeda dari ruangan asal.';
             } else if (!Number.isInteger(amount) || amount < 1 || amount > stock) {
                 message = 'Jumlah distribusi harus berada dalam batas stok tersedia.';
@@ -400,9 +587,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (message) {
                 event.preventDefault();
-                amountInput.setCustomValidity(message);
-                amountInput.reportValidity();
-                amountInput.setCustomValidity('');
+                if (assetIdInput.value && selectedAsset) {
+                    amountInput.setCustomValidity(message);
+                    amountInput.reportValidity();
+                    amountInput.setCustomValidity('');
+                }
             }
         });
     }
@@ -427,7 +616,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const receiver = movement.penerima ? '<span><i class="bi bi-person-check me-1" aria-hidden="true"></i>Penerima: ' + escapeHtml(movement.penerima) + '</span>' : '';
             return '<article class="tracking-event">'
                 + '<div class="tracking-event__title">Perpindahan ' + (index + 1) + '</div>'
-                + '<div class="tracking-event__route"><strong>' + escapeHtml(movement.ruangan_asal || '-') + '</strong><i class="bi bi-arrow-right" aria-hidden="true"></i><strong>' + escapeHtml(movement.ruangan_tujuan || '-') + '</strong></div>'
+                + '<div class="tracking-event__route"><strong>' + escapeHtml(movement.ruangan_asal || 'Belum ditempatkan') + '</strong><i class="bi bi-arrow-right" aria-hidden="true"></i><strong>' + escapeHtml(movement.ruangan_tujuan || '-') + '</strong></div>'
                 + '<div class="tracking-event__meta"><span><i class="bi bi-person me-1" aria-hidden="true"></i>Petugas: ' + escapeHtml(movement.nama_petugas || 'Laboran') + '</span>'
                 + '<span><i class="bi bi-clock me-1" aria-hidden="true"></i>' + escapeHtml(formatDateTime(movement.waktu_distribusi || movement.created_at || movement.tanggal_distribusi)) + '</span>'
                 + '<span><i class="bi bi-box-seam me-1" aria-hidden="true"></i>Jumlah: ' + escapeHtml(movement.jumlah || 0) + '</span>'
