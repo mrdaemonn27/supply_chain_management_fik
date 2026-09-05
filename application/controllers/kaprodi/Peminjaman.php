@@ -4,6 +4,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 #[\AllowDynamicProperties]
 class Peminjaman extends CI_Controller {
     private $kaprodi_prodi;
+    private $uses_legacy_scope = false;
 
     public function __construct() {
         parent::__construct();
@@ -13,10 +14,10 @@ class Peminjaman extends CI_Controller {
         $this->guard_kaprodi();
         $account = $this->User_model->get_user_by_id($this->session->userdata('id_user'));
         $this->kaprodi_prodi = fik_normalize_prodi($account->prodi ?? null);
-        if (!$this->kaprodi_prodi) {
-            $this->session->set_flashdata('error', 'Akun Kaprodi belum terhubung ke program studi. Hubungi administrator.');
-            redirect('kaprodi/dashboard');
-        }
+        // Data peminjaman lama belum selalu mempunyai prodi. Akun Kaprodi
+        // legacy tetap dapat menyelesaikan data tersebut, tanpa mendapat
+        // akses ke pengajuan yang sudah memiliki prodi.
+        $this->uses_legacy_scope = !$this->kaprodi_prodi;
     }
 
     private function guard_kaprodi() {
@@ -38,7 +39,12 @@ class Peminjaman extends CI_Controller {
     public function index() {
         $approval_sort = in_array($this->input->get('sort_by', true), ['number', 'peminjam', 'barang', 'lab', 'masa', 'status'], true) ? $this->input->get('sort_by', true) : '';
         $approval_dir = strtolower((string) $this->input->get('sort_dir', true)) === 'asc' ? 'asc' : 'desc';
-        $filters = ['multi_filters' => $this->read_filters(), 'action_role' => 'kaprodi', 'prodi' => $this->kaprodi_prodi, 'sort_by' => $approval_sort, 'sort_dir' => $approval_dir];
+        $filters = array_merge([
+            'multi_filters' => $this->read_filters(),
+            'action_role' => 'kaprodi',
+            'sort_by' => $approval_sort,
+            'sort_dir' => $approval_dir,
+        ], $this->scope_filters());
         $per_page = $this->read_per_page();
         $page = max(1, (int) $this->input->get('page'));
         $total = $this->Peminjaman_model->count_visible_peminjaman($filters);
@@ -48,7 +54,10 @@ class Peminjaman extends CI_Controller {
         $return_page = max(1, (int) $this->input->get('return_page'));
         $return_sort = in_array($this->input->get('return_sort', true), ['peminjam', 'barang', 'masa', 'status'], true) ? $this->input->get('return_sort', true) : 'masa';
         $return_dir = strtolower((string) $this->input->get('return_dir', true)) === 'asc' ? 'asc' : 'desc';
-        $return_filters = ['prodi' => $this->kaprodi_prodi, 'sort_by' => $return_sort, 'sort_dir' => $return_dir];
+        $return_filters = array_merge([
+            'sort_by' => $return_sort,
+            'sort_dir' => $return_dir,
+        ], $this->scope_filters());
         $return_total = $this->Peminjaman_model->count_pengembalian_readonly($return_filters);
         $return_total_pages = max(1, (int) ceil($return_total / $per_page));
         if ($return_page > $return_total_pages) $return_page = $return_total_pages;
@@ -241,7 +250,7 @@ class Peminjaman extends CI_Controller {
                 'skipped' => $skipped,
                 'processed_ids' => $processed_ids,
                 'skipped_ids' => $skipped_ids,
-                'actionable_remaining' => $this->Peminjaman_model->count_actionable_peminjaman('kaprodi', ['prodi' => $this->kaprodi_prodi]),
+                'actionable_remaining' => $this->Peminjaman_model->count_actionable_peminjaman('kaprodi', $this->scope_filters()),
             ], $processed > 0 ? 200 : 409);
             return;
         }
@@ -259,7 +268,16 @@ class Peminjaman extends CI_Controller {
     }
 
     private function is_loan_in_scope($peminjaman) {
-        return $this->kaprodi_prodi
-            && fik_normalize_prodi($peminjaman->prodi ?? $peminjaman->prodi_peminjam ?? null) === $this->kaprodi_prodi;
+        if ($this->uses_legacy_scope) {
+            return trim((string) ($peminjaman->prodi ?? '')) === '';
+        }
+
+        return fik_normalize_prodi($peminjaman->prodi ?? $peminjaman->prodi_peminjam ?? null) === $this->kaprodi_prodi;
+    }
+
+    private function scope_filters() {
+        return $this->uses_legacy_scope
+            ? ['unassigned_prodi_only' => true]
+            : ['prodi' => $this->kaprodi_prodi];
     }
 }

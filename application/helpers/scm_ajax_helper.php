@@ -22,7 +22,10 @@ if (!function_exists('scm_is_ajax')) {
     {
         $ci =& get_instance();
         return $ci->input->is_ajax_request()
-            || strpos(strtolower((string) $ci->input->get_request_header('Accept')), 'application/json') !== false;
+            || strpos(strtolower((string) $ci->input->get_request_header('Accept')), 'application/json') !== false
+            // Keandalan tambahan untuk request FormData pada server lokal yang
+            // tidak meneruskan header fetch secara konsisten.
+            || (string) $ci->input->post('ajax') === '1';
     }
 }
 

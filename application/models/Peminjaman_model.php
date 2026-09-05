@@ -357,6 +357,46 @@ class Peminjaman_model extends CI_Model {
         return $this->db->query('SELECT * FROM `' . $this->table_peminjaman . '` WHERE group_id = ? ORDER BY id_peminjaman ASC FOR UPDATE', [(string) $group_id])->result();
     }
 
+    /**
+     * Memberikan alasan stok sebelum approval ditampilkan ke pengguna.
+     * Reservasi tetap dilakukan lagi secara atomik saat approval diproses.
+     */
+    public function get_group_stock_shortages($group_id) {
+        $this->db->select('p.id_aset, p.jumlah_pinjam, p.stock_allocation_status, a.nama_aset, a.kode_aset, a.jumlah_total, a.jumlah_tersedia, a.jumlah_reserved, a.jumlah_dipinjam');
+        $this->db->from($this->table_peminjaman . ' as p');
+        $this->db->join('aset a', 'a.id_aset = p.id_aset', 'left');
+        if (strpos((string) $group_id, 'single-') === 0) {
+            $this->db->where('p.id_peminjaman', (int) str_replace('single-', '', $group_id));
+        } else {
+            $this->db->where('p.group_id', (string) $group_id);
+        }
+
+        $required_by_asset = [];
+        foreach ($this->db->get()->result() as $row) {
+            $state = (string) ($row->stock_allocation_status ?? 'none');
+            if (in_array($state, ['reserved', 'borrowed'], true)) continue;
+
+            $asset_id = (int) ($row->id_aset ?? 0);
+            if (!isset($required_by_asset[$asset_id])) {
+                $required_by_asset[$asset_id] = [
+                    'id_aset' => $asset_id,
+                    'nama_aset' => (string) ($row->nama_aset ?? 'Aset'),
+                    'kode_aset' => (string) ($row->kode_aset ?? ''),
+                    'required' => 0,
+                    'available' => max(0, min(
+                        (int) ($row->jumlah_tersedia ?? 0),
+                        (int) ($row->jumlah_total ?? 0) - (int) ($row->jumlah_reserved ?? 0) - (int) ($row->jumlah_dipinjam ?? 0)
+                    )),
+                ];
+            }
+            $required_by_asset[$asset_id]['required'] += max(0, (int) ($row->jumlah_pinjam ?? 0));
+        }
+
+        return array_values(array_filter($required_by_asset, static function ($item) {
+            return (int) $item['required'] > (int) $item['available'];
+        }));
+    }
+
     /** Pastikan data legacy juga mempunyai reservasi sebelum approval lanjut. */
     public function ensure_group_reserved($group_id) {
         $this->db->trans_begin();
@@ -787,7 +827,7 @@ class Peminjaman_model extends CI_Model {
         }
 
         $detail_map = [];
-        $this->db->select('COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman)) AS group_key, p.id_peminjaman, p.id_aset, p.jumlah_pinjam, a.nama_aset, a.kode_aset, r.nama_ruangan', false);
+        $this->db->select('COALESCE(p.group_id, CONCAT("single-", p.id_peminjaman)) AS group_key, p.id_peminjaman, p.id_aset, p.jumlah_pinjam, p.stock_allocation_status, a.nama_aset, a.kode_aset, a.jumlah_total, a.jumlah_tersedia, a.jumlah_reserved, a.jumlah_dipinjam, r.nama_ruangan', false);
         $this->db->from($this->table_peminjaman . ' as p');
         $this->db->join('aset a', 'a.id_aset = p.id_aset', 'left');
         $this->db->join('ruangan r', 'r.id_ruangan = a.id_ruangan', 'left');
@@ -879,6 +919,8 @@ class Peminjaman_model extends CI_Model {
         }
         if (!empty($filters['prodi'])) {
             $this->db->where('p.prodi', (string) $filters['prodi']);
+        } elseif (!empty($filters['unassigned_prodi_only'])) {
+            $this->db->where("(p.prodi IS NULL OR TRIM(p.prodi) = '')", null, false);
         }
 
         foreach ((array) ($filters['multi_filters'] ?? []) as $filter) {

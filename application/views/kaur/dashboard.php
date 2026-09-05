@@ -1,7 +1,38 @@
 <?php
 $peminjaman_visible_kaur = is_array($peminjaman_visible_kaur ?? null) ? $peminjaman_visible_kaur : [];
+$kaur_stock_readiness = static function ($loan) {
+    $required_by_asset = [];
+    foreach ((array) ($loan->detail_barang ?? []) as $detail) {
+        $state = (string) ($detail->stock_allocation_status ?? 'none');
+        if (in_array($state, ['reserved', 'borrowed'], true)) continue;
+
+        $asset_id = (int) ($detail->id_aset ?? 0);
+        if (!isset($required_by_asset[$asset_id])) {
+            $required_by_asset[$asset_id] = [
+                'name' => (string) ($detail->nama_aset ?? 'Aset'),
+                'required' => 0,
+                'available' => max(0, min(
+                    (int) ($detail->jumlah_tersedia ?? 0),
+                    (int) ($detail->jumlah_total ?? 0) - (int) ($detail->jumlah_reserved ?? 0) - (int) ($detail->jumlah_dipinjam ?? 0)
+                )),
+            ];
+        }
+        $required_by_asset[$asset_id]['required'] += max(0, (int) ($detail->jumlah_pinjam ?? 0));
+    }
+
+    $shortages = array_values(array_filter($required_by_asset, static function ($item) {
+        return (int) $item['required'] > (int) $item['available'];
+    }));
+    if (empty($shortages)) return ['ready' => true, 'message' => ''];
+
+    $items = [];
+    foreach (array_slice($shortages, 0, 2) as $shortage) {
+        $items[] = $shortage['name'] . ': butuh ' . (int) $shortage['required'] . ', tersedia ' . (int) $shortage['available'];
+    }
+    return ['ready' => false, 'message' => 'Stok belum cukup. ' . implode('; ', $items) . '.'];
+};
 $kaur_loan_actionable = (int) ($loan_actionable ?? count(array_filter($peminjaman_visible_kaur, static function ($p) { return scm_loan_can_act($p, 'kaur'); })));
-$kaur_loan_page_actionable = count(array_filter($peminjaman_visible_kaur, static function ($p) { return scm_loan_can_act($p, 'kaur'); }));
+$kaur_loan_page_actionable = count(array_filter($peminjaman_visible_kaur, static function ($p) use ($kaur_stock_readiness) { return scm_loan_can_act($p, 'kaur') && $kaur_stock_readiness($p)['ready']; }));
 $loan_total_rows = (int) ($loan_total_rows ?? count($peminjaman_visible_kaur));
 $loan_total_pages = max(1, (int) ($loan_total_pages ?? 1));
 $return_page = max(1, (int) ($return_page ?? 1));
@@ -1503,16 +1534,19 @@ function kaur_module_url($module) {
                             $loan_filter_status = strtolower((string) ($p->status ?? ''));
                             $loan_filter_tanggal = strtolower(implode(' ', [tanggal_indonesia($p->tanggal_pinjam ?? null), tanggal_indonesia($p->tanggal_kembali_rencana ?? null)]));
                             $loan_filter_keperluan = strtolower((string) ($p->keperluan ?? ''));
-                            $can_kaur_act = scm_loan_can_act($p, 'kaur');
+                            $can_kaur_review = scm_loan_can_act($p, 'kaur');
+                            $kaur_stock_status = $kaur_stock_readiness($p);
+                            $can_kaur_act = $can_kaur_review && $kaur_stock_status['ready'];
+                            $kaur_action_disabled_reason = $can_kaur_review ? $kaur_stock_status['message'] : 'Belum berada pada tahap Kaur';
                         ?>
                         <tr data-kaur-loan-row data-search="<?= html_escape($loan_search_text) ?>" data-filter-peminjam="<?= html_escape($loan_filter_peminjam) ?>" data-filter-barang="<?= html_escape($loan_filter_barang) ?>" data-filter-status="<?= html_escape($loan_filter_status) ?>" data-filter-tanggal="<?= html_escape($loan_filter_tanggal) ?>" data-filter-keperluan="<?= html_escape($loan_filter_keperluan) ?>">
-                            <td class="approval-bulk-cell"><input type="checkbox" class="form-check-input approval-bulk-check" name="loan_ids[]" value="<?= (int) $p->id_peminjaman ?>" form="kaurBulkForm" data-bulk-row aria-label="Pilih peminjaman <?= (int) $p->id_peminjaman ?>" <?= $can_kaur_act ? '' : 'disabled title="Belum berada pada tahap Kaur"' ?>></td>
+                            <td class="approval-bulk-cell"><input type="checkbox" class="form-check-input approval-bulk-check" name="loan_ids[]" value="<?= (int) $p->id_peminjaman ?>" form="kaurBulkForm" data-bulk-row aria-label="Pilih peminjaman <?= (int) $p->id_peminjaman ?>" <?= $can_kaur_act ? '' : 'disabled title="' . html_escape($kaur_action_disabled_reason) . '"' ?>></td>
                             <td class="fw-semibold text-muted"><?= table_row_number_kaur($index, $page, $per_page) ?></td>
                             <td><div class="kaur-loan-person"><?= html_escape($p->nama_peminjam ?? '-') ?></div><div class="kaur-loan-meta"><?= html_escape($p->nim_nip ?? '-') ?></div></td>
                             <td><div class="kaur-loan-assets"><div class="kaur-loan-assets__summary"><?= (int)($p->total_jenis ?? count($p->detail_barang ?? [])) ?> jenis / <?= (int)($p->total_jumlah ?? 0) ?> unit</div><div class="kaur-loan-assets__detail"><?php if (!empty($p->detail_barang)): foreach (($p->detail_barang ?? []) as $d): ?><?= html_escape($d->nama_aset ?? '-') ?> (<?= (int)($d->jumlah_pinjam ?? 0) ?>), <?php endforeach; else: ?>-<?php endif; ?></div></div></td>
                             <td><span class="kaur-loan-dates" tabindex="0" data-bs-toggle="tooltip" title="<?= html_escape(masa_pinjam_indonesia($p->tanggal_pinjam ?? null, $p->tanggal_kembali_rencana ?? null)) ?>"><span class="kaur-loan-dates__start"><?= tanggal_indonesia($p->tanggal_pinjam ?? null) ?></span><span class="kaur-loan-dates__end">s.d. <?= tanggal_indonesia($p->tanggal_kembali_rencana ?? null) ?></span></span></td>
                             <td data-bulk-status><?php $loan_progress_item = $p; $loan_progress_compact = true; $loan_progress_detail_target = '#kaurApprovalTimelineModal' . (int) $p->id_peminjaman; include APPPATH . 'views/shared/loan_progress.php'; unset($loan_progress_detail_target); ?></td>
-                            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary kaur-loan-manage-btn" data-bulk-action <?= $can_kaur_act ? 'data-bs-toggle="modal" data-bs-target="#loanApprovalModal'.(int)$p->id_peminjaman.'"' : 'disabled title="Aksi tersedia saat memasuki tahap Kaur"'; ?>><i class="bi bi-patch-check me-1"></i>Proses</button></td>
+                            <td class="text-end"><button type="button" class="btn btn-sm btn-outline-secondary kaur-loan-manage-btn" data-bulk-action <?= $can_kaur_review ? 'data-bs-toggle="modal" data-bs-target="#loanApprovalModal'.(int)$p->id_peminjaman.'"' : 'disabled title="Aksi tersedia saat memasuki tahap Kaur"'; ?>><i class="bi bi-patch-check me-1"></i>Proses</button></td>
                         </tr>
                     <?php endforeach; endif; ?>
                         <?php if(!empty($peminjaman_visible_kaur)): ?><tr id="kaurLoanEmptySearch" class="d-none"><td colspan="7" class="text-center text-muted py-4">Tidak ada hasil yang cocok.</td></tr><?php endif; ?>
@@ -1551,7 +1585,9 @@ function kaur_module_url($module) {
         </section>
         <?php foreach($peminjaman_visible_kaur as $p): ?>
             <?php
-                $can_kaur_act = scm_loan_can_act($p, 'kaur');
+                $can_kaur_review = scm_loan_can_act($p, 'kaur');
+                $kaur_stock_status = $kaur_stock_readiness($p);
+                $can_kaur_act = $can_kaur_review && $kaur_stock_status['ready'];
                 $kaur_evidence_url = scm_upload_url($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
                 $kaur_evidence_exists = scm_upload_exists($p->foto_bukti ?? '', 'assets/uploads/bukti_peminjaman');
             ?>
@@ -1601,7 +1637,7 @@ function kaur_module_url($module) {
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
                         </div>
                         <div class="modal-body">
-                            <?php if (!$can_kaur_act): ?><div class="alert alert-info small">Data ini ditampilkan untuk pemantauan. Tombol persetujuan hanya aktif saat status menunggu Kaur.</div><?php endif; ?>
+                            <?php if (!$can_kaur_review): ?><div class="alert alert-info small">Data ini ditampilkan untuk pemantauan. Tombol persetujuan hanya aktif saat status menunggu Kaur.</div><?php elseif (!$kaur_stock_status['ready']): ?><div class="alert alert-warning small mb-3"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i><?= html_escape($kaur_stock_status['message']) ?> Persetujuan tidak dapat diteruskan sebelum stok tersedia.</div><?php endif; ?>
                             <div class="kaur-loan-modal__section"><div class="kaur-loan-modal__section-title">Progress Peminjaman</div><?php $loan_progress_item = $p; $loan_progress_compact = false; include APPPATH . 'views/shared/loan_progress.php'; ?></div>
                             <div class="kaur-loan-modal__section">
                                 <div class="kaur-loan-modal__section-title">Keperluan</div>
@@ -1632,7 +1668,7 @@ function kaur_module_url($module) {
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-outline-secondary rounded-pill" data-bs-dismiss="modal">Tutup</button>
-                            <button formaction="<?= base_url('index.php/kaur/peminjaman/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-3" <?= $can_kaur_act ? '' : 'disabled'; ?>><i class="bi bi-x-lg me-1"></i> Tolak</button>
+                            <button formaction="<?= base_url('index.php/kaur/peminjaman/tolak/'.$p->id_peminjaman) ?>" class="btn btn-outline-danger rounded-pill px-3" <?= $can_kaur_review ? '' : 'disabled'; ?>><i class="bi bi-x-lg me-1"></i> Tolak</button>
                             <button formaction="<?= base_url('index.php/kaur/peminjaman/setujui/'.$p->id_peminjaman) ?>" class="btn btn-success rounded-pill px-3" <?= $can_kaur_act ? '' : 'disabled'; ?>><i class="bi bi-check2-circle me-1"></i> Setujui &amp; Teruskan</button>
                         </div>
                     </form>

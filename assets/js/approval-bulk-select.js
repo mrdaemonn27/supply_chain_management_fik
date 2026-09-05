@@ -194,12 +194,37 @@
             updateActionableCount(payload.actionable_remaining);
         }
 
+        function submitFallback(action) {
+            var actionField = form.querySelector('[data-bulk-fallback-action]');
+            if (!actionField) {
+                actionField = document.createElement('input');
+                actionField.type = 'hidden';
+                actionField.name = 'action';
+                actionField.setAttribute('data-bulk-fallback-action', '');
+                form.appendChild(actionField);
+            }
+            actionField.value = action;
+
+            // Aksi AJAX menonaktifkan checkbox saat request berlangsung.
+            // Aktifkan kembali pilihan yang sah agar nilainya ikut terkirim
+            // dalam submit form native.
+            selectedChecks().forEach(function (check) {
+                check.disabled = false;
+            });
+
+            // Semua endpoint bulk masih mendukung submit form biasa. Jalur ini
+            // menjaga approval tetap berjalan bila ekstensi/server lokal
+            // menyisipkan HTML sehingga respons fetch tidak dapat dibaca JSON.
+            HTMLFormElement.prototype.submit.call(form);
+        }
+
         async function requestBatch(action, ids, noteValue) {
             var body = new FormData(form);
             body.delete('loan_ids[]');
             ids.forEach(function (id) { body.append('loan_ids[]', id); });
             body.set('action', action);
             body.set('bulk_note', noteValue || '');
+            body.set('ajax', '1');
             var controller = new AbortController();
             var timer = window.setTimeout(function () { controller.abort(); }, REQUEST_TIMEOUT);
 
@@ -212,9 +237,22 @@
                     signal: controller.signal,
                     headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
                 });
-                var contentType = response.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) throw new Error('Respons server bukan JSON.');
-                return { response: response, payload: await response.json() };
+                var rawPayload = await response.text();
+                var payload;
+                try {
+                    payload = rawPayload ? JSON.parse(rawPayload.replace(/^\uFEFF/, '').trim()) : {};
+                } catch (error) {
+                    // Jika sesi berakhir dan browser menerima halaman login,
+                    // arahkan pengguna ke tujuan redirect alih-alih menampilkan
+                    // error teknis dari fetch.
+                    if (response.redirected && response.url) {
+                        window.location.assign(response.url);
+                        return new Promise(function () {});
+                    }
+                    submitFallback(action);
+                    return new Promise(function () {});
+                }
+                return { response: response, payload: payload };
             } finally {
                 window.clearTimeout(timer);
             }

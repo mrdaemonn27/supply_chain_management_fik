@@ -42,6 +42,11 @@ class Peminjaman extends CI_Controller {
         }
 
         $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
+        $stock_shortages = $this->Peminjaman_model->get_group_stock_shortages($group_id);
+        if (!empty($stock_shortages)) {
+            $this->session->set_flashdata('error', $this->stock_shortage_message($stock_shortages));
+            redirect('kaur/dashboard/peminjaman');
+        }
         $update = [
             'status' => 'Disetujui (Menunggu Finalisasi QR)',
             'status_kaur' => 'Disetujui',
@@ -182,6 +187,7 @@ class Peminjaman extends CI_Controller {
         $skipped = 0;
         $processed_ids = [];
         $skipped_ids = [];
+        $stock_messages = [];
         foreach ($ids as $id) {
             $peminjaman = $this->Peminjaman_model->get_peminjaman_by_id($id);
             if (!$peminjaman || !scm_loan_can_act($peminjaman, 'kaur')) {
@@ -191,6 +197,13 @@ class Peminjaman extends CI_Controller {
             }
             $group_id = $peminjaman->group_id ?: 'single-' . (int) $peminjaman->id_peminjaman;
             if ($action === 'approve') {
+                $stock_shortages = $this->Peminjaman_model->get_group_stock_shortages($group_id);
+                if (!empty($stock_shortages)) {
+                    $skipped++;
+                    $skipped_ids[] = $id;
+                    $stock_messages[] = $this->stock_shortage_message($stock_shortages);
+                    continue;
+                }
                 $ok = $this->Peminjaman_model->approve_group_with_reservation($group_id, ['Menunggu ACC Kaur'], [
                     'status' => 'Disetujui (Menunggu Finalisasi QR)',
                     'status_kaur' => 'Disetujui',
@@ -236,7 +249,8 @@ class Peminjaman extends CI_Controller {
 
         $label = $action === 'approve' ? 'disetujui' : 'ditolak';
         $message = $processed . ' pengajuan berhasil ' . $label . '.';
-        if ($skipped > 0) $message .= ' ' . $skipped . ' dilewati karena statusnya berubah atau bukan kewenangan Kaur.';
+        if ($skipped > 0) $message .= ' ' . $skipped . ' tidak diproses karena statusnya berubah, bukan kewenangan Kaur, atau stok belum mencukupi.';
+        if (!empty($stock_messages)) $message .= ' ' . implode(' ', array_values(array_unique($stock_messages)));
         if ($ajax) {
             scm_json_response([
                 'success' => $processed > 0,
@@ -263,5 +277,15 @@ class Peminjaman extends CI_Controller {
             return $id > 0;
         })));
         return array_slice($ids, 0, 25);
+    }
+
+    private function stock_shortage_message(array $shortages) {
+        $items = [];
+        foreach (array_slice($shortages, 0, 3) as $shortage) {
+            $name = trim((string) ($shortage['kode_aset'] ?? ''));
+            if ($name === '') $name = trim((string) ($shortage['nama_aset'] ?? 'Aset'));
+            $items[] = $name . ' membutuhkan ' . (int) ($shortage['required'] ?? 0) . ' unit, tersedia ' . (int) ($shortage['available'] ?? 0) . ' unit';
+        }
+        return 'Pengajuan belum dapat diteruskan ke Laboran karena stok tidak cukup: ' . implode('; ', $items) . '.';
     }
 }
